@@ -1,0 +1,50 @@
+services:
+  whatsapp-hub:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      LOG_LEVEL: info
+      DATABASE_URL: postgres://message_hub:message_hub@postgres:5432/message_hub
+      RABBITMQ_URL: amqp://message_hub:message_hub@rabbitmq:5672
+      META_BASE_URL: https://graph.facebook.com
+      META_API_VERSION: v21.0
+    depends_on:
+      - postgres
+      - rabbitmq
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: message_hub
+      POSTGRES_PASSWORD: message_hub
+      POSTGRES_DB: message_hub
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: message_hub
+      RABBITMQ_DEFAULT_PASS: message_hub
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+volumes:
+  postgres-data:
+  rabbitmq-data:
+  redis-data:
