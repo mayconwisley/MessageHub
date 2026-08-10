@@ -20,4 +20,8 @@ export class AppConfigService {
   get isProduction(): boolean {
     return this.nodeEnv === 'production';
   }
+
+  get isTest(): boolean {
+    return this.nodeEnv === 'test';
+  }
 }

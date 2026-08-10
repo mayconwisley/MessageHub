@@ -1,6 +1,7 @@
-import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import * as amqp from 'amqp-connection-manager';
 import type { Channel, ConsumeMessage } from 'amqplib';
+import { PinoLogger } from 'nestjs-pino';
 import { UniqueId } from '@shared/domain';
 import { RABBITMQ_CONNECTION } from '@infrastructure/messaging/rabbitmq/rabbitmq.constants';
 import {
@@ -45,7 +46,6 @@ import {
  */
 @Injectable()
 export class MessageWorker implements OnModuleInit {
-  private readonly logger = new Logger(MessageWorker.name);
   private readonly channelWrapper: amqp.ChannelWrapper;
 
   constructor(
@@ -59,7 +59,9 @@ export class MessageWorker implements OnModuleInit {
     @Inject(MESSAGE_PROVIDER) private readonly messageProvider: IMessageProvider,
     @Inject(MESSAGE_PUBLISHER) private readonly messagePublisher: IMessagePublisher,
     private readonly retryPolicy: MessageRetryPolicy,
+    private readonly logger: PinoLogger,
   ) {
+    this.logger.setContext(MessageWorker.name);
     this.channelWrapper = this.connection.createChannel({
       json: true,
       setup: async (channel: Channel) => {
@@ -84,10 +86,10 @@ export class MessageWorker implements OnModuleInit {
     try {
       const payload = JSON.parse(msg.content.toString()) as MessageRequestedPayload;
       await this.process(payload.messageId);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
+        { err: error },
         'Unexpected failure while processing message.requested event.',
-        error instanceof Error ? error.stack : String(error),
       );
     } finally {
       channel.ack(msg);
@@ -97,7 +99,7 @@ export class MessageWorker implements OnModuleInit {
   private async process(messageId: string): Promise<void> {
     const message = await this.messageRepository.findById(UniqueId.create(messageId));
     if (!message) {
-      this.logger.warn(`Message ${messageId} not found - skipping.`);
+      this.logger.warn({ messageId }, 'Message not found - skipping.');
       return;
     }
 
@@ -166,12 +168,14 @@ export class MessageWorker implements OnModuleInit {
       const delayMs = this.retryPolicy.nextDelayMs(message.attemptCount);
       const messageId = message.id.value;
       setTimeout(() => {
-        this.messagePublisher.publishMessageRequested({ messageId }).catch((publishError) => {
-          this.logger.error(
-            `Failed to requeue message ${messageId} for retry.`,
-            publishError instanceof Error ? publishError.stack : String(publishError),
-          );
-        });
+        this.messagePublisher
+          .publishMessageRequested({ messageId })
+          .catch((publishError: unknown) => {
+            this.logger.error(
+              { err: publishError, messageId },
+              'Failed to requeue message for retry.',
+            );
+          });
       }, delayMs);
       return;
     }

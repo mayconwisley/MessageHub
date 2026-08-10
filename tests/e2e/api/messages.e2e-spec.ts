@@ -1,6 +1,7 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { Test } from '@nestjs/testing';
+import { LoggerModule } from 'nestjs-pino';
 import request from 'supertest';
 import { MEDIATOR, Mediator } from '@shared/mediator';
 import { GlobalExceptionFilter } from '@presentation/http/filters/global-exception.filter';
@@ -50,7 +51,7 @@ describe('Messages flow (e2e)', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [CqrsModule],
+      imports: [CqrsModule, LoggerModule.forRoot({ pinoHttp: { level: 'silent' } })],
       controllers: [
         TenantsController,
         ApplicationsController,
@@ -70,6 +71,7 @@ describe('Messages flow (e2e)', () => {
         { provide: MESSAGE_PUBLISHER, useValue: messagePublisher },
         ApiKeyGeneratorService,
         ApiKeyAuthGuard,
+        GlobalExceptionFilter,
         CreateTenantHandler,
         CreateApplicationHandler,
         CreateApiKeyHandler,
@@ -83,7 +85,7 @@ describe('Messages flow (e2e)', () => {
 
     app = moduleRef.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
-    app.useGlobalFilters(new GlobalExceptionFilter());
+    app.useGlobalFilters(app.get(GlobalExceptionFilter));
     await app.init();
   });
 
