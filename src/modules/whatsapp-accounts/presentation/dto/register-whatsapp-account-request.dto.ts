@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsUUID } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import { WhatsAppCredentialSource } from '../../domain/enums/whatsapp-credential-source.enum';
 
 export class RegisterWhatsAppAccountRequestDto {
   @ApiProperty()
@@ -11,8 +12,29 @@ export class RegisterWhatsAppAccountRequestDto {
   @IsNotEmpty()
   wabaId!: string;
 
-  @ApiProperty({ description: 'Access Token da Meta para esta WABA. Nunca retornado pela API.' })
+  @ApiProperty({
+    enum: WhatsAppCredentialSource,
+    description:
+      'default usa META_DEFAULT_CHANNEL_BEARER; tenant usa uma credencial própria protegida.',
+  })
+  @IsEnum(WhatsAppCredentialSource)
+  credentialSource!: WhatsAppCredentialSource;
+
+  @ApiProperty({
+    required: false,
+    writeOnly: true,
+    description: 'Obrigatório apenas quando credentialSource for tenant. Nunca retornado pela API.',
+  })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  accessToken!: string;
+  accessToken?: string;
+
+  @ApiProperty({
+    required: false,
+    writeOnly: true,
+    description: 'App Secret da Meta usado para validar o HMAC dos webhooks deste tenant.',
+  })
+  @IsOptional()
+  @IsString()
+  appSecret?: string;
 }

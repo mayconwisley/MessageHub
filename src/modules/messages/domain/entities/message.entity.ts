@@ -148,6 +148,32 @@ export class Message extends Entity<MessageProps> {
     this.transitionTo(MessageStatus.RETRY);
   }
 
+  /** Aplica callbacks assíncronos do provedor sem reabrir transições já concluídas. */
+  applyProviderStatus(status: string): boolean {
+    const normalized = status.trim().toUpperCase();
+    if (normalized === 'DELIVERED' && this.props.status === MessageStatus.SENT) {
+      this.transitionTo(MessageStatus.DELIVERED);
+      return true;
+    }
+    if (
+      normalized === 'READ' &&
+      [MessageStatus.SENT, MessageStatus.DELIVERED].includes(this.props.status)
+    ) {
+      this.transitionTo(MessageStatus.READ);
+      return true;
+    }
+    if (
+      normalized === 'FAILED' &&
+      [MessageStatus.PENDING, MessageStatus.PROCESSING, MessageStatus.SENT].includes(
+        this.props.status,
+      )
+    ) {
+      this.transitionTo(MessageStatus.FAILED);
+      return true;
+    }
+    return false;
+  }
+
   private transitionTo(status: MessageStatus): void {
     this.props.status = status;
     this.props.updatedAt = new Date();

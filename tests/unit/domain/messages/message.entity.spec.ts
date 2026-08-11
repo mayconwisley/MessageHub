@@ -49,6 +49,19 @@ describe('Message', () => {
     expect(message.providerMessageId).toBe('wamid.HBg');
   });
 
+  it('applies provider callbacks once and never reopens a terminal state', () => {
+    const message = createMessage();
+    message.markProcessing();
+    message.markSent('wamid.HBg');
+
+    expect(message.applyProviderStatus('delivered')).toBe(true);
+    expect(message.status).toBe(MessageStatus.DELIVERED);
+    expect(message.applyProviderStatus('delivered')).toBe(false);
+    expect(message.applyProviderStatus('read')).toBe(true);
+    expect(message.status).toBe(MessageStatus.READ);
+    expect(message.applyProviderStatus('failed')).toBe(false);
+  });
+
   it('follows the failure path PROCESSING -> FAILED -> RETRY -> PROCESSING', () => {
     const message = createMessage();
 

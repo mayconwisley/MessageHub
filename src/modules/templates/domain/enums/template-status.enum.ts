@@ -1,0 +1,8 @@
+export enum TemplateStatus {
+  DRAFT = 'DRAFT',
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+  PAUSED = 'PAUSED',
+  DISABLED = 'DISABLED',
+}

@@ -1,12 +1,15 @@
 import { Entity, UniqueId } from '@shared/domain';
 import { Result } from '@shared/result';
 import { WhatsAppAccountStatus } from '../enums/whatsapp-account-status.enum';
+import { WhatsAppCredentialSource } from '../enums/whatsapp-credential-source.enum';
 import { InvalidWhatsAppAccountError } from '../errors/invalid-whatsapp-account.error';
 
 export interface WhatsAppAccountProps {
   tenantId: UniqueId;
   wabaId: string;
-  accessToken: string;
+  credentialSource: WhatsAppCredentialSource;
+  accessToken: string | null;
+  appSecret: string | null;
   status: WhatsAppAccountStatus;
   createdAt: Date;
 }
@@ -14,7 +17,9 @@ export interface WhatsAppAccountProps {
 export interface RegisterWhatsAppAccountParams {
   tenantId: UniqueId;
   wabaId: string;
-  accessToken: string;
+  credentialSource?: WhatsAppCredentialSource;
+  accessToken?: string;
+  appSecret?: string;
 }
 
 export class WhatsAppAccount extends Entity<WhatsAppAccountProps> {
@@ -31,9 +36,25 @@ export class WhatsAppAccount extends Entity<WhatsAppAccountProps> {
       return Result.fail(new InvalidWhatsAppAccountError('wabaId must not be empty.'));
     }
 
-    const accessToken = params.accessToken?.trim();
-    if (!accessToken) {
-      return Result.fail(new InvalidWhatsAppAccountError('accessToken must not be empty.'));
+    const credentialSource = params.credentialSource ?? WhatsAppCredentialSource.TENANT;
+    if (!Object.values(WhatsAppCredentialSource).includes(credentialSource)) {
+      return Result.fail(new InvalidWhatsAppAccountError('credentialSource is invalid.'));
+    }
+
+    const accessToken = params.accessToken?.trim() ?? null;
+    const appSecret = params.appSecret?.trim() ?? null;
+    if (credentialSource === WhatsAppCredentialSource.TENANT && !accessToken) {
+      return Result.fail(
+        new InvalidWhatsAppAccountError('accessToken must not be empty for tenant credentials.'),
+      );
+    }
+
+    if (credentialSource === WhatsAppCredentialSource.DEFAULT && accessToken) {
+      return Result.fail(
+        new InvalidWhatsAppAccountError(
+          'accessToken must not be provided for default credentials.',
+        ),
+      );
     }
 
     return Result.ok(
@@ -41,7 +62,9 @@ export class WhatsAppAccount extends Entity<WhatsAppAccountProps> {
         {
           tenantId: params.tenantId,
           wabaId,
+          credentialSource,
           accessToken,
+          appSecret,
           status: WhatsAppAccountStatus.ACTIVE,
           createdAt: new Date(),
         },
@@ -62,9 +85,18 @@ export class WhatsAppAccount extends Entity<WhatsAppAccountProps> {
     return this.props.wabaId;
   }
 
+  get credentialSource(): WhatsAppCredentialSource {
+    return this.props.credentialSource;
+  }
+
   /** Nunca expor via DTO/API ou logs (secao 15/27). Uso restrito a MetaWhatsAppProvider. */
-  get accessToken(): string {
+  get accessToken(): string | null {
     return this.props.accessToken;
+  }
+
+  /** Segredo HMAC do webhook, nunca exposto fora da infraestrutura. */
+  get appSecret(): string | null {
+    return this.props.appSecret;
   }
 
   get status(): WhatsAppAccountStatus {

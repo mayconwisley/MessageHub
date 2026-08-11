@@ -125,6 +125,7 @@ export class MessageWorker implements OnModuleInit {
 
     const result = await this.messageProvider.send({
       phoneNumberId: phoneNumber.phoneNumberId,
+      credentialSource: whatsAppAccount.credentialSource,
       accessToken: whatsAppAccount.accessToken,
       to: message.to,
       content: message.content.body,

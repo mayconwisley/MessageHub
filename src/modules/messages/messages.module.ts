@@ -41,5 +41,6 @@ import { MessagesController } from './presentation/controllers/messages.controll
     GetMessageHandler,
     MessageWorker,
   ],
+  exports: [MESSAGE_REPOSITORY],
 })
 export class MessagesModule {}

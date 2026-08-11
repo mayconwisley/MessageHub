@@ -23,6 +23,11 @@ export class PostgresPhoneNumberRepository implements IPhoneNumberRepository {
     return row ? this.toDomain(row) : null;
   }
 
+  async findByProviderPhoneNumberId(phoneNumberId: string): Promise<PhoneNumber | null> {
+    const row = await this.repository.findOne({ where: { phoneNumberId } });
+    return row ? this.toDomain(row) : null;
+  }
+
   private toOrmEntity(phoneNumber: PhoneNumber): PhoneNumberOrmEntity {
     const orm = new PhoneNumberOrmEntity();
     orm.id = phoneNumber.id.value;

@@ -37,7 +37,9 @@ export class RegisterWhatsAppAccountHandler implements ICommandHandler<RegisterW
     const accountResult = WhatsAppAccount.create({
       tenantId,
       wabaId: command.wabaId,
+      credentialSource: command.credentialSource,
       accessToken: command.accessToken,
+      appSecret: command.appSecret,
     });
     if (accountResult.isFailure) {
       return Result.fail(accountResult.error);

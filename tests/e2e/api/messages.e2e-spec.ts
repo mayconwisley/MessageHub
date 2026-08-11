@@ -6,6 +6,9 @@ import request from 'supertest';
 import { MEDIATOR, Mediator } from '@shared/mediator';
 import { GlobalExceptionFilter } from '@presentation/http/filters/global-exception.filter';
 import { ApiKeyAuthGuard } from '@presentation/http/guards/api-key-auth.guard';
+import { UserSessionAuthGuard } from '@presentation/http/guards/user-session-auth.guard';
+import { PlatformAdminGuard } from '@presentation/http/guards/platform-admin.guard';
+import { IdentityService } from '@modules/identity/infrastructure/services/identity.service';
 import { CreateApiKeyHandler } from '@modules/applications/application/handlers/create-api-key.handler';
 import { CreateApplicationHandler } from '@modules/applications/application/handlers/create-application.handler';
 import { ValidateApiKeyHandler } from '@modules/applications/application/handlers/validate-api-key.handler';
@@ -48,6 +51,7 @@ function createInMemoryRepository<TEntity extends { id: { value: string } }>() {
 describe('Messages flow (e2e)', () => {
   let app: INestApplication;
   const messagePublisher = { publishMessageRequested: jest.fn().mockResolvedValue(undefined) };
+  const adminSession = 'mh_session_e2e-test-token';
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -71,6 +75,19 @@ describe('Messages flow (e2e)', () => {
         { provide: MESSAGE_PUBLISHER, useValue: messagePublisher },
         ApiKeyGeneratorService,
         ApiKeyAuthGuard,
+        UserSessionAuthGuard,
+        PlatformAdminGuard,
+        {
+          provide: IdentityService,
+          useValue: {
+            resolveSession: jest.fn().mockResolvedValue({
+              id: '4f666ed7-c819-4f3e-bcc3-b951c6ed8e2a',
+              email: 'admin@example.com',
+              role: 'platform_admin',
+              tenantId: null,
+            }),
+          },
+        },
         GlobalExceptionFilter,
         CreateTenantHandler,
         CreateApplicationHandler,
@@ -98,26 +115,36 @@ describe('Messages flow (e2e)', () => {
 
     const tenant = await request(server)
       .post('/v1/tenants')
+      .set('Authorization', `Bearer ${adminSession}`)
       .send({ name: 'Acme Corp' })
       .expect(201);
 
     const application = await request(server)
       .post('/v1/applications')
+      .set('Authorization', `Bearer ${adminSession}`)
       .send({ tenantId: tenant.body.id, name: 'Order Notifications' })
       .expect(201);
 
     const apiKey = await request(server)
       .post(`/v1/applications/${application.body.id}/api-keys`)
+      .set('Authorization', `Bearer ${adminSession}`)
       .send({})
       .expect(201);
 
     const whatsAppAccount = await request(server)
       .post('/v1/whatsapp-accounts')
-      .send({ tenantId: tenant.body.id, wabaId: 'waba-1', accessToken: 'meta-access-token' })
+      .set('Authorization', `Bearer ${adminSession}`)
+      .send({
+        tenantId: tenant.body.id,
+        wabaId: 'waba-1',
+        credentialSource: 'tenant',
+        accessToken: 'meta-access-token',
+      })
       .expect(201);
 
     const phoneNumber = await request(server)
       .post('/v1/phone-numbers')
+      .set('Authorization', `Bearer ${adminSession}`)
       .send({
         whatsAppAccountId: whatsAppAccount.body.id,
         phoneNumberId: 'meta-phone-1',

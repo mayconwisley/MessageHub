@@ -7,9 +7,12 @@ import {
   Inject,
   Param,
   Post,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiHeader, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { IMediator, MEDIATOR } from '@shared/mediator';
+import { UserSessionAuthGuard } from '@presentation/http/guards/user-session-auth.guard';
+import { PlatformAdminGuard } from '@presentation/http/guards/platform-admin.guard';
 import { toHttpException } from '@presentation/http/result-http.mapper';
 import { CreateApiKeyCommand } from '../../application/commands/create-api-key.command';
 import { RevokeApiKeyCommand } from '../../application/commands/revoke-api-key.command';
@@ -17,6 +20,8 @@ import { CreatedApiKeyResponseDto } from '../dto/api-key-response.dto';
 import { CreateApiKeyRequestDto } from '../dto/create-api-key-request.dto';
 
 @ApiTags('api-keys')
+@ApiHeader({ name: 'Authorization', required: true })
+@UseGuards(UserSessionAuthGuard, PlatformAdminGuard)
 @Controller('v1/applications/:applicationId/api-keys')
 export class ApiKeysController {
   constructor(@Inject(MEDIATOR) private readonly mediator: IMediator) {}

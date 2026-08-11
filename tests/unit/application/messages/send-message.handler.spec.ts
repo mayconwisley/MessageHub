@@ -29,6 +29,9 @@ class FakePhoneNumberRepository implements IPhoneNumberRepository {
   async findById(id: UniqueId): Promise<PhoneNumber | null> {
     return this.phoneNumbers.find((phoneNumber) => phoneNumber.id.equals(id)) ?? null;
   }
+  async findByProviderPhoneNumberId(phoneNumberId: string): Promise<PhoneNumber | null> {
+    return this.phoneNumbers.find((phoneNumber) => phoneNumber.phoneNumberId === phoneNumberId) ?? null;
+  }
 }
 
 class FakeWhatsAppAccountRepository implements IWhatsAppAccountRepository {
@@ -49,6 +52,9 @@ class FakeMessageRepository implements IMessageRepository {
   }
   async findByIdempotencyKey(): Promise<Message | null> {
     return this.saved.find((message) => message.idempotencyKey) ?? null;
+  }
+  async findByProviderMessageId(): Promise<Message | null> {
+    return null;
   }
 }
 

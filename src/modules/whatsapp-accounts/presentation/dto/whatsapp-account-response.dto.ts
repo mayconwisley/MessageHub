@@ -11,6 +11,9 @@ export class WhatsAppAccountResponseDto {
   @ApiProperty()
   wabaId!: string;
 
+  @ApiProperty({ enum: ['default', 'tenant'] })
+  credentialSource!: string;
+
   @ApiProperty()
   status!: string;
 
@@ -22,6 +25,7 @@ export class WhatsAppAccountResponseDto {
     response.id = dto.id;
     response.tenantId = dto.tenantId;
     response.wabaId = dto.wabaId;
+    response.credentialSource = dto.credentialSource;
     response.status = dto.status;
     response.createdAt = dto.createdAt;
     return response;

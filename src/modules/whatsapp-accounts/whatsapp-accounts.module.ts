@@ -7,6 +7,7 @@ import { RegisterWhatsAppAccountHandler } from './application/handlers/register-
 import { WHATSAPP_ACCOUNT_REPOSITORY } from './domain/repositories/whatsapp-account.repository.interface';
 import { WhatsAppAccountOrmEntity } from './infrastructure/entities/whatsapp-account.orm-entity';
 import { PostgresWhatsAppAccountRepository } from './infrastructure/repositories/postgres-whatsapp-account.repository';
+import { AccessTokenCipherService } from './infrastructure/security/access-token-cipher.service';
 import { WhatsAppAccountsController } from './presentation/controllers/whatsapp-accounts.controller';
 
 @Module({
@@ -14,6 +15,7 @@ import { WhatsAppAccountsController } from './presentation/controllers/whatsapp-
   controllers: [WhatsAppAccountsController],
   providers: [
     { provide: WHATSAPP_ACCOUNT_REPOSITORY, useClass: PostgresWhatsAppAccountRepository },
+    AccessTokenCipherService,
     RegisterWhatsAppAccountHandler,
     GetWhatsAppAccountHandler,
   ],

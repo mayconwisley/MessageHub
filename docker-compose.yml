@@ -7,10 +7,10 @@ services:
       NODE_ENV: development
       PORT: 3000
       LOG_LEVEL: info
-      DATABASE_URL: postgres://message_hub:message_hub@postgres:5432/message_hub
+      DATABASE_URL: postgres://message_hub:thugstools@postgres:5432/message_hub
       RABBITMQ_URL: amqp://message_hub:message_hub@rabbitmq:5672
-      META_BASE_URL: https://graph.facebook.com
-      META_API_VERSION: v21.0
+      META_GRAPH_API_URL_BASE: https://graph.facebook.com/v25.0/
+      META_DEFAULT_CHANNEL_ENABLED: 'false'
     depends_on:
       - postgres
       - rabbitmq
@@ -19,7 +19,7 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: message_hub
-      POSTGRES_PASSWORD: message_hub
+      POSTGRES_PASSWORD: thugstools
       POSTGRES_DB: message_hub
     ports:
       - "5432:5432"

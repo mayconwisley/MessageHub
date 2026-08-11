@@ -1,6 +1,6 @@
 import { Column, Entity, PrimaryColumn } from 'typeorm';
 
-@Entity({ name: 'api_keys' })
+@Entity({ schema: 'app', name: 'api_keys' })
 export class ApiKeyOrmEntity {
   @PrimaryColumn('uuid')
   id!: string;

@@ -34,6 +34,11 @@ export class PostgresMessageRepository implements IMessageRepository {
     return row ? this.toDomain(row) : null;
   }
 
+  async findByProviderMessageId(providerMessageId: string): Promise<Message | null> {
+    const row = await this.repository.findOne({ where: { providerMessageId } });
+    return row ? this.toDomain(row) : null;
+  }
+
   private toOrmEntity(message: Message): MessageOrmEntity {
     const orm = new MessageOrmEntity();
     orm.id = message.id.value;

@@ -5,15 +5,33 @@ import { ConfigService } from '@nestjs/config';
 export class MetaConfigService {
   constructor(private readonly configService: ConfigService) {}
 
-  get baseUrl(): string {
-    return this.configService.get<string>('meta.baseUrl', { infer: true }) as string;
+  get graphApiUrl(): string | null {
+    return (
+      this.configService
+        .get<string>('meta.graphApiUrlBase', { infer: true })
+        ?.replace(/\/+$/, '') ?? null
+    );
   }
 
-  get apiVersion(): string {
-    return this.configService.get<string>('meta.apiVersion', { infer: true }) as string;
+  get defaultChannelEnabled(): boolean {
+    return this.configService.get<boolean>('meta.defaultChannelEnabled', { infer: true }) ?? false;
   }
 
-  get graphApiUrl(): string {
-    return `${this.baseUrl}/${this.apiVersion}`;
+  get defaultAccessToken(): string | null {
+    return this.configService.get<string>('meta.defaultAccessToken', { infer: true }) ?? null;
+  }
+
+  get credentialsEncryptionKey(): string {
+    return this.configService.get<string>('meta.credentialsEncryptionKey', {
+      infer: true,
+    }) as string;
+  }
+
+  get webhookVerifyToken(): string | null {
+    return this.configService.get<string>('meta.webhookVerifyToken', { infer: true }) ?? null;
+  }
+
+  get appSecret(): string | null {
+    return this.configService.get<string>('meta.appSecret', { infer: true }) ?? null;
   }
 }

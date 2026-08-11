@@ -1,6 +1,6 @@
 import { Column, Entity, Index, PrimaryColumn } from 'typeorm';
 
-@Entity({ name: 'messages' })
+@Entity({ schema: 'app', name: 'messages' })
 @Index(['applicationId', 'idempotencyKey'], {
   unique: true,
   where: '"idempotency_key" IS NOT NULL',

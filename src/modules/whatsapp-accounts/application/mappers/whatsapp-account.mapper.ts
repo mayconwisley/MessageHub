@@ -7,6 +7,7 @@ export class WhatsAppAccountMapper {
       id: whatsAppAccount.id.value,
       tenantId: whatsAppAccount.tenantId.value,
       wabaId: whatsAppAccount.wabaId,
+      credentialSource: whatsAppAccount.credentialSource,
       status: whatsAppAccount.status,
       createdAt: whatsAppAccount.createdAt,
     };

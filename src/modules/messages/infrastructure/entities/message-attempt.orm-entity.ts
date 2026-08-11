@@ -1,6 +1,6 @@
 import { Column, Entity, PrimaryColumn } from 'typeorm';
 
-@Entity({ name: 'message_attempts' })
+@Entity({ schema: 'app', name: 'message_attempts' })
 export class MessageAttemptOrmEntity {
   @PrimaryColumn('uuid')
   id!: string;

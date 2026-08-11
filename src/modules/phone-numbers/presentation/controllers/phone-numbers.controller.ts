@@ -1,6 +1,18 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Inject, Param, Post } from '@nestjs/common';
-import { ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Inject,
+  Param,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiHeader, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { IMediator, MEDIATOR } from '@shared/mediator';
+import { UserSessionAuthGuard } from '@presentation/http/guards/user-session-auth.guard';
+import { PlatformAdminGuard } from '@presentation/http/guards/platform-admin.guard';
 import { toHttpException } from '@presentation/http/result-http.mapper';
 import { RegisterPhoneNumberCommand } from '../../application/commands/register-phone-number.command';
 import { GetPhoneNumberQuery } from '../../application/queries/get-phone-number.query';
@@ -8,6 +20,8 @@ import { PhoneNumberResponseDto } from '../dto/phone-number-response.dto';
 import { RegisterPhoneNumberRequestDto } from '../dto/register-phone-number-request.dto';
 
 @ApiTags('phone-numbers')
+@ApiHeader({ name: 'Authorization', required: true })
+@UseGuards(UserSessionAuthGuard, PlatformAdminGuard)
 @Controller('v1/phone-numbers')
 export class PhoneNumbersController {
   constructor(@Inject(MEDIATOR) private readonly mediator: IMediator) {}
