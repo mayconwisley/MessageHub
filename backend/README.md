@@ -92,6 +92,10 @@ No primeiro boot, quando ainda não há usuários, o Hub cria o administrador in
 Execute as migrations antes da implantação. As tabelas atuais são movidas de `public` para `app` pela migration versionada. 7. `GET /v1/messages/:id` — consulta o status atual (`PENDING → PROCESSING → SENT`, ou
 `FAILED → RETRY → PROCESSING` em caso de falha).
 
+As coleções administrativas possuem listagem paginada: `GET /v1/tenants`,
+`GET /v1/applications?tenantId=:tenantId`, `GET /v1/whatsapp-accounts?tenantId=:tenantId` e
+`GET /v1/phone-numbers?tenantId=:tenantId`. Todas aceitam `page` e `pageSize` (máximo 100).
+
 Envie `Idempotency-Key: <chave>` no `POST /v1/messages` para evitar duplicidade em caso de retry
 do cliente.
 

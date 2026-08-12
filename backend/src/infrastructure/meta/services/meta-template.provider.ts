@@ -163,7 +163,7 @@ export class MetaTemplateProvider implements ITemplateProvider {
     const headerText = this.isStringArray(value.header_text) ? value.header_text : undefined;
     const bodyText =
       Array.isArray(value.body_text) && value.body_text.every((item) => this.isStringArray(item))
-        ? (value.body_text as string[][])
+        ? value.body_text
         : undefined;
     return headerText || bodyText ? { headerText, bodyText } : undefined;
   }

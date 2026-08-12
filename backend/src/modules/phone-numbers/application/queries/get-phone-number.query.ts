@@ -4,7 +4,10 @@ import { PhoneNumberNotFoundError } from '../../domain/errors/phone-number-not-f
 import { PhoneNumberDto } from '../dto/phone-number.dto';
 
 export class GetPhoneNumberQuery extends Query<Result<PhoneNumberDto, PhoneNumberNotFoundError>> {
-  constructor(public readonly phoneNumberId: string, public readonly tenantId?: string) {
+  constructor(
+    public readonly phoneNumberId: string,
+    public readonly tenantId?: string,
+  ) {
     super();
   }
 }

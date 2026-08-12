@@ -62,14 +62,16 @@ export class MessagesController {
     @CurrentAuthContext() authContext: AuthContextDto,
     @Headers(IDEMPOTENCY_KEY_HEADER) idempotencyKey?: string,
   ): Promise<MessageResponseDto> {
-    const result = await this.mediator.send(new SendTemplateMessageCommand(
-      authContext.applicationId,
-      dto.phoneNumberId,
-      dto.to,
-      { id: dto.templateId, name: dto.templateName },
-      dto.parameters ?? [],
-      idempotencyKey,
-    ));
+    const result = await this.mediator.send(
+      new SendTemplateMessageCommand(
+        authContext.applicationId,
+        dto.phoneNumberId,
+        dto.to,
+        { id: dto.templateId, name: dto.templateName },
+        dto.parameters ?? [],
+        idempotencyKey,
+      ),
+    );
     if (result.isFailure) throw toHttpException(result.error);
     return MessageResponseDto.fromDto(result.value);
   }

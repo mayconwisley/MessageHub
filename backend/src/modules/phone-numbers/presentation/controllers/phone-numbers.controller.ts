@@ -1,12 +1,15 @@
 import {
   Body,
+  BadRequestException,
   Controller,
   Get,
   HttpCode,
   HttpStatus,
   Inject,
+  InternalServerErrorException,
   Param,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -21,6 +24,11 @@ import { RegisterPhoneNumberCommand } from '../../application/commands/register-
 import { GetPhoneNumberQuery } from '../../application/queries/get-phone-number.query';
 import { PhoneNumberResponseDto } from '../dto/phone-number-response.dto';
 import { RegisterPhoneNumberRequestDto } from '../dto/register-phone-number-request.dto';
+import { PaginationQueryDto } from '@presentation/http/dto/pagination-query.dto';
+import { ListPhoneNumbersQuery } from '../../application/queries/list-phone-numbers.query';
+import { PaginatedResult } from '@shared/types';
+
+class ListPhoneNumbersRequestDto extends PaginationQueryDto { tenantId?: string; }
 
 @ApiTags('phone-numbers')
 @ApiBearerAuth()
@@ -49,6 +57,19 @@ export class PhoneNumbersController {
       throw toHttpException(result.error);
     }
     return PhoneNumberResponseDto.fromDto(result.value);
+  }
+
+  @Get()
+  async list(
+    @Query() query: ListPhoneNumbersRequestDto,
+    @CurrentOptionalAuthContext() auth?: AuthContextDto,
+    @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
+  ): Promise<PaginatedResult<PhoneNumberResponseDto>> {
+    const tenantId = auth?.tenantId ?? user?.tenantId ?? query.tenantId;
+    if (!tenantId) throw new BadRequestException('tenantId is required for administrative requests.');
+    const result = await this.mediator.query(new ListPhoneNumbersQuery(tenantId, query.page, query.pageSize));
+    if (result.isFailure) throw new InternalServerErrorException();
+    return { ...result.value, items: result.value.items.map(PhoneNumberResponseDto.fromDto) };
   }
 
   @Get(':id')

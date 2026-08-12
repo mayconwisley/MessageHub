@@ -6,6 +6,7 @@ import { Application, ApplicationProps } from '../../domain/entities/application
 import { ApplicationStatus } from '../../domain/enums/application-status.enum';
 import { IApplicationRepository } from '../../domain/repositories/application.repository.interface';
 import { ApplicationOrmEntity } from '../entities/application.orm-entity';
+import { PaginatedResult } from '@shared/types';
 
 @Injectable()
 export class PostgresApplicationRepository implements IApplicationRepository {
@@ -21,6 +22,20 @@ export class PostgresApplicationRepository implements IApplicationRepository {
   async findById(id: UniqueId): Promise<Application | null> {
     const row = await this.repository.findOne({ where: { id: id.value } });
     return row ? this.toDomain(row) : null;
+  }
+
+  async listByTenantId(
+    tenantId: UniqueId,
+    page: number,
+    pageSize: number,
+  ): Promise<PaginatedResult<Application>> {
+    const [rows, total] = await this.repository.findAndCount({
+      where: { tenantId: tenantId.value },
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+    return { items: rows.map((row) => this.toDomain(row)), total, page, pageSize };
   }
 
   private toOrmEntity(application: Application): ApplicationOrmEntity {

@@ -19,17 +19,7 @@ import { RabbitMqConfigService } from './rabbitmq-config.service';
       validate: validateEnv,
     }),
   ],
-  providers: [
-    AppConfigService,
-    DatabaseConfigService,
-    RabbitMqConfigService,
-    MetaConfigService,
-  ],
-  exports: [
-    AppConfigService,
-    DatabaseConfigService,
-    RabbitMqConfigService,
-    MetaConfigService,
-  ],
+  providers: [AppConfigService, DatabaseConfigService, RabbitMqConfigService, MetaConfigService],
+  exports: [AppConfigService, DatabaseConfigService, RabbitMqConfigService, MetaConfigService],
 })
 export class ConfigurationModule {}

@@ -10,7 +10,10 @@ import {
 import { PhoneNumberDto } from '../dto/phone-number.dto';
 import { PhoneNumberMapper } from '../mappers/phone-number.mapper';
 import { GetPhoneNumberQuery } from '../queries/get-phone-number.query';
-import { IWhatsAppAccountRepository, WHATSAPP_ACCOUNT_REPOSITORY } from '@modules/whatsapp-accounts/domain/repositories/whatsapp-account.repository.interface';
+import {
+  IWhatsAppAccountRepository,
+  WHATSAPP_ACCOUNT_REPOSITORY,
+} from '@modules/whatsapp-accounts/domain/repositories/whatsapp-account.repository.interface';
 
 @QueryHandler(GetPhoneNumberQuery)
 export class GetPhoneNumberHandler implements IQueryHandler<GetPhoneNumberQuery> {

@@ -31,7 +31,9 @@ export class PlatformAdminOrTenantApiKeyGuard implements CanActivate {
     if (!isAuthenticated) return false;
 
     if (this.platformAdminGuard.canActivate(context)) return true;
-    const user = context.switchToHttp().getRequest<{ user?: { role: UserRole; tenantId: string | null } }>().user;
+    const user = context
+      .switchToHttp()
+      .getRequest<{ user?: { role: UserRole; tenantId: string | null } }>().user;
     return user?.role === UserRole.TENANT_ADMIN && user.tenantId !== null;
   }
 }

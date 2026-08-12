@@ -18,11 +18,15 @@ export class AppConfigService {
   }
 
   get initialPlatformAdminEmail(): string {
-    return this.configService.get<string>('app.initialPlatformAdminEmail', { infer: true }) as string;
+    return this.configService.get<string>('app.initialPlatformAdminEmail', {
+      infer: true,
+    }) as string;
   }
 
   get initialPlatformAdminPassword(): string {
-    return this.configService.get<string>('app.initialPlatformAdminPassword', { infer: true }) as string;
+    return this.configService.get<string>('app.initialPlatformAdminPassword', {
+      infer: true,
+    }) as string;
   }
 
   get isProduction(): boolean {

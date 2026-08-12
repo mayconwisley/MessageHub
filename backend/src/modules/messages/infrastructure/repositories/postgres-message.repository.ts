@@ -73,13 +73,16 @@ export class PostgresMessageRepository implements IMessageRepository {
       throw new Error(`Corrupted message content persisted for message ${row.id}.`);
     }
 
-    const templateResult = row.template ? TemplateMessage.create({
-      metaTemplateId: row.template.metaTemplateId as string | null,
-      name: row.template.name as string,
-      language: row.template.language as string,
-      parameters: row.template.parameters as [],
-    }) : null;
-    if (templateResult?.isFailure) throw new Error(`Corrupted template payload persisted for message ${row.id}.`);
+    const templateResult = row.template
+      ? TemplateMessage.create({
+          metaTemplateId: row.template.metaTemplateId as string | null,
+          name: row.template.name as string,
+          language: row.template.language as string,
+          parameters: row.template.parameters as [],
+        })
+      : null;
+    if (templateResult?.isFailure)
+      throw new Error(`Corrupted template payload persisted for message ${row.id}.`);
     const props: MessageProps = {
       tenantId: UniqueId.create(row.tenantId),
       applicationId: UniqueId.create(row.applicationId),

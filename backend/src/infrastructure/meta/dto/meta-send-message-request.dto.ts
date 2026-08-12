@@ -22,5 +22,4 @@ export interface MetaTemplateSendMessageRequestDto {
 }
 
 export type MetaSendMessageRequestDto =
-  | MetaTextSendMessageRequestDto
-  | MetaTemplateSendMessageRequestDto;
+  MetaTextSendMessageRequestDto | MetaTemplateSendMessageRequestDto;

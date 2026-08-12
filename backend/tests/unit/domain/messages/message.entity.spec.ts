@@ -104,9 +104,14 @@ describe('Message', () => {
 
   it('requires an index for button template parameters', () => {
     const result = Message.createTemplate({
-      tenantId: UniqueId.create(), applicationId: UniqueId.create(), phoneNumberId: UniqueId.create(),
-      to: '+5511999999999', metaTemplateId: 'meta-template-1', templateName: 'order_confirmed',
-      language: 'pt_BR', parameters: [{ component: 'button', values: ['https://example.com'] }],
+      tenantId: UniqueId.create(),
+      applicationId: UniqueId.create(),
+      phoneNumberId: UniqueId.create(),
+      to: '+5511999999999',
+      metaTemplateId: 'meta-template-1',
+      templateName: 'order_confirmed',
+      language: 'pt_BR',
+      parameters: [{ component: 'button', values: ['https://example.com'] }],
     });
 
     expect(result.isFailure).toBe(true);

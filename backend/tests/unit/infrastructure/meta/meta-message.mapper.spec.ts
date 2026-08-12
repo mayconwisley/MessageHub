@@ -28,10 +28,15 @@ describe('MetaMessageMapper', () => {
       template: {
         name: 'pedido_confirmado',
         language: { code: 'pt_BR' },
-        components: [{
-          type: 'body',
-          parameters: [{ type: 'text', text: 'Maycon' }, { type: 'text', text: '12345' }],
-        }],
+        components: [
+          {
+            type: 'body',
+            parameters: [
+              { type: 'text', text: 'Maycon' },
+              { type: 'text', text: '12345' },
+            ],
+          },
+        ],
       },
     });
   });

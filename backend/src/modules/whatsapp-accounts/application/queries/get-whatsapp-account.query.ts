@@ -6,7 +6,10 @@ import { WhatsAppAccountDto } from '../dto/whatsapp-account.dto';
 export class GetWhatsAppAccountQuery extends Query<
   Result<WhatsAppAccountDto, WhatsAppAccountNotFoundError>
 > {
-  constructor(public readonly whatsAppAccountId: string, public readonly tenantId?: string) {
+  constructor(
+    public readonly whatsAppAccountId: string,
+    public readonly tenantId?: string,
+  ) {
     super();
   }
 }

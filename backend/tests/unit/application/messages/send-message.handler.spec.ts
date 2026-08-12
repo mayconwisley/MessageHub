@@ -21,6 +21,9 @@ class FakeApplicationRepository implements IApplicationRepository {
   async findById(id: UniqueId): Promise<Application | null> {
     return this.applications.find((application) => application.id.equals(id)) ?? null;
   }
+  async listByTenantId(): Promise<import('@shared/types').PaginatedResult<Application>> {
+    return { items: [], total: 0, page: 1, pageSize: 20 };
+  }
 }
 
 class FakePhoneNumberRepository implements IPhoneNumberRepository {
@@ -30,7 +33,12 @@ class FakePhoneNumberRepository implements IPhoneNumberRepository {
     return this.phoneNumbers.find((phoneNumber) => phoneNumber.id.equals(id)) ?? null;
   }
   async findByProviderPhoneNumberId(phoneNumberId: string): Promise<PhoneNumber | null> {
-    return this.phoneNumbers.find((phoneNumber) => phoneNumber.phoneNumberId === phoneNumberId) ?? null;
+    return (
+      this.phoneNumbers.find((phoneNumber) => phoneNumber.phoneNumberId === phoneNumberId) ?? null
+    );
+  }
+  async listByWhatsAppAccountIds(): Promise<import('@shared/types').PaginatedResult<PhoneNumber>> {
+    return { items: [], total: 0, page: 1, pageSize: 20 };
   }
 }
 
@@ -39,6 +47,12 @@ class FakeWhatsAppAccountRepository implements IWhatsAppAccountRepository {
   async save(): Promise<void> {}
   async findById(id: UniqueId): Promise<WhatsAppAccount | null> {
     return this.accounts.find((account) => account.id.equals(id)) ?? null;
+  }
+  async listByTenantId(): Promise<import('@shared/types').PaginatedResult<WhatsAppAccount>> {
+    return { items: [], total: 0, page: 1, pageSize: 20 };
+  }
+  async findIdsByTenantId(): Promise<UniqueId[]> {
+    return [];
   }
 }
 

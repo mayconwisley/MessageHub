@@ -6,8 +6,10 @@ import {
   HttpCode,
   HttpStatus,
   Inject,
+  InternalServerErrorException,
   Param,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -22,6 +24,13 @@ import { RegisterWhatsAppAccountCommand } from '../../application/commands/regis
 import { GetWhatsAppAccountQuery } from '../../application/queries/get-whatsapp-account.query';
 import { RegisterWhatsAppAccountRequestDto } from '../dto/register-whatsapp-account-request.dto';
 import { WhatsAppAccountResponseDto } from '../dto/whatsapp-account-response.dto';
+import { PaginationQueryDto } from '@presentation/http/dto/pagination-query.dto';
+import { ListWhatsAppAccountsQuery } from '../../application/queries/list-whatsapp-accounts.query';
+import { PaginatedResult } from '@shared/types';
+
+class ListWhatsAppAccountsRequestDto extends PaginationQueryDto {
+  tenantId?: string;
+}
 
 @ApiTags('whatsapp-accounts')
 @ApiBearerAuth()
@@ -53,6 +62,20 @@ export class WhatsAppAccountsController {
     return WhatsAppAccountResponseDto.fromDto(result.value);
   }
 
+  @Get()
+  async list(
+    @Query() query: ListWhatsAppAccountsRequestDto,
+    @CurrentOptionalAuthContext() auth?: AuthContextDto,
+    @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
+  ): Promise<PaginatedResult<WhatsAppAccountResponseDto>> {
+    const tenantId = auth?.tenantId ?? user?.tenantId ?? this.requireTenantId(query.tenantId);
+    const result = await this.mediator.query(
+      new ListWhatsAppAccountsQuery(tenantId, query.page, query.pageSize),
+    );
+    if (result.isFailure) throw new InternalServerErrorException();
+    return { ...result.value, items: result.value.items.map(WhatsAppAccountResponseDto.fromDto) };
+  }
+
   @Get(':id')
   @ApiResponse({ status: HttpStatus.OK, type: WhatsAppAccountResponseDto })
   async getById(
@@ -70,7 +93,8 @@ export class WhatsAppAccountsController {
   }
 
   private requireTenantId(tenantId: string | undefined): string {
-    if (!tenantId) throw new BadRequestException('tenantId is required for administrative requests.');
+    if (!tenantId)
+      throw new BadRequestException('tenantId is required for administrative requests.');
     return tenantId;
   }
 }

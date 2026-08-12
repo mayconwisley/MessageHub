@@ -6,7 +6,9 @@ import { AuditLogOrmEntity } from '../entities/audit-log.orm-entity';
 
 @Injectable()
 export class AuditLogService {
-  constructor(@InjectRepository(AuditLogOrmEntity) private readonly repository: Repository<AuditLogOrmEntity>) {}
+  constructor(
+    @InjectRepository(AuditLogOrmEntity) private readonly repository: Repository<AuditLogOrmEntity>,
+  ) {}
 
   async record(entry: Omit<AuditLogOrmEntity, 'id' | 'occurredAt'>): Promise<void> {
     await this.repository.save({ id: randomUUID(), occurredAt: new Date(), ...entry });

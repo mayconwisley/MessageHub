@@ -13,7 +13,8 @@ export class CreateApiKeyRequestDto {
   @ApiPropertyOptional({
     enum: ApiKeyType,
     default: ApiKeyType.PLATFORM,
-    description: 'platform: envio e templates; tenant: também gerencia contas e números do próprio tenant.',
+    description:
+      'platform: envio e templates; tenant: também gerencia contas e números do próprio tenant.',
   })
   @IsOptional()
   @IsEnum(ApiKeyType)

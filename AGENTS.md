@@ -38,4 +38,4 @@ frontend/src/
 - Criar um item de menu e uma tela próprios quando áreas exibirem dados, permissões ou ações diferentes. Não agrupar cadastros independentes em uma única tela apenas por pertencerem ao mesmo contexto administrativo.
 - Tipar contratos HTTP explicitamente e não usar `any`.
 - Manter tokens somente no `sessionStorage`; nunca registrar, exibir novamente ou persistir API keys em texto puro.
-- Não inventar listagens no cliente quando a API não possui endpoint de listagem. Oferecer consulta por identificador e registrar a limitação para evolução do backend.
+- Para coleções administrativas, consumir os endpoints paginados do backend; não simular listagens no cliente.

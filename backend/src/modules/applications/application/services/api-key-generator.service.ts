@@ -22,7 +22,10 @@ export class ApiKeyGeneratorService {
   private static readonly TENANT_KEY_PREFIX = 'wh_tenant_live_';
   private static readonly SALT_ROUNDS = 10;
 
-  async generate(apiKeyId: UniqueId, type: ApiKeyType = ApiKeyType.PLATFORM): Promise<GeneratedApiKey> {
+  async generate(
+    apiKeyId: UniqueId,
+    type: ApiKeyType = ApiKeyType.PLATFORM,
+  ): Promise<GeneratedApiKey> {
     const secret = randomBytes(24).toString('hex');
     const keyPrefix = this.getKeyPrefix(type);
     const plainTextKey = `${keyPrefix}${apiKeyId.value}.${secret}`;

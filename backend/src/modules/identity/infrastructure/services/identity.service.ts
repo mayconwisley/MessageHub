@@ -18,7 +18,8 @@ const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 export class IdentityService implements OnModuleInit {
   constructor(
     @InjectRepository(UserOrmEntity) private readonly users: Repository<UserOrmEntity>,
-    @InjectRepository(UserSessionOrmEntity) private readonly sessions: Repository<UserSessionOrmEntity>,
+    @InjectRepository(UserSessionOrmEntity)
+    private readonly sessions: Repository<UserSessionOrmEntity>,
     private readonly appConfig: AppConfigService,
   ) {}
 
@@ -58,9 +59,17 @@ export class IdentityService implements OnModuleInit {
     return this.toAuthenticatedUser(user);
   }
 
-  async authenticate(email: string, password: string, metadata: { ipAddress?: string; userAgent?: string }) {
+  async authenticate(
+    email: string,
+    password: string,
+    metadata: { ipAddress?: string; userAgent?: string },
+  ) {
     const user = await this.users.findOne({ where: { email: email.trim().toLowerCase() } });
-    if (!user || user.status !== UserStatus.ACTIVE || !(await bcrypt.compare(password, user.passwordHash))) {
+    if (
+      !user ||
+      user.status !== UserStatus.ACTIVE ||
+      !(await bcrypt.compare(password, user.passwordHash))
+    ) {
       return null;
     }
 
@@ -82,7 +91,11 @@ export class IdentityService implements OnModuleInit {
       await manager.save(session);
     });
 
-    return { accessToken: token, expiresAt: session.expiresAt, user: this.toAuthenticatedUser(user) };
+    return {
+      accessToken: token,
+      expiresAt: session.expiresAt,
+      user: this.toAuthenticatedUser(user),
+    };
   }
 
   async resolveSession(token: string): Promise<AuthenticatedUserDto | null> {
@@ -94,9 +107,19 @@ export class IdentityService implements OnModuleInit {
       .andWhere('session.revoked_at IS NULL')
       .andWhere('session.expires_at > NOW()')
       .andWhere('user.status = :status', { status: UserStatus.ACTIVE })
-      .getRawOne<{ user_id: string; user_email: string; user_role: UserRole; user_tenant_id: string | null }>();
+      .getRawOne<{
+        user_id: string;
+        user_email: string;
+        user_role: UserRole;
+        user_tenant_id: string | null;
+      }>();
     if (!session) return null;
-    return { id: session.user_id, email: session.user_email, role: session.user_role, tenantId: session.user_tenant_id };
+    return {
+      id: session.user_id,
+      email: session.user_email,
+      role: session.user_role,
+      tenantId: session.user_tenant_id,
+    };
   }
 
   private hashToken(token: string): string {

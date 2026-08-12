@@ -100,7 +100,7 @@ export class PostgresTemplateRepository implements ITemplateRepository {
       name: row.name,
       language: row.language,
       category: row.category,
-      components: row.components as TemplateComponentDefinition[],
+      components: row.components,
       parameterFormat: row.parameterFormat,
       status: row.status as TemplateStatus,
       rejectedReason: row.rejectedReason,

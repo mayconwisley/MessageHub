@@ -19,7 +19,7 @@ export class MetaMessageMapper {
             type: group.component,
             ...(group.index !== undefined ? { index: group.index } : {}),
             ...(group.component === 'button'
-              ? { sub_type: group.action === 'url' ? 'url' as const : 'quick_reply' as const }
+              ? { sub_type: group.action === 'url' ? ('url' as const) : ('quick_reply' as const) }
               : {}),
             parameters: group.values.map((value) => ({ type: 'text' as const, text: value })),
           })),

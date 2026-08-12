@@ -6,7 +6,13 @@ import { InvalidMessageError, TemplateNotFoundError } from '../../domain/errors'
 import { MessageDto } from '../dto/message.dto';
 
 export class SendTemplateMessageCommand extends Command<
-  Result<MessageDto, InvalidMessageError | ApplicationNotFoundError | PhoneNumberNotFoundError | TemplateNotFoundError>
+  Result<
+    MessageDto,
+    | InvalidMessageError
+    | ApplicationNotFoundError
+    | PhoneNumberNotFoundError
+    | TemplateNotFoundError
+  >
 > {
   constructor(
     public readonly applicationId: string,
@@ -15,5 +21,7 @@ export class SendTemplateMessageCommand extends Command<
     public readonly template: { id?: string; name?: string },
     public readonly parameters: string[],
     public readonly idempotencyKey?: string,
-  ) { super(); }
+  ) {
+    super();
+  }
 }

@@ -42,13 +42,22 @@ export class TemplateMessage extends ValueObject<TemplateMessageProps> {
         parameter.component === 'button' &&
         !['quickReply', 'url'].includes(parameter.action ?? '')
       ) {
-        return Result.fail(new InvalidMessageError('Button template parameters require an action.'));
+        return Result.fail(
+          new InvalidMessageError('Button template parameters require an action.'),
+        );
       }
-      if (parameter.index !== undefined && (!Number.isInteger(parameter.index) || parameter.index < 0)) {
-        return Result.fail(new InvalidMessageError('Template parameter index must be a non-negative integer.'));
+      if (
+        parameter.index !== undefined &&
+        (!Number.isInteger(parameter.index) || parameter.index < 0)
+      ) {
+        return Result.fail(
+          new InvalidMessageError('Template parameter index must be a non-negative integer.'),
+        );
       }
       if (!Array.isArray(parameter.values) || parameter.values.some((value) => !value?.trim())) {
-        return Result.fail(new InvalidMessageError('Template parameter values must be non-empty strings.'));
+        return Result.fail(
+          new InvalidMessageError('Template parameter values must be non-empty strings.'),
+        );
       }
     }
 
@@ -67,8 +76,16 @@ export class TemplateMessage extends ValueObject<TemplateMessageProps> {
     );
   }
 
-  get metaTemplateId(): string | null { return this.props.metaTemplateId; }
-  get name(): string { return this.props.name; }
-  get language(): string { return this.props.language; }
-  get parameters(): TemplateParameterGroup[] { return this.props.parameters; }
+  get metaTemplateId(): string | null {
+    return this.props.metaTemplateId;
+  }
+  get name(): string {
+    return this.props.name;
+  }
+  get language(): string {
+    return this.props.language;
+  }
+  get parameters(): TemplateParameterGroup[] {
+    return this.props.parameters;
+  }
 }

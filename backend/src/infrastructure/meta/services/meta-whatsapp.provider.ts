@@ -24,7 +24,9 @@ export class MetaWhatsAppProvider implements IMessageProvider {
   ): Promise<Result<ProviderMessageResult, ProviderUnavailableError>> {
     const accessToken = this.resolveAccessToken(message);
     if (!accessToken) {
-      return Result.fail(new ProviderUnavailableError('Tenant Meta access token is not configured.'));
+      return Result.fail(
+        new ProviderUnavailableError('Tenant Meta access token is not configured.'),
+      );
     }
 
     try {

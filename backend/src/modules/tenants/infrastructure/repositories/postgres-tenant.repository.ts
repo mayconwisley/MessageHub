@@ -6,6 +6,7 @@ import { Tenant, TenantProps } from '../../domain/entities/tenant.entity';
 import { TenantStatus } from '../../domain/enums/tenant-status.enum';
 import { ITenantRepository } from '../../domain/repositories/tenant.repository.interface';
 import { TenantOrmEntity } from '../entities/tenant.orm-entity';
+import { PaginatedResult } from '@shared/types';
 
 @Injectable()
 export class PostgresTenantRepository implements ITenantRepository {
@@ -21,6 +22,15 @@ export class PostgresTenantRepository implements ITenantRepository {
   async findById(id: UniqueId): Promise<Tenant | null> {
     const row = await this.repository.findOne({ where: { id: id.value } });
     return row ? this.toDomain(row) : null;
+  }
+
+  async list(page: number, pageSize: number): Promise<PaginatedResult<Tenant>> {
+    const [rows, total] = await this.repository.findAndCount({
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+    return { items: rows.map((row) => this.toDomain(row)), total, page, pageSize };
   }
 
   private toOrmEntity(tenant: Tenant): TenantOrmEntity {

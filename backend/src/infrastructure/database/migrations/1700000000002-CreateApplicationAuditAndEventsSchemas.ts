@@ -49,7 +49,9 @@ export class CreateApplicationAuditAndEventsSchemas1700000000002 implements Migr
       )
     `);
     await queryRunner.query('CREATE INDEX idx_user_sessions_user_id ON app.user_sessions(user_id)');
-    await queryRunner.query('CREATE INDEX idx_user_sessions_active ON app.user_sessions(expires_at) WHERE revoked_at IS NULL');
+    await queryRunner.query(
+      'CREATE INDEX idx_user_sessions_active ON app.user_sessions(expires_at) WHERE revoked_at IS NULL',
+    );
 
     await queryRunner.query(`
       CREATE TABLE audit.audit_logs (
@@ -70,8 +72,12 @@ export class CreateApplicationAuditAndEventsSchemas1700000000002 implements Migr
         metadata jsonb NOT NULL DEFAULT '{}'::jsonb
       )
     `);
-    await queryRunner.query('CREATE INDEX idx_audit_logs_occurred_at ON audit.audit_logs(occurred_at DESC)');
-    await queryRunner.query('CREATE INDEX idx_audit_logs_actor_user_id ON audit.audit_logs(actor_user_id)');
+    await queryRunner.query(
+      'CREATE INDEX idx_audit_logs_occurred_at ON audit.audit_logs(occurred_at DESC)',
+    );
+    await queryRunner.query(
+      'CREATE INDEX idx_audit_logs_actor_user_id ON audit.audit_logs(actor_user_id)',
+    );
     await queryRunner.query('CREATE INDEX idx_audit_logs_tenant_id ON audit.audit_logs(tenant_id)');
 
     await queryRunner.query(`
@@ -88,7 +94,9 @@ export class CreateApplicationAuditAndEventsSchemas1700000000002 implements Migr
         failure_reason text NULL
       )
     `);
-    await queryRunner.query('CREATE INDEX idx_outbox_events_pending ON events.outbox_events(occurred_at) WHERE processed_at IS NULL');
+    await queryRunner.query(
+      'CREATE INDEX idx_outbox_events_pending ON events.outbox_events(occurred_at) WHERE processed_at IS NULL',
+    );
   }
 
   async down(queryRunner: QueryRunner): Promise<void> {

@@ -11,6 +11,7 @@ import { WhatsAppCredentialSource } from '../../domain/enums/whatsapp-credential
 import { IWhatsAppAccountRepository } from '../../domain/repositories/whatsapp-account.repository.interface';
 import { WhatsAppAccountOrmEntity } from '../entities/whatsapp-account.orm-entity';
 import { AccessTokenCipherService } from '../security/access-token-cipher.service';
+import { PaginatedResult } from '@shared/types';
 
 @Injectable()
 export class PostgresWhatsAppAccountRepository implements IWhatsAppAccountRepository {
@@ -44,6 +45,28 @@ export class PostgresWhatsAppAccountRepository implements IWhatsAppAccountReposi
     }
 
     return this.toDomain(row, accessToken, appSecret);
+  }
+
+  async listByTenantId(
+    tenantId: UniqueId,
+    page: number,
+    pageSize: number,
+  ): Promise<PaginatedResult<WhatsAppAccount>> {
+    const [rows, total] = await this.repository.findAndCount({
+      where: { tenantId: tenantId.value },
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+    return { items: rows.map((row) => this.toDomain(row)), total, page, pageSize };
+  }
+
+  async findIdsByTenantId(tenantId: UniqueId): Promise<UniqueId[]> {
+    const rows = await this.repository.find({
+      where: { tenantId: tenantId.value },
+      select: { id: true },
+    });
+    return rows.map((row) => UniqueId.create(row.id));
   }
 
   private toOrmEntity(account: WhatsAppAccount): WhatsAppAccountOrmEntity {

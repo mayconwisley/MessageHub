@@ -4,7 +4,10 @@ import { MessageStatus } from '../enums/message-status.enum';
 import { MessageType } from '../enums/message-type.enum';
 import { InvalidMessageError } from '../errors/invalid-message.error';
 import { MessageContent } from '../value-objects/message-content.value-object';
-import { TemplateMessage, TemplateParameterGroup } from '../value-objects/template-message.value-object';
+import {
+  TemplateMessage,
+  TemplateParameterGroup,
+} from '../value-objects/template-message.value-object';
 
 export interface MessageProps {
   tenantId: UniqueId;
@@ -101,21 +104,26 @@ export class Message extends Entity<MessageProps> {
     const contentResult = MessageContent.create(`Template: ${templateResult.value.name}`);
     if (contentResult.isFailure) return Result.fail(contentResult.error);
     const now = new Date();
-    return Result.ok(new Message({
-      tenantId: params.tenantId,
-      applicationId: params.applicationId,
-      phoneNumberId: params.phoneNumberId,
-      to,
-      content: contentResult.value,
-      type: MessageType.TEMPLATE,
-      template: templateResult.value,
-      status: MessageStatus.PENDING,
-      idempotencyKey: params.idempotencyKey ?? null,
-      providerMessageId: null,
-      attemptCount: 0,
-      createdAt: now,
-      updatedAt: now,
-    }, id));
+    return Result.ok(
+      new Message(
+        {
+          tenantId: params.tenantId,
+          applicationId: params.applicationId,
+          phoneNumberId: params.phoneNumberId,
+          to,
+          content: contentResult.value,
+          type: MessageType.TEMPLATE,
+          template: templateResult.value,
+          status: MessageStatus.PENDING,
+          idempotencyKey: params.idempotencyKey ?? null,
+          providerMessageId: null,
+          attemptCount: 0,
+          createdAt: now,
+          updatedAt: now,
+        },
+        id,
+      ),
+    );
   }
 
   static reconstitute(props: MessageProps, id: UniqueId): Message {
@@ -142,8 +150,12 @@ export class Message extends Entity<MessageProps> {
     return this.props.content;
   }
 
-  get type(): MessageType { return this.props.type; }
-  get template(): TemplateMessage | null { return this.props.template; }
+  get type(): MessageType {
+    return this.props.type;
+  }
+  get template(): TemplateMessage | null {
+    return this.props.template;
+  }
 
   get status(): MessageStatus {
     return this.props.status;
