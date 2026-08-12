@@ -16,7 +16,7 @@ import { Message } from '../../domain/entities/message.entity';
 import { MessageAttempt } from '../../domain/entities/message-attempt.entity';
 import { MessageAttemptStatus } from '../../domain/enums/message-attempt-status.enum';
 import { MessageStatus } from '../../domain/enums/message-status.enum';
-import { ProviderUnavailableError } from '../../domain/errors/provider-unavailable.error';
+import { MessageDeliveryRejectedError } from '../../domain/errors/message-delivery-rejected.error';
 import {
   IMessageAttemptRepository,
   MESSAGE_ATTEMPT_REPOSITORY,
@@ -28,12 +28,17 @@ import {
 import {
   IMessageProvider,
   MESSAGE_PROVIDER,
+  MessageDeliveryError,
 } from '../../application/ports/message-provider.interface';
 import {
   IMessagePublisher,
   MESSAGE_PUBLISHER,
   MessageRequestedPayload,
 } from '../../application/ports/message-publisher.interface';
+import {
+  IMessageStatusWebhookPublisher,
+  MESSAGE_STATUS_WEBHOOK_PUBLISHER,
+} from '../../application/ports/message-status-webhook-publisher.interface';
 import { MessageRetryPolicy } from '../../application/services/message-retry-policy';
 import {
   MESSAGE_REQUESTED_DLQ,
@@ -58,6 +63,8 @@ export class MessageWorker {
     private readonly whatsAppAccountRepository: IWhatsAppAccountRepository,
     @Inject(MESSAGE_PROVIDER) private readonly messageProvider: IMessageProvider,
     @Inject(MESSAGE_PUBLISHER) private readonly messagePublisher: IMessagePublisher,
+    @Inject(MESSAGE_STATUS_WEBHOOK_PUBLISHER)
+    private readonly statusWebhookPublisher: IMessageStatusWebhookPublisher,
     private readonly retryPolicy: MessageRetryPolicy,
     private readonly logger: PinoLogger,
   ) {
@@ -114,7 +121,7 @@ export class MessageWorker {
     if (!phoneNumber || !whatsAppAccount) {
       await this.handleFailure(
         message,
-        new ProviderUnavailableError('Phone number or WhatsApp account not found.'),
+        new MessageDeliveryRejectedError('Phone number or WhatsApp account not found.'),
       );
       return;
     }
@@ -143,9 +150,10 @@ export class MessageWorker {
 
     message.markSent(result.value.providerMessageId);
     await this.messageRepository.save(message);
+    await this.notifyStatusChanged(message);
   }
 
-  private async handleFailure(message: Message, error: ProviderUnavailableError): Promise<void> {
+  private async handleFailure(message: Message, error: MessageDeliveryError): Promise<void> {
     await this.messageAttemptRepository.save(
       MessageAttempt.create({
         messageId: message.id,
@@ -159,7 +167,7 @@ export class MessageWorker {
     message.markFailed();
     await this.messageRepository.save(message);
 
-    if (this.retryPolicy.shouldRetry(message.attemptCount)) {
+    if (error.retryable && this.retryPolicy.shouldRetry(message.attemptCount)) {
       message.scheduleRetry();
       await this.messageRepository.save(message);
 
@@ -183,5 +191,22 @@ export class MessageWorker {
       { messageId: message.id.value },
       { persistent: true },
     );
+    await this.notifyStatusChanged(message);
+  }
+
+  private async notifyStatusChanged(message: Message): Promise<void> {
+    try {
+      await this.statusWebhookPublisher.publishMessageStatusChanged({
+        applicationId: message.applicationId.value,
+        messageId: message.id.value,
+        status: message.status,
+        occurredAt: message.updatedAt.toISOString(),
+      });
+    } catch (error: unknown) {
+      this.logger.error(
+        { err: error, messageId: message.id.value },
+        'Failed to publish outbound message status webhook event.',
+      );
+    }
   }
 }

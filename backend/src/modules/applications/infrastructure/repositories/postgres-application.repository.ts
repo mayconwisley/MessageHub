@@ -44,6 +44,8 @@ export class PostgresApplicationRepository implements IApplicationRepository {
     orm.tenantId = application.tenantId.value;
     orm.name = application.name;
     orm.status = application.status;
+    orm.webhookUrl = application.webhookUrl;
+    orm.webhookSecret = application.webhookSecret;
     orm.createdAt = application.createdAt;
     return orm;
   }
@@ -53,6 +55,8 @@ export class PostgresApplicationRepository implements IApplicationRepository {
       tenantId: UniqueId.create(row.tenantId),
       name: row.name,
       status: row.status as ApplicationStatus,
+      webhookUrl: row.webhookUrl,
+      webhookSecret: row.webhookSecret,
       createdAt: row.createdAt,
     };
     return Application.reconstitute(props, UniqueId.create(row.id));

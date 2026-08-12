@@ -2,7 +2,7 @@ import { createHash, randomBytes, randomUUID } from 'crypto';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { UserRole } from '../../domain/enums/user-role.enum';
 import { UserStatus } from '../../domain/enums/user-status.enum';
 import { AuthenticatedUserDto } from '../../application/dto/authenticated-user.dto';
@@ -120,6 +120,13 @@ export class IdentityService implements OnModuleInit {
       role: session.user_role,
       tenantId: session.user_tenant_id,
     };
+  }
+
+  async revokeSession(token: string): Promise<void> {
+    await this.sessions.update(
+      { tokenHash: this.hashToken(token), revokedAt: IsNull() },
+      { revokedAt: new Date() },
+    );
   }
 
   private hashToken(token: string): string {

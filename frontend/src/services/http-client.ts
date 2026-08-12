@@ -12,6 +12,15 @@ type RequestOptions = Omit<RequestInit, 'body' | 'headers'> & {
   authorization?: 'session' | 'api-key' | 'none';
 };
 
+export function toQueryString(params: Record<string, string | number | undefined>): string {
+  const search = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== '') search.set(key, String(value));
+  });
+  const query = search.toString();
+  return query ? `?${query}` : '';
+}
+
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { body, headers, authorization = 'session', ...init } = options;
   const token = authorization === 'session' ? authStorage.getSessionToken() : authStorage.getApiKey();

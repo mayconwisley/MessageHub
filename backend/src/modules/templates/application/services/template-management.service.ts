@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { BaseError, DomainError } from '@shared/errors';
 import { UniqueId } from '@shared/domain';
 import { Result } from '@shared/result';
+import { PaginatedResult } from '@shared/types';
 import { WhatsAppAccount } from '@modules/whatsapp-accounts/domain/entities/whatsapp-account.entity';
 import {
   IWhatsAppAccountRepository,
@@ -11,6 +12,7 @@ import { Template } from '../../domain/entities/template.entity';
 import { TemplateStatus } from '../../domain/enums/template-status.enum';
 import {
   ITemplateRepository,
+  ListTemplatesFilter,
   TEMPLATE_REPOSITORY,
 } from '../../domain/repositories/template.repository.interface';
 import {
@@ -104,18 +106,24 @@ export class TemplateManagementService {
     tenantId: string,
     accountId: string,
     synchronize = false,
-  ): Promise<Result<TemplateDto[], BaseError>> {
+    page = 1,
+    pageSize = 20,
+    filter?: ListTemplatesFilter,
+  ): Promise<Result<PaginatedResult<TemplateDto>, BaseError>> {
     if (synchronize) {
       const sync = await this.sync(tenantId, accountId);
       if (sync.isFailure) return Result.fail(sync.error);
     }
     const account = await this.resolveAccount(tenantId, accountId);
     if (account.isFailure) return Result.fail(account.error);
-    return Result.ok(
-      (await this.templates.list(UniqueId.create(tenantId), account.value.id)).map((template) =>
-        this.toDto(template),
-      ),
+    const result = await this.templates.listPaginated(
+      UniqueId.create(tenantId),
+      account.value.id,
+      page,
+      pageSize,
+      filter,
     );
+    return Result.ok({ ...result, items: result.items.map((template) => this.toDto(template)) });
   }
 
   async getById(tenantId: string, id: string): Promise<Result<TemplateDto, BaseError>> {

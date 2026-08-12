@@ -8,6 +8,8 @@ export class ApplicationMapper {
       tenantId: application.tenantId.value,
       name: application.name,
       status: application.status,
+      webhookUrl: application.webhookUrl,
+      webhookSecret: application.webhookSecret,
       createdAt: application.createdAt,
     };
   }

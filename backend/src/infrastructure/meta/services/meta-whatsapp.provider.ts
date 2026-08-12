@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Result } from '@shared/result';
 import {
   IMessageProvider,
+  MessageDeliveryError,
   OutgoingMessage,
   ProviderMessageResult,
 } from '@modules/messages/application/ports/message-provider.interface';
@@ -21,7 +22,7 @@ export class MetaWhatsAppProvider implements IMessageProvider {
 
   async send(
     message: OutgoingMessage,
-  ): Promise<Result<ProviderMessageResult, ProviderUnavailableError>> {
+  ): Promise<Result<ProviderMessageResult, MessageDeliveryError>> {
     const accessToken = this.resolveAccessToken(message);
     if (!accessToken) {
       return Result.fail(

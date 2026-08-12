@@ -7,6 +7,7 @@ import {
   DomainError,
   InfrastructureError,
   ProviderError,
+  RateLimitExceededError,
   ValidationError,
 } from '@shared/errors';
 
@@ -20,12 +21,16 @@ const NOT_FOUND_CODES = new Set([
   'MESSAGE_NOT_FOUND',
 ]);
 
+const TOO_MANY_REQUESTS_CODES = new Set(['RATE_LIMIT_EXCEEDED', 'PROVIDER_RATE_LIMITED']);
+
 export function toHttpException(error: BaseError): HttpException {
   return new HttpException({ code: error.code, message: error.message }, resolveHttpStatus(error));
 }
 
 function resolveHttpStatus(error: BaseError): number {
   if (NOT_FOUND_CODES.has(error.code)) return HttpStatus.NOT_FOUND;
+  if (TOO_MANY_REQUESTS_CODES.has(error.code)) return HttpStatus.TOO_MANY_REQUESTS;
+  if (error instanceof RateLimitExceededError) return HttpStatus.TOO_MANY_REQUESTS;
   if (error instanceof AuthenticationError) return HttpStatus.UNAUTHORIZED;
   if (error instanceof AuthorizationError) return HttpStatus.FORBIDDEN;
   if (error instanceof ValidationError) return HttpStatus.BAD_REQUEST;

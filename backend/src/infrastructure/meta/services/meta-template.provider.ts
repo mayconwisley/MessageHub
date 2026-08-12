@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { MetaConfigService } from '@infrastructure/configuration/meta-config.service';
 import { ProviderUnavailableError } from '@modules/messages/domain/errors/provider-unavailable.error';
+import { MetaProviderError } from '@modules/messages/domain/errors/meta-provider-error.type';
 import { WhatsAppAccount } from '@modules/whatsapp-accounts/domain/entities/whatsapp-account.entity';
 import { WhatsAppCredentialSource } from '@modules/whatsapp-accounts/domain/enums/whatsapp-credential-source.enum';
 import { Result } from '@shared/result';
@@ -28,7 +29,7 @@ export class MetaTemplateProvider implements ITemplateProvider {
   async create(
     account: WhatsAppAccount,
     template: TemplateDefinition,
-  ): Promise<Result<TemplateSummary, ProviderUnavailableError>> {
+  ): Promise<Result<TemplateSummary, MetaProviderError>> {
     const credentials = this.credentials(account);
     if (!credentials)
       return Result.fail(new ProviderUnavailableError('Meta credentials are not configured.'));
@@ -45,7 +46,7 @@ export class MetaTemplateProvider implements ITemplateProvider {
 
   async list(
     account: WhatsAppAccount,
-  ): Promise<Result<TemplateSummary[], ProviderUnavailableError>> {
+  ): Promise<Result<TemplateSummary[], MetaProviderError>> {
     const credentials = this.credentials(account);
     if (!credentials)
       return Result.fail(new ProviderUnavailableError('Meta credentials are not configured.'));
@@ -62,7 +63,7 @@ export class MetaTemplateProvider implements ITemplateProvider {
     account: WhatsAppAccount,
     templateId: string,
     template: Omit<TemplateDefinition, 'name' | 'language'>,
-  ): Promise<Result<void, ProviderUnavailableError>> {
+  ): Promise<Result<void, MetaProviderError>> {
     const credentials = this.credentials(account);
     if (!credentials)
       return Result.fail(new ProviderUnavailableError('Meta credentials are not configured.'));
@@ -78,7 +79,7 @@ export class MetaTemplateProvider implements ITemplateProvider {
     account: WhatsAppAccount,
     templateId: string,
     name: string,
-  ): Promise<Result<void, ProviderUnavailableError>> {
+  ): Promise<Result<void, MetaProviderError>> {
     const credentials = this.credentials(account);
     if (!credentials)
       return Result.fail(new ProviderUnavailableError('Meta credentials are not configured.'));

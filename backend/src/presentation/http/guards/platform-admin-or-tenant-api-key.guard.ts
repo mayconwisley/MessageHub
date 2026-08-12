@@ -1,7 +1,8 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { UserRole } from '@modules/identity/domain/enums/user-role.enum';
+import { InsufficientPermissionsError } from '@modules/identity/domain/errors';
+import { toHttpException } from '../result-http.mapper';
 import { ApiKeyAuthGuard } from './api-key-auth.guard';
-import { PlatformAdminGuard } from './platform-admin.guard';
 import { TenantApiKeyGuard } from './tenant-api-key.guard';
 import { UserSessionAuthGuard } from './user-session-auth.guard';
 
@@ -15,7 +16,6 @@ export class PlatformAdminOrTenantApiKeyGuard implements CanActivate {
     private readonly apiKeyAuthGuard: ApiKeyAuthGuard,
     private readonly tenantApiKeyGuard: TenantApiKeyGuard,
     private readonly userSessionAuthGuard: UserSessionAuthGuard,
-    private readonly platformAdminGuard: PlatformAdminGuard,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -27,13 +27,15 @@ export class PlatformAdminOrTenantApiKeyGuard implements CanActivate {
       return isAuthenticated && this.tenantApiKeyGuard.canActivate(context);
     }
 
-    const isAuthenticated = await this.userSessionAuthGuard.canActivate(context);
-    if (!isAuthenticated) return false;
+    await this.userSessionAuthGuard.canActivate(context);
 
-    if (this.platformAdminGuard.canActivate(context)) return true;
     const user = context
       .switchToHttp()
       .getRequest<{ user?: { role: UserRole; tenantId: string | null } }>().user;
-    return user?.role === UserRole.TENANT_ADMIN && user.tenantId !== null;
+    const isAllowed =
+      user?.role === UserRole.PLATFORM_ADMIN ||
+      (user?.role === UserRole.TENANT_ADMIN && user.tenantId !== null);
+    if (!isAllowed) throw toHttpException(new InsufficientPermissionsError());
+    return true;
   }
 }

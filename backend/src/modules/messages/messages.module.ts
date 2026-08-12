@@ -9,18 +9,23 @@ import { WhatsAppAccountsModule } from '@modules/whatsapp-accounts/whatsapp-acco
 import { TemplatesModule } from '@modules/templates/templates.module';
 import { SendTemplateMessageHandler } from './application/handlers/send-template-message.handler';
 import { GetMessageHandler } from './application/handlers/get-message.handler';
+import { ListMessagesHandler } from './application/handlers/list-messages.handler';
+import { ListMessageAttemptsHandler } from './application/handlers/list-message-attempts.handler';
 import { SendMessageHandler } from './application/handlers/send-message.handler';
 import { MESSAGE_PROVIDER } from './application/ports/message-provider.interface';
 import { MESSAGE_PUBLISHER } from './application/ports/message-publisher.interface';
+import { MESSAGE_STATUS_WEBHOOK_PUBLISHER } from './application/ports/message-status-webhook-publisher.interface';
 import { MessageRetryPolicy } from './application/services/message-retry-policy';
 import { MESSAGE_ATTEMPT_REPOSITORY } from './domain/repositories/message-attempt.repository.interface';
 import { MESSAGE_REPOSITORY } from './domain/repositories/message.repository.interface';
 import { MessageAttemptOrmEntity } from './infrastructure/entities/message-attempt.orm-entity';
 import { MessageOrmEntity } from './infrastructure/entities/message.orm-entity';
 import { RabbitMqMessagePublisher } from './infrastructure/messaging/rabbitmq-message-publisher';
+import { RabbitMqMessageStatusWebhookPublisher } from './infrastructure/messaging/rabbitmq-message-status-webhook-publisher';
 import { PostgresMessageAttemptRepository } from './infrastructure/repositories/postgres-message-attempt.repository';
 import { PostgresMessageRepository } from './infrastructure/repositories/postgres-message.repository';
 import { MessageWorker } from './infrastructure/workers/message.worker';
+import { MessageStatusWebhookWorker } from './infrastructure/workers/message-status-webhook.worker';
 import { MessagesController } from './presentation/controllers/messages.controller';
 
 @Module({
@@ -38,13 +43,17 @@ import { MessagesController } from './presentation/controllers/messages.controll
     { provide: MESSAGE_REPOSITORY, useClass: PostgresMessageRepository },
     { provide: MESSAGE_ATTEMPT_REPOSITORY, useClass: PostgresMessageAttemptRepository },
     { provide: MESSAGE_PUBLISHER, useClass: RabbitMqMessagePublisher },
+    { provide: MESSAGE_STATUS_WEBHOOK_PUBLISHER, useClass: RabbitMqMessageStatusWebhookPublisher },
     { provide: MESSAGE_PROVIDER, useExisting: MetaWhatsAppProvider },
     MessageRetryPolicy,
     SendMessageHandler,
     SendTemplateMessageHandler,
     GetMessageHandler,
+    ListMessagesHandler,
+    ListMessageAttemptsHandler,
     MessageWorker,
+    MessageStatusWebhookWorker,
   ],
-  exports: [MESSAGE_REPOSITORY],
+  exports: [MESSAGE_REPOSITORY, MESSAGE_STATUS_WEBHOOK_PUBLISHER],
 })
 export class MessagesModule {}

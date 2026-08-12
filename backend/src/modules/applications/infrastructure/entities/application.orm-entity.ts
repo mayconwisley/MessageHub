@@ -14,6 +14,12 @@ export class ApplicationOrmEntity {
   @Column({ type: 'varchar', length: 20 })
   status!: string;
 
+  @Column({ name: 'webhook_url', type: 'text', nullable: true })
+  webhookUrl!: string | null;
+
+  @Column({ name: 'webhook_secret', type: 'text', nullable: true })
+  webhookSecret!: string | null;
+
   @Column({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 }

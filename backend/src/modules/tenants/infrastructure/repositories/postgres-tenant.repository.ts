@@ -1,10 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { FindOptionsWhere, ILike, Repository } from 'typeorm';
 import { UniqueId } from '@shared/domain';
 import { Tenant, TenantProps } from '../../domain/entities/tenant.entity';
 import { TenantStatus } from '../../domain/enums/tenant-status.enum';
-import { ITenantRepository } from '../../domain/repositories/tenant.repository.interface';
+import {
+  ITenantRepository,
+  ListTenantsFilter,
+} from '../../domain/repositories/tenant.repository.interface';
 import { TenantOrmEntity } from '../entities/tenant.orm-entity';
 import { PaginatedResult } from '@shared/types';
 
@@ -24,8 +27,17 @@ export class PostgresTenantRepository implements ITenantRepository {
     return row ? this.toDomain(row) : null;
   }
 
-  async list(page: number, pageSize: number): Promise<PaginatedResult<Tenant>> {
+  async list(
+    page: number,
+    pageSize: number,
+    filter?: ListTenantsFilter,
+  ): Promise<PaginatedResult<Tenant>> {
+    const where: FindOptionsWhere<TenantOrmEntity> = {};
+    if (filter?.status) where.status = filter.status;
+    if (filter?.search) where.name = ILike(`%${filter.search}%`);
+
     const [rows, total] = await this.repository.findAndCount({
+      where,
       order: { createdAt: 'DESC' },
       skip: (page - 1) * pageSize,
       take: pageSize,

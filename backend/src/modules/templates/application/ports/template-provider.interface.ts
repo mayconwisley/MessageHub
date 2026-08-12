@@ -1,6 +1,6 @@
 import { WhatsAppAccount } from '@modules/whatsapp-accounts/domain/entities/whatsapp-account.entity';
 import { Result } from '@shared/result';
-import { ProviderUnavailableError } from '@modules/messages/domain/errors/provider-unavailable.error';
+import { MetaProviderError } from '@modules/messages/domain/errors/meta-provider-error.type';
 
 export interface TemplateComponentExamples {
   headerText?: string[];
@@ -34,18 +34,18 @@ export interface ITemplateProvider {
   create(
     account: WhatsAppAccount,
     template: TemplateDefinition,
-  ): Promise<Result<TemplateSummary, ProviderUnavailableError>>;
-  list(account: WhatsAppAccount): Promise<Result<TemplateSummary[], ProviderUnavailableError>>;
+  ): Promise<Result<TemplateSummary, MetaProviderError>>;
+  list(account: WhatsAppAccount): Promise<Result<TemplateSummary[], MetaProviderError>>;
   update(
     account: WhatsAppAccount,
     templateId: string,
     template: Omit<TemplateDefinition, 'name' | 'language'>,
-  ): Promise<Result<void, ProviderUnavailableError>>;
+  ): Promise<Result<void, MetaProviderError>>;
   delete(
     account: WhatsAppAccount,
     templateId: string,
     name: string,
-  ): Promise<Result<void, ProviderUnavailableError>>;
+  ): Promise<Result<void, MetaProviderError>>;
 }
 
 export const TEMPLATE_PROVIDER = Symbol('TEMPLATE_PROVIDER');

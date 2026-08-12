@@ -70,6 +70,9 @@ class FakeMessageRepository implements IMessageRepository {
   async findByProviderMessageId(): Promise<Message | null> {
     return null;
   }
+  async listByApplicationId(): Promise<import('@shared/types').PaginatedResult<Message>> {
+    return { items: [], total: 0, page: 1, pageSize: 20 };
+  }
 }
 
 class FakeMessagePublisher implements IMessagePublisher {

@@ -6,13 +6,13 @@ import {
   HttpCode,
   HttpStatus,
   Inject,
-  InternalServerErrorException,
   Param,
   Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiPropertyOptional, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { IsEnum, IsOptional, IsUUID } from 'class-validator';
 import { IMediator, MEDIATOR } from '@shared/mediator';
 import { PlatformAdminOrTenantApiKeyGuard } from '@presentation/http/guards/platform-admin-or-tenant-api-key.guard';
 import { CurrentOptionalAuthContext } from '@presentation/http/decorators/current-optional-auth-context.decorator';
@@ -27,8 +27,19 @@ import { RegisterPhoneNumberRequestDto } from '../dto/register-phone-number-requ
 import { PaginationQueryDto } from '@presentation/http/dto/pagination-query.dto';
 import { ListPhoneNumbersQuery } from '../../application/queries/list-phone-numbers.query';
 import { PaginatedResult } from '@shared/types';
+import { PhoneNumberStatus } from '../../domain/enums/phone-number-status.enum';
 
-class ListPhoneNumbersRequestDto extends PaginationQueryDto { tenantId?: string; }
+class ListPhoneNumbersRequestDto extends PaginationQueryDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  tenantId?: string;
+
+  @ApiPropertyOptional({ enum: PhoneNumberStatus })
+  @IsOptional()
+  @IsEnum(PhoneNumberStatus)
+  status?: PhoneNumberStatus;
+}
 
 @ApiTags('phone-numbers')
 @ApiBearerAuth()
@@ -67,8 +78,10 @@ export class PhoneNumbersController {
   ): Promise<PaginatedResult<PhoneNumberResponseDto>> {
     const tenantId = auth?.tenantId ?? user?.tenantId ?? query.tenantId;
     if (!tenantId) throw new BadRequestException('tenantId is required for administrative requests.');
-    const result = await this.mediator.query(new ListPhoneNumbersQuery(tenantId, query.page, query.pageSize));
-    if (result.isFailure) throw new InternalServerErrorException();
+    const result = await this.mediator.query(
+      new ListPhoneNumbersQuery(tenantId, query.page, query.pageSize, query.status),
+    );
+    if (result.isFailure) throw toHttpException(result.error);
     return { ...result.value, items: result.value.items.map(PhoneNumberResponseDto.fromDto) };
   }
 

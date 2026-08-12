@@ -1,10 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UniqueId } from '@shared/domain';
+import { PaginatedResult } from '@shared/types';
 import { Repository } from 'typeorm';
 import { Template, TemplateProps } from '../../domain/entities/template.entity';
 import { TemplateStatus } from '../../domain/enums/template-status.enum';
-import { ITemplateRepository } from '../../domain/repositories/template.repository.interface';
+import {
+  ITemplateRepository,
+  ListTemplatesFilter,
+} from '../../domain/repositories/template.repository.interface';
 import { TemplateOrmEntity } from '../entities/template.orm-entity';
 import { TemplateComponentDefinition } from '../../application/ports/template-provider.interface';
 
@@ -73,6 +77,26 @@ export class PostgresTemplateRepository implements ITemplateRepository {
         order: { name: 'ASC', language: 'ASC' },
       })
     ).map((row) => this.toDomain(row));
+  }
+  async listPaginated(
+    tenantId: UniqueId,
+    whatsAppAccountId: UniqueId,
+    page: number,
+    pageSize: number,
+    filter?: ListTemplatesFilter,
+  ): Promise<PaginatedResult<Template>> {
+    const [rows, total] = await this.repository.findAndCount({
+      where: {
+        tenantId: tenantId.value,
+        whatsAppAccountId: whatsAppAccountId.value,
+        ...(filter?.status ? { status: filter.status } : {}),
+        ...(filter?.category ? { category: filter.category } : {}),
+      },
+      order: { name: 'ASC', language: 'ASC' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+    return { items: rows.map((row) => this.toDomain(row)), total, page, pageSize };
   }
   private toOrm(template: Template): TemplateOrmEntity {
     return Object.assign(new TemplateOrmEntity(), {

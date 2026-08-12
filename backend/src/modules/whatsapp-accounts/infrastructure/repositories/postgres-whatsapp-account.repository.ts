@@ -8,7 +8,10 @@ import {
 } from '../../domain/entities/whatsapp-account.entity';
 import { WhatsAppAccountStatus } from '../../domain/enums/whatsapp-account-status.enum';
 import { WhatsAppCredentialSource } from '../../domain/enums/whatsapp-credential-source.enum';
-import { IWhatsAppAccountRepository } from '../../domain/repositories/whatsapp-account.repository.interface';
+import {
+  IWhatsAppAccountRepository,
+  ListWhatsAppAccountsFilter,
+} from '../../domain/repositories/whatsapp-account.repository.interface';
 import { WhatsAppAccountOrmEntity } from '../entities/whatsapp-account.orm-entity';
 import { AccessTokenCipherService } from '../security/access-token-cipher.service';
 import { PaginatedResult } from '@shared/types';
@@ -51,9 +54,13 @@ export class PostgresWhatsAppAccountRepository implements IWhatsAppAccountReposi
     tenantId: UniqueId,
     page: number,
     pageSize: number,
+    filter?: ListWhatsAppAccountsFilter,
   ): Promise<PaginatedResult<WhatsAppAccount>> {
     const [rows, total] = await this.repository.findAndCount({
-      where: { tenantId: tenantId.value },
+      where: {
+        tenantId: tenantId.value,
+        ...(filter?.status ? { status: filter.status } : {}),
+      },
       order: { createdAt: 'DESC' },
       skip: (page - 1) * pageSize,
       take: pageSize,

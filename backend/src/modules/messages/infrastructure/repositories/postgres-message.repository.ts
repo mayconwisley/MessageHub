@@ -2,9 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UniqueId } from '@shared/domain';
+import { PaginatedResult } from '@shared/types';
 import { Message, MessageProps } from '../../domain/entities/message.entity';
 import { MessageStatus } from '../../domain/enums/message-status.enum';
-import { IMessageRepository } from '../../domain/repositories/message.repository.interface';
+import {
+  IMessageRepository,
+  ListMessagesFilter,
+} from '../../domain/repositories/message.repository.interface';
 import { MessageContent } from '../../domain/value-objects/message-content.value-object';
 import { MessageType } from '../../domain/enums/message-type.enum';
 import { TemplateMessage } from '../../domain/value-objects/template-message.value-object';
@@ -39,6 +43,24 @@ export class PostgresMessageRepository implements IMessageRepository {
   async findByProviderMessageId(providerMessageId: string): Promise<Message | null> {
     const row = await this.repository.findOne({ where: { providerMessageId } });
     return row ? this.toDomain(row) : null;
+  }
+
+  async listByApplicationId(
+    applicationId: UniqueId,
+    page: number,
+    pageSize: number,
+    filter?: ListMessagesFilter,
+  ): Promise<PaginatedResult<Message>> {
+    const [rows, total] = await this.repository.findAndCount({
+      where: {
+        applicationId: applicationId.value,
+        ...(filter?.status ? { status: filter.status } : {}),
+      },
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+    return { items: rows.map((row) => this.toDomain(row)), total, page, pageSize };
   }
 
   private toOrmEntity(message: Message): MessageOrmEntity {

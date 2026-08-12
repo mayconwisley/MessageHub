@@ -3,5 +3,7 @@ export interface ApplicationDto {
   tenantId: string;
   name: string;
   status: string;
+  webhookUrl: string | null;
+  webhookSecret: string | null;
   createdAt: Date;
 }

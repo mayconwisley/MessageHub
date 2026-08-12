@@ -3,6 +3,7 @@ import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import { UniqueId } from '@shared/domain';
 import { Result } from '@shared/result';
 import { PaginatedResult } from '@shared/types';
+import { BaseError } from '@shared/errors';
 import {
   IWhatsAppAccountRepository,
   WHATSAPP_ACCOUNT_REPOSITORY,
@@ -17,11 +18,12 @@ export class ListWhatsAppAccountsHandler implements IQueryHandler<ListWhatsAppAc
   ) {}
   async execute(
     query: ListWhatsAppAccountsQuery,
-  ): Promise<Result<PaginatedResult<WhatsAppAccountDto>>> {
+  ): Promise<Result<PaginatedResult<WhatsAppAccountDto>, BaseError>> {
     const result = await this.accounts.listByTenantId(
       UniqueId.create(query.tenantId),
       query.page,
       query.pageSize,
+      { status: query.status },
     );
     return Result.ok({ ...result, items: result.items.map(WhatsAppAccountMapper.toDto) });
   }

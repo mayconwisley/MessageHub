@@ -3,3 +3,6 @@ export * from './template-not-found.error';
 export * from './message-not-found.error';
 export * from './message-already-processed.error';
 export * from './provider-unavailable.error';
+export * from './message-delivery-rejected.error';
+export * from './provider-rate-limited.error';
+export * from './meta-provider-error.type';

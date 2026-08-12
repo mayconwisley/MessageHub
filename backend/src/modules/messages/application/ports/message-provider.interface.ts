@@ -1,7 +1,9 @@
 import { Result } from '@shared/result';
 import { WhatsAppCredentialSource } from '@modules/whatsapp-accounts/domain/enums/whatsapp-credential-source.enum';
-import { ProviderUnavailableError } from '../../domain/errors/provider-unavailable.error';
+import { MetaProviderError } from '../../domain/errors/meta-provider-error.type';
 import { TemplateMessage } from '../../domain/value-objects/template-message.value-object';
+
+export type MessageDeliveryError = MetaProviderError;
 
 export interface OutgoingMessage {
   phoneNumberId: string;
@@ -18,7 +20,7 @@ export interface ProviderMessageResult {
 
 /** Abstracao do provedor de mensageria (secao 16) - o dominio nunca conhece Meta/Twilio/etc. */
 export interface IMessageProvider {
-  send(message: OutgoingMessage): Promise<Result<ProviderMessageResult, ProviderUnavailableError>>;
+  send(message: OutgoingMessage): Promise<Result<ProviderMessageResult, MessageDeliveryError>>;
 }
 
 export const MESSAGE_PROVIDER = Symbol('MESSAGE_PROVIDER');

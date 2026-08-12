@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
-import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { TerminusModule } from '@nestjs/terminus';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { ConfigurationModule } from './infrastructure/configuration/configuration.module';
 import { DatabaseModule } from './infrastructure/database/database.module';
 import { LoggingModule } from './infrastructure/logging/logging.module';
@@ -18,6 +19,7 @@ import { HealthController } from './presentation/http/controllers/health.control
 import { AdministrationSecurityModule } from './presentation/http/administration-security.module';
 import { GlobalExceptionFilter } from './presentation/http/filters/global-exception.filter';
 import { AuditLogInterceptor } from './presentation/http/interceptors/audit-log.interceptor';
+import { AppThrottlerGuard } from './presentation/http/guards/app-throttler.guard';
 
 @Module({
   imports: [
@@ -27,6 +29,9 @@ import { AuditLogInterceptor } from './presentation/http/interceptors/audit-log.
     DatabaseModule,
     RabbitMqModule,
     TerminusModule,
+    ThrottlerModule.forRoot({
+      throttlers: [{ name: 'default', ttl: 60_000, limit: 100 }],
+    }),
     TenantsModule,
     IdentityModule,
     AuditModule,
@@ -41,6 +46,7 @@ import { AuditLogInterceptor } from './presentation/http/interceptors/audit-log.
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
     { provide: APP_INTERCEPTOR, useClass: AuditLogInterceptor },
+    { provide: APP_GUARD, useClass: AppThrottlerGuard },
   ],
 })
 export class AppModule {}

@@ -1,12 +1,39 @@
-import { Body, Controller, HttpCode, HttpStatus, Inject, Post, UseGuards } from '@nestjs/common';
-import { ApiHeader, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Inject,
+  Param,
+  Post,
+  Put,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiHeader, ApiPropertyOptional, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { IsOptional, IsUUID } from 'class-validator';
 import { IMediator, MEDIATOR } from '@shared/mediator';
 import { UserSessionAuthGuard } from '@presentation/http/guards/user-session-auth.guard';
 import { PlatformAdminGuard } from '@presentation/http/guards/platform-admin.guard';
 import { toHttpException } from '@presentation/http/result-http.mapper';
+import { PaginationQueryDto } from '@presentation/http/dto/pagination-query.dto';
+import { PaginatedResult } from '@shared/types';
 import { CreateApplicationCommand } from '../../application/commands/create-application.command';
+import { ConfigureApplicationWebhookCommand } from '../../application/commands/configure-application-webhook.command';
+import { ListApplicationsQuery } from '../../application/queries/list-applications.query';
 import { ApplicationResponseDto } from '../dto/application-response.dto';
 import { CreateApplicationRequestDto } from '../dto/create-application-request.dto';
+import { ConfigureWebhookRequestDto } from '../dto/configure-webhook-request.dto';
+import { WebhookConfigResponseDto } from '../dto/webhook-config-response.dto';
+
+class ListApplicationsRequestDto extends PaginationQueryDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  tenantId?: string;
+}
 
 @ApiTags('applications')
 @ApiHeader({ name: 'Authorization', required: true })
@@ -24,5 +51,32 @@ export class ApplicationsController {
       throw toHttpException(result.error);
     }
     return ApplicationResponseDto.fromDto(result.value);
+  }
+
+  @Get()
+  async list(
+    @Query() query: ListApplicationsRequestDto,
+  ): Promise<PaginatedResult<ApplicationResponseDto>> {
+    if (!query.tenantId) {
+      throw new BadRequestException('tenantId is required.');
+    }
+    const result = await this.mediator.query(
+      new ListApplicationsQuery(query.tenantId, query.page, query.pageSize),
+    );
+    if (result.isFailure) throw toHttpException(result.error);
+    return { ...result.value, items: result.value.items.map(ApplicationResponseDto.fromDto) };
+  }
+
+  @Put(':applicationId/webhook')
+  @ApiResponse({ status: HttpStatus.OK, type: WebhookConfigResponseDto })
+  async configureWebhook(
+    @Param('applicationId') applicationId: string,
+    @Body() dto: ConfigureWebhookRequestDto,
+  ): Promise<WebhookConfigResponseDto> {
+    const result = await this.mediator.send(
+      new ConfigureApplicationWebhookCommand(applicationId, dto.webhookUrl ?? null),
+    );
+    if (result.isFailure) throw toHttpException(result.error);
+    return WebhookConfigResponseDto.fromDto(result.value);
   }
 }

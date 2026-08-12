@@ -19,6 +19,10 @@ export class RabbitMqWebhookEventPublisher implements IWebhookEventPublisher {
     });
   }
   async publishMetaWebhookReceived(eventId: string): Promise<void> {
-    await this.channel.sendToQueue(META_WEBHOOK_RECEIVED_QUEUE, { eventId }, { persistent: true });
+    await this.channel.sendToQueue(
+      META_WEBHOOK_RECEIVED_QUEUE,
+      { eventId, attempt: 1 },
+      { persistent: true },
+    );
   }
 }

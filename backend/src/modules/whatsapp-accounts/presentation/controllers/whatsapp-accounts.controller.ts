@@ -6,13 +6,13 @@ import {
   HttpCode,
   HttpStatus,
   Inject,
-  InternalServerErrorException,
   Param,
   Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiPropertyOptional, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { IsEnum, IsOptional, IsUUID } from 'class-validator';
 import { IMediator, MEDIATOR } from '@shared/mediator';
 import { PlatformAdminOrTenantApiKeyGuard } from '@presentation/http/guards/platform-admin-or-tenant-api-key.guard';
 import { CurrentOptionalAuthContext } from '@presentation/http/decorators/current-optional-auth-context.decorator';
@@ -27,9 +27,18 @@ import { WhatsAppAccountResponseDto } from '../dto/whatsapp-account-response.dto
 import { PaginationQueryDto } from '@presentation/http/dto/pagination-query.dto';
 import { ListWhatsAppAccountsQuery } from '../../application/queries/list-whatsapp-accounts.query';
 import { PaginatedResult } from '@shared/types';
+import { WhatsAppAccountStatus } from '../../domain/enums/whatsapp-account-status.enum';
 
 class ListWhatsAppAccountsRequestDto extends PaginationQueryDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
   tenantId?: string;
+
+  @ApiPropertyOptional({ enum: WhatsAppAccountStatus })
+  @IsOptional()
+  @IsEnum(WhatsAppAccountStatus)
+  status?: WhatsAppAccountStatus;
 }
 
 @ApiTags('whatsapp-accounts')
@@ -70,9 +79,9 @@ export class WhatsAppAccountsController {
   ): Promise<PaginatedResult<WhatsAppAccountResponseDto>> {
     const tenantId = auth?.tenantId ?? user?.tenantId ?? this.requireTenantId(query.tenantId);
     const result = await this.mediator.query(
-      new ListWhatsAppAccountsQuery(tenantId, query.page, query.pageSize),
+      new ListWhatsAppAccountsQuery(tenantId, query.page, query.pageSize, query.status),
     );
-    if (result.isFailure) throw new InternalServerErrorException();
+    if (result.isFailure) throw toHttpException(result.error);
     return { ...result.value, items: result.value.items.map(WhatsAppAccountResponseDto.fromDto) };
   }
 

@@ -4,7 +4,10 @@ import { In, Repository } from 'typeorm';
 import { UniqueId } from '@shared/domain';
 import { PhoneNumber, PhoneNumberProps } from '../../domain/entities/phone-number.entity';
 import { PhoneNumberStatus } from '../../domain/enums/phone-number-status.enum';
-import { IPhoneNumberRepository } from '../../domain/repositories/phone-number.repository.interface';
+import {
+  IPhoneNumberRepository,
+  ListPhoneNumbersFilter,
+} from '../../domain/repositories/phone-number.repository.interface';
 import { PhoneNumberOrmEntity } from '../entities/phone-number.orm-entity';
 import { PaginatedResult } from '@shared/types';
 
@@ -29,9 +32,22 @@ export class PostgresPhoneNumberRepository implements IPhoneNumberRepository {
     return row ? this.toDomain(row) : null;
   }
 
-  async listByWhatsAppAccountIds(accountIds: UniqueId[], page: number, pageSize: number): Promise<PaginatedResult<PhoneNumber>> {
+  async listByWhatsAppAccountIds(
+    accountIds: UniqueId[],
+    page: number,
+    pageSize: number,
+    filter?: ListPhoneNumbersFilter,
+  ): Promise<PaginatedResult<PhoneNumber>> {
     if (accountIds.length === 0) return { items: [], total: 0, page, pageSize };
-    const [rows, total] = await this.repository.findAndCount({ where: { whatsAppAccountId: In(accountIds.map((id) => id.value)) }, order: { createdAt: 'DESC' }, skip: (page - 1) * pageSize, take: pageSize });
+    const [rows, total] = await this.repository.findAndCount({
+      where: {
+        whatsAppAccountId: In(accountIds.map((id) => id.value)),
+        ...(filter?.status ? { status: filter.status } : {}),
+      },
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
     return { items: rows.map((row) => this.toDomain(row)), total, page, pageSize };
   }
 

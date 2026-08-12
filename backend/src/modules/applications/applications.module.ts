@@ -4,6 +4,9 @@ import { MediatorModule } from '@shared/mediator';
 import { TenantsModule } from '@modules/tenants/tenants.module';
 import { CreateApiKeyHandler } from './application/handlers/create-api-key.handler';
 import { CreateApplicationHandler } from './application/handlers/create-application.handler';
+import { ConfigureApplicationWebhookHandler } from './application/handlers/configure-application-webhook.handler';
+import { ListApiKeysHandler } from './application/handlers/list-api-keys.handler';
+import { ListApplicationsHandler } from './application/handlers/list-applications.handler';
 import { RevokeApiKeyHandler } from './application/handlers/revoke-api-key.handler';
 import { ValidateApiKeyHandler } from './application/handlers/validate-api-key.handler';
 import { ApiKeyGeneratorService } from './application/services/api-key-generator.service';
@@ -28,7 +31,10 @@ import { ApplicationsController } from './presentation/controllers/applications.
     { provide: API_KEY_REPOSITORY, useClass: PostgresApiKeyRepository },
     ApiKeyGeneratorService,
     CreateApplicationHandler,
+    ConfigureApplicationWebhookHandler,
     CreateApiKeyHandler,
+    ListApplicationsHandler,
+    ListApiKeysHandler,
     RevokeApiKeyHandler,
     ValidateApiKeyHandler,
   ],

@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import { Entity, UniqueId } from '@shared/domain';
 import { Result } from '@shared/result';
 import { ApplicationStatus } from '../enums/application-status.enum';
@@ -7,6 +8,8 @@ export interface ApplicationProps {
   tenantId: UniqueId;
   name: string;
   status: ApplicationStatus;
+  webhookUrl: string | null;
+  webhookSecret: string | null;
   createdAt: Date;
 }
 
@@ -35,6 +38,8 @@ export class Application extends Entity<ApplicationProps> {
           tenantId: params.tenantId,
           name,
           status: ApplicationStatus.ACTIVE,
+          webhookUrl: null,
+          webhookSecret: null,
           createdAt: new Date(),
         },
         id,
@@ -62,6 +67,14 @@ export class Application extends Entity<ApplicationProps> {
     return this.props.createdAt;
   }
 
+  get webhookUrl(): string | null {
+    return this.props.webhookUrl;
+  }
+
+  get webhookSecret(): string | null {
+    return this.props.webhookSecret;
+  }
+
   isActive(): boolean {
     return this.props.status === ApplicationStatus.ACTIVE;
   }
@@ -72,5 +85,18 @@ export class Application extends Entity<ApplicationProps> {
 
   activate(): void {
     this.props.status = ApplicationStatus.ACTIVE;
+  }
+
+  /** Configura (ou remove, quando url e null) o callback de status de mensagens. Gera um novo segredo apenas quando a URL passa de nao-configurada para configurada. */
+  configureWebhook(url: string | null): void {
+    if (!url) {
+      this.props.webhookUrl = null;
+      this.props.webhookSecret = null;
+      return;
+    }
+    this.props.webhookUrl = url;
+    if (!this.props.webhookSecret) {
+      this.props.webhookSecret = randomBytes(32).toString('hex');
+    }
   }
 }

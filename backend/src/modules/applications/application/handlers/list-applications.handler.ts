@@ -3,6 +3,7 @@ import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import { UniqueId } from '@shared/domain';
 import { Result } from '@shared/result';
 import { PaginatedResult } from '@shared/types';
+import { BaseError } from '@shared/errors';
 import {
   APPLICATION_REPOSITORY,
   IApplicationRepository,
@@ -15,7 +16,9 @@ export class ListApplicationsHandler implements IQueryHandler<ListApplicationsQu
   constructor(
     @Inject(APPLICATION_REPOSITORY) private readonly applications: IApplicationRepository,
   ) {}
-  async execute(query: ListApplicationsQuery): Promise<Result<PaginatedResult<ApplicationDto>>> {
+  async execute(
+    query: ListApplicationsQuery,
+  ): Promise<Result<PaginatedResult<ApplicationDto>, BaseError>> {
     const result = await this.applications.listByTenantId(
       UniqueId.create(query.tenantId),
       query.page,

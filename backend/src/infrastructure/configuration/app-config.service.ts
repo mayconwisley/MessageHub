@@ -29,6 +29,10 @@ export class AppConfigService {
     }) as string;
   }
 
+  get corsOrigins(): string[] {
+    return this.configService.get('app.corsOrigins') as string[];
+  }
+
   get isProduction(): boolean {
     return this.nodeEnv === 'production';
   }

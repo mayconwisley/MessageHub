@@ -6,9 +6,11 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   MaxLength,
   ValidateIf,
 } from 'class-validator';
+import { E164_PHONE_NUMBER_REGEX } from '@shared/constants';
 
 /** Contrato público simplificado. A posição de cada item representa {{1}}, {{2}}, ... do BODY. */
 export class SendTemplateMessageRequestDto {
@@ -18,6 +20,9 @@ export class SendTemplateMessageRequestDto {
   @ApiProperty({ example: '+5511999999999', description: 'Número do destinatário.' })
   @IsString()
   @IsNotEmpty()
+  @Matches(E164_PHONE_NUMBER_REGEX, {
+    message: 'to must be a valid E.164 phone number (e.g. +5511999999999).',
+  })
   to!: string;
 
   @ApiPropertyOptional({ description: 'ID do template na Meta.' })

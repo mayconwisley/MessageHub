@@ -12,6 +12,7 @@ import {
 import { WEBHOOK_EVENT_PUBLISHER } from './application/ports/webhook-event-publisher.interface';
 import { RabbitMqWebhookEventPublisher } from './infrastructure/messaging/rabbitmq-webhook-event.publisher';
 import { MetaWebhookProcessor } from './application/services/meta-webhook.processor';
+import { WebhookRetryPolicy } from './application/services/webhook-retry-policy';
 import { MetaWebhookWorker } from './infrastructure/workers/meta-webhook.worker';
 
 /**
@@ -29,6 +30,7 @@ import { MetaWebhookWorker } from './infrastructure/workers/meta-webhook.worker'
     { provide: WEBHOOK_EVENT_REPOSITORY, useClass: PostgresWebhookEventRepository },
     { provide: WEBHOOK_EVENT_PUBLISHER, useClass: RabbitMqWebhookEventPublisher },
     MetaWebhookProcessor,
+    WebhookRetryPolicy,
     MetaWebhookWorker,
   ],
 })
