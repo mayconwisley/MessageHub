@@ -1,8 +1,10 @@
 import { Entity, UniqueId } from '@shared/domain';
 import { Result } from '@shared/result';
 import { MessageStatus } from '../enums/message-status.enum';
+import { MessageType } from '../enums/message-type.enum';
 import { InvalidMessageError } from '../errors/invalid-message.error';
 import { MessageContent } from '../value-objects/message-content.value-object';
+import { TemplateMessage, TemplateParameterGroup } from '../value-objects/template-message.value-object';
 
 export interface MessageProps {
   tenantId: UniqueId;
@@ -10,12 +12,26 @@ export interface MessageProps {
   phoneNumberId: UniqueId;
   to: string;
   content: MessageContent;
+  type: MessageType;
+  template: TemplateMessage | null;
   status: MessageStatus;
   idempotencyKey: string | null;
   providerMessageId: string | null;
   attemptCount: number;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface CreateTemplateMessageParams {
+  tenantId: UniqueId;
+  applicationId: UniqueId;
+  phoneNumberId: UniqueId;
+  to: string;
+  metaTemplateId: string | null;
+  templateName: string;
+  language: string;
+  parameters?: TemplateParameterGroup[];
+  idempotencyKey?: string | null;
 }
 
 export interface CreateMessageParams {
@@ -53,6 +69,8 @@ export class Message extends Entity<MessageProps> {
           phoneNumberId: params.phoneNumberId,
           to,
           content: contentResult.value,
+          type: MessageType.TEXT,
+          template: null,
           status: MessageStatus.PENDING,
           idempotencyKey: params.idempotencyKey ?? null,
           providerMessageId: null,
@@ -63,6 +81,41 @@ export class Message extends Entity<MessageProps> {
         id,
       ),
     );
+  }
+
+  static createTemplate(
+    params: CreateTemplateMessageParams,
+    id?: UniqueId,
+  ): Result<Message, InvalidMessageError> {
+    const to = params.to?.trim();
+    if (!to) return Result.fail(new InvalidMessageError('to must not be empty.'));
+
+    const templateResult = TemplateMessage.create({
+      metaTemplateId: params.metaTemplateId,
+      name: params.templateName,
+      language: params.language,
+      parameters: params.parameters ?? [],
+    });
+    if (templateResult.isFailure) return Result.fail(templateResult.error);
+
+    const contentResult = MessageContent.create(`Template: ${templateResult.value.name}`);
+    if (contentResult.isFailure) return Result.fail(contentResult.error);
+    const now = new Date();
+    return Result.ok(new Message({
+      tenantId: params.tenantId,
+      applicationId: params.applicationId,
+      phoneNumberId: params.phoneNumberId,
+      to,
+      content: contentResult.value,
+      type: MessageType.TEMPLATE,
+      template: templateResult.value,
+      status: MessageStatus.PENDING,
+      idempotencyKey: params.idempotencyKey ?? null,
+      providerMessageId: null,
+      attemptCount: 0,
+      createdAt: now,
+      updatedAt: now,
+    }, id));
   }
 
   static reconstitute(props: MessageProps, id: UniqueId): Message {
@@ -88,6 +141,9 @@ export class Message extends Entity<MessageProps> {
   get content(): MessageContent {
     return this.props.content;
   }
+
+  get type(): MessageType { return this.props.type; }
+  get template(): TemplateMessage | null { return this.props.template; }
 
   get status(): MessageStatus {
     return this.props.status;

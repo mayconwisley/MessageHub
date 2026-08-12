@@ -3,6 +3,7 @@ export interface ApiKeyDto {
   applicationId: string;
   prefix: string;
   status: string;
+  type: string;
   createdAt: Date;
   expiresAt: Date | null;
 }
@@ -15,4 +16,5 @@ export interface AuthContextDto {
   apiKeyId: string;
   applicationId: string;
   tenantId: string;
+  type: string;
 }

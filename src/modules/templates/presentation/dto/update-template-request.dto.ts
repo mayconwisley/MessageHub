@@ -1,12 +1,22 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+  ValidateNested,
+} from 'class-validator';
+import { TemplateComponentRequestDto } from './template-component-request.dto';
 
 export class UpdateTemplateRequestDto {
   @ApiProperty({ example: 'UTILITY' }) @IsString() @IsNotEmpty() category!: string;
-  @ApiProperty({ type: 'array', items: { type: 'object' } }) @IsArray() components!: Record<
-    string,
-    unknown
-  >[];
+  @ApiProperty({ type: [TemplateComponentRequestDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TemplateComponentRequestDto)
+  components!: TemplateComponentRequestDto[];
   @ApiPropertyOptional({ example: 'POSITIONAL' })
   @IsOptional()
   @IsString()

@@ -1,4 +1,4 @@
-import { ValidationPipe } from '@nestjs/common';
+import { Logger as NestLogger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Logger } from 'nestjs-pino';
@@ -6,8 +6,9 @@ import { AppModule } from './app.module';
 import { AppConfigService } from './infrastructure/configuration/app-config.service';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true, rawBody: true });
-  app.useLogger(app.get(Logger));
+  const app = await NestFactory.create(AppModule, { rawBody: true });
+  const logger = app.get(Logger);
+  app.useLogger(logger);
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
@@ -24,6 +25,23 @@ async function bootstrap(): Promise<void> {
 
   const appConfig = app.get(AppConfigService);
   await app.listen(appConfig.port);
+
+  const baseUrl = `http://localhost:${appConfig.port}`;
+  logger.log(
+    {
+      apiUrl: baseUrl,
+      swaggerUrl: `${baseUrl}/docs`,
+      healthUrl: `${baseUrl}/health`,
+    },
+    'Message Hub iniciado e pronto para receber requisicoes',
+  );
 }
 
-void bootstrap();
+void bootstrap().catch((error: unknown) => {
+  const logger = new NestLogger('Bootstrap');
+  logger.error(
+    'Falha ao inicializar o Message Hub.',
+    error instanceof Error ? error.stack : String(error),
+  );
+  process.exitCode = 1;
+});

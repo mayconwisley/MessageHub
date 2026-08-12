@@ -10,6 +10,13 @@ export class MessageMapper {
       phoneNumberId: message.phoneNumberId.value,
       to: message.to,
       content: message.content.body,
+      type: message.type,
+      template: message.template ? {
+        metaTemplateId: message.template.metaTemplateId,
+        name: message.template.name,
+        language: message.template.language,
+        parameters: message.template.parameters,
+      } : null,
       status: message.status,
       idempotencyKey: message.idempotencyKey,
       providerMessageId: message.providerMessageId,

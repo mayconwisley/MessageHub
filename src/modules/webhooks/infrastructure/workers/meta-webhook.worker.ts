@@ -1,4 +1,4 @@
-import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import * as amqp from 'amqp-connection-manager';
 import type { Channel, ConsumeMessage } from 'amqplib';
 import { PinoLogger } from 'nestjs-pino';
@@ -14,7 +14,7 @@ import {
 } from '../messaging/webhook-queues.constant';
 
 @Injectable()
-export class MetaWebhookWorker implements OnModuleInit {
+export class MetaWebhookWorker {
   private readonly channel: amqp.ChannelWrapper;
   constructor(
     @Inject(RABBITMQ_CONNECTION) connection: amqp.AmqpConnectionManager,
@@ -33,9 +33,6 @@ export class MetaWebhookWorker implements OnModuleInit {
         });
       },
     });
-  }
-  async onModuleInit(): Promise<void> {
-    await this.channel.waitForConnect();
   }
   private async handle(message: ConsumeMessage | null, channel: Channel): Promise<void> {
     if (!message) return;

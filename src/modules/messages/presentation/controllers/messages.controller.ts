@@ -21,6 +21,8 @@ import { SendMessageCommand } from '../../application/commands/send-message.comm
 import { GetMessageQuery } from '../../application/queries/get-message.query';
 import { MessageResponseDto } from '../dto/message-response.dto';
 import { SendMessageRequestDto } from '../dto/send-message-request.dto';
+import { SendTemplateMessageRequestDto } from '../dto/send-template-message-request.dto';
+import { SendTemplateMessageCommand } from '../../application/commands/send-template-message.command';
 
 @ApiTags('messages')
 @ApiBearerAuth()
@@ -49,6 +51,26 @@ export class MessagesController {
     if (result.isFailure) {
       throw toHttpException(result.error);
     }
+    return MessageResponseDto.fromDto(result.value);
+  }
+
+  @Post('templates')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiResponse({ status: HttpStatus.CREATED, type: MessageResponseDto })
+  async sendTemplate(
+    @Body() dto: SendTemplateMessageRequestDto,
+    @CurrentAuthContext() authContext: AuthContextDto,
+    @Headers(IDEMPOTENCY_KEY_HEADER) idempotencyKey?: string,
+  ): Promise<MessageResponseDto> {
+    const result = await this.mediator.send(new SendTemplateMessageCommand(
+      authContext.applicationId,
+      dto.phoneNumberId,
+      dto.to,
+      { id: dto.templateId, name: dto.templateName },
+      dto.parameters ?? [],
+      idempotencyKey,
+    ));
+    if (result.isFailure) throw toHttpException(result.error);
     return MessageResponseDto.fromDto(result.value);
   }
 

@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { TemplateDto } from '../../application/services/template-management.service';
+import { TemplateComponentDefinition } from '../../application/ports/template-provider.interface';
 
 export class TemplateResponseDto implements TemplateDto {
   @ApiProperty() id!: string;
@@ -7,7 +8,8 @@ export class TemplateResponseDto implements TemplateDto {
   @ApiProperty() language!: string;
   @ApiProperty() category!: string;
   @ApiProperty() status!: string;
-  @ApiProperty({ type: 'array', items: { type: 'object' } }) components!: Record<string, unknown>[];
+  @ApiProperty({ type: 'array', items: { type: 'object' } })
+  components!: TemplateComponentDefinition[];
   @ApiPropertyOptional() rejectedReason?: string;
   @ApiProperty() localId!: string;
   @ApiProperty() whatsAppAccountId!: string;

@@ -1,5 +1,6 @@
 import { Entity, UniqueId } from '@shared/domain';
 import { TemplateStatus } from '../enums/template-status.enum';
+import { TemplateComponentDefinition } from '../../application/ports/template-provider.interface';
 
 export interface TemplateProps {
   tenantId: UniqueId;
@@ -8,7 +9,7 @@ export interface TemplateProps {
   name: string;
   language: string;
   category: string;
-  components: Record<string, unknown>[];
+  components: TemplateComponentDefinition[];
   parameterFormat: string | null;
   status: TemplateStatus;
   rejectedReason: string | null;
@@ -66,7 +67,7 @@ export class Template extends Entity<TemplateProps> {
   get category(): string {
     return this.props.category;
   }
-  get components(): Record<string, unknown>[] {
+  get components(): TemplateComponentDefinition[] {
     return this.props.components;
   }
   get parameterFormat(): string | null {
@@ -90,7 +91,7 @@ export class Template extends Entity<TemplateProps> {
 
   updateDraft(
     category: string,
-    components: Record<string, unknown>[],
+    components: TemplateComponentDefinition[],
     parameterFormat?: string,
   ): void {
     this.props.category = category;
@@ -113,7 +114,7 @@ export class Template extends Entity<TemplateProps> {
     id: string;
     status: string;
     category: string;
-    components: Record<string, unknown>[];
+    components: TemplateComponentDefinition[];
     rejectedReason?: string;
   }): void {
     this.props.metaTemplateId = snapshot.id;
@@ -127,7 +128,7 @@ export class Template extends Entity<TemplateProps> {
 
   applyMetaEdit(
     category: string,
-    components: Record<string, unknown>[],
+    components: TemplateComponentDefinition[],
     parameterFormat?: string,
   ): void {
     this.updateDraft(category, components, parameterFormat);

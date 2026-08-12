@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { UniqueId } from '@shared/domain';
 import { ApiKey, ApiKeyProps } from '../../domain/entities/api-key.entity';
 import { ApiKeyStatus } from '../../domain/enums/api-key-status.enum';
+import { ApiKeyType } from '../../domain/enums/api-key-type.enum';
 import { IApiKeyRepository } from '../../domain/repositories/api-key.repository.interface';
 import { ApiKeyOrmEntity } from '../entities/api-key.orm-entity';
 
@@ -30,6 +31,7 @@ export class PostgresApiKeyRepository implements IApiKeyRepository {
     orm.hash = apiKey.hash;
     orm.prefix = apiKey.prefix;
     orm.status = apiKey.status;
+    orm.type = apiKey.type;
     orm.createdAt = apiKey.createdAt;
     orm.expiresAt = apiKey.expiresAt;
     return orm;
@@ -41,6 +43,7 @@ export class PostgresApiKeyRepository implements IApiKeyRepository {
       hash: row.hash,
       prefix: row.prefix,
       status: row.status as ApiKeyStatus,
+      type: row.type as ApiKeyType,
       createdAt: row.createdAt,
       expiresAt: row.expiresAt,
     };

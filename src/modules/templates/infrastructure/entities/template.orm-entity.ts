@@ -1,4 +1,5 @@
 import { Column, Entity, Index, PrimaryColumn } from 'typeorm';
+import { TemplateComponentDefinition } from '../../application/ports/template-provider.interface';
 
 @Entity({ schema: 'app', name: 'message_templates' })
 @Index(['tenantId', 'whatsAppAccountId', 'metaTemplateId'], {
@@ -15,7 +16,7 @@ export class TemplateOrmEntity {
   @Column({ type: 'varchar', length: 512 }) name!: string;
   @Column({ type: 'varchar', length: 50 }) language!: string;
   @Column({ type: 'varchar', length: 50 }) category!: string;
-  @Column({ type: 'jsonb' }) components!: Record<string, unknown>[];
+  @Column({ type: 'jsonb' }) components!: TemplateComponentDefinition[];
   @Column({ name: 'parameter_format', type: 'varchar', length: 30, nullable: true })
   parameterFormat!: string | null;
   @Column({ type: 'varchar', length: 20 }) status!: string;

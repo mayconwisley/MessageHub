@@ -2,11 +2,25 @@ import { WhatsAppAccount } from '@modules/whatsapp-accounts/domain/entities/what
 import { Result } from '@shared/result';
 import { ProviderUnavailableError } from '@modules/messages/domain/errors/provider-unavailable.error';
 
+export interface TemplateComponentExamples {
+  headerText?: string[];
+  bodyText?: string[][];
+}
+
+export interface TemplateComponentDefinition {
+  type: string;
+  format?: string;
+  text?: string;
+  example?: TemplateComponentExamples;
+  buttons?: Record<string, unknown>[];
+  location?: Record<string, unknown>;
+}
+
 export interface TemplateDefinition {
   name: string;
   language: string;
   category: string;
-  components: Record<string, unknown>[];
+  components: TemplateComponentDefinition[];
   parameterFormat?: string;
 }
 

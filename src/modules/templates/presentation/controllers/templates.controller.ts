@@ -19,8 +19,11 @@ import { toHttpException } from '@presentation/http/result-http.mapper';
 import { TemplateManagementService } from '../../application/services/template-management.service';
 import { CreateTemplateRequestDto } from '../dto/create-template-request.dto';
 import { TemplateResponseDto } from '../dto/template-response.dto';
+import { PublishPendingTemplatesResponseDto } from '../dto/publish-pending-templates-response.dto';
+import { SyncTemplatesResponseDto } from '../dto/sync-templates-response.dto';
 import { UpdateTemplateRequestDto } from '../dto/update-template-request.dto';
 import { WhatsAppAccountReferenceRequestDto } from '../dto/whatsapp-account-reference-request.dto';
+import { TemplateRequestMapper } from '../mappers/template-request.mapper';
 
 @ApiTags('templates')
 @ApiBearerAuth()
@@ -35,7 +38,11 @@ export class TemplatesController {
     @Body() dto: CreateTemplateRequestDto,
     @CurrentAuthContext() auth: AuthContextDto,
   ): Promise<TemplateResponseDto> {
-    const result = await this.templates.create(auth.tenantId, dto.whatsAppAccountId, dto);
+    const result = await this.templates.create(
+      auth.tenantId,
+      dto.whatsAppAccountId,
+      TemplateRequestMapper.toCreateDefinition(dto),
+    );
     if (result.isFailure) throw toHttpException(result.error);
     return TemplateResponseDto.from(result.value);
   }
@@ -64,6 +71,8 @@ export class TemplatesController {
   }
 
   @Post('sync')
+  @HttpCode(HttpStatus.OK)
+  @ApiResponse({ status: HttpStatus.OK, type: SyncTemplatesResponseDto })
   async sync(
     @Body() dto: WhatsAppAccountReferenceRequestDto,
     @CurrentAuthContext() auth: AuthContextDto,
@@ -74,6 +83,8 @@ export class TemplatesController {
   }
 
   @Post('publish-pending')
+  @HttpCode(HttpStatus.OK)
+  @ApiResponse({ status: HttpStatus.OK, type: PublishPendingTemplatesResponseDto })
   async publishPending(
     @Body() dto: WhatsAppAccountReferenceRequestDto,
     @CurrentAuthContext() auth: AuthContextDto,
@@ -89,7 +100,11 @@ export class TemplatesController {
     @Body() dto: UpdateTemplateRequestDto,
     @CurrentAuthContext() auth: AuthContextDto,
   ): Promise<TemplateResponseDto> {
-    const result = await this.templates.update(auth.tenantId, id, dto);
+    const result = await this.templates.update(
+      auth.tenantId,
+      id,
+      TemplateRequestMapper.toUpdateDefinition(dto),
+    );
     if (result.isFailure) throw toHttpException(result.error);
     return TemplateResponseDto.from(result.value);
   }

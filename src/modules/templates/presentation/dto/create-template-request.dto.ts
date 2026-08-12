@@ -1,5 +1,15 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  ValidateNested,
+} from 'class-validator';
+import { TemplateComponentRequestDto } from './template-component-request.dto';
 
 export class CreateTemplateRequestDto {
   @ApiProperty() @IsUUID() whatsAppAccountId!: string;
@@ -10,10 +20,11 @@ export class CreateTemplateRequestDto {
   name!: string;
   @ApiProperty({ example: 'pt_BR' }) @IsString() @IsNotEmpty() language!: string;
   @ApiProperty({ example: 'UTILITY' }) @IsString() @IsNotEmpty() category!: string;
-  @ApiProperty({ type: 'array', items: { type: 'object' } }) @IsArray() components!: Record<
-    string,
-    unknown
-  >[];
+  @ApiProperty({ type: [TemplateComponentRequestDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TemplateComponentRequestDto)
+  components!: TemplateComponentRequestDto[];
   @ApiPropertyOptional({ example: 'POSITIONAL' })
   @IsOptional()
   @IsString()

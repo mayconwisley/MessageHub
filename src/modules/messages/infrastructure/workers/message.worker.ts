@@ -1,4 +1,4 @@
-import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import * as amqp from 'amqp-connection-manager';
 import type { Channel, ConsumeMessage } from 'amqplib';
 import { PinoLogger } from 'nestjs-pino';
@@ -45,7 +45,7 @@ import {
  * ja processadas (status != PENDING/RETRY) sao ignoradas para preservar idempotencia.
  */
 @Injectable()
-export class MessageWorker implements OnModuleInit {
+export class MessageWorker {
   private readonly channelWrapper: amqp.ChannelWrapper;
 
   constructor(
@@ -72,10 +72,6 @@ export class MessageWorker implements OnModuleInit {
         });
       },
     });
-  }
-
-  async onModuleInit(): Promise<void> {
-    await this.channelWrapper.waitForConnect();
   }
 
   private async handleMessage(msg: ConsumeMessage | null, channel: Channel): Promise<void> {
@@ -129,6 +125,7 @@ export class MessageWorker implements OnModuleInit {
       accessToken: whatsAppAccount.accessToken,
       to: message.to,
       content: message.content.body,
+      template: message.template,
     });
 
     if (result.isFailure) {

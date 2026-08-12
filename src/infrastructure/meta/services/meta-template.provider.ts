@@ -1,11 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { MetaConfigService } from '@infrastructure/configuration/meta-config.service';
 import { ProviderUnavailableError } from '@modules/messages/domain/errors/provider-unavailable.error';
-import { WhatsAppCredentialSource } from '@modules/whatsapp-accounts/domain/enums/whatsapp-credential-source.enum';
 import { WhatsAppAccount } from '@modules/whatsapp-accounts/domain/entities/whatsapp-account.entity';
+import { WhatsAppCredentialSource } from '@modules/whatsapp-accounts/domain/enums/whatsapp-credential-source.enum';
 import { Result } from '@shared/result';
 import {
   ITemplateProvider,
+  TemplateComponentDefinition,
+  TemplateComponentExamples,
   TemplateDefinition,
   TemplateSummary,
 } from '@modules/templates/application/ports/template-provider.interface';
@@ -103,7 +105,7 @@ export class MetaTemplateProvider implements ITemplateProvider {
   ): Record<string, unknown> {
     const payload: Record<string, unknown> = {
       category: template.category,
-      components: template.components,
+      components: template.components.map((component) => this.toMetaComponent(component)),
     };
     if ('name' in template) {
       payload.name = template.name;
@@ -113,6 +115,23 @@ export class MetaTemplateProvider implements ITemplateProvider {
     return payload;
   }
 
+  private toMetaComponent(component: TemplateComponentDefinition): Record<string, unknown> {
+    const mapped: Record<string, unknown> = { type: component.type };
+    if (component.format) mapped.format = component.format;
+    if (component.text) mapped.text = component.text;
+    if (component.buttons) mapped.buttons = component.buttons;
+    if (component.location) mapped.location = component.location;
+    if (component.example) mapped.example = this.toMetaExamples(component.example);
+    return mapped;
+  }
+
+  private toMetaExamples(examples: TemplateComponentExamples): Record<string, unknown> {
+    const mapped: Record<string, unknown> = {};
+    if (examples.headerText) mapped.header_text = examples.headerText;
+    if (examples.bodyText) mapped.body_text = examples.bodyText;
+    return mapped;
+  }
+
   private toSummary(template: MetaTemplateResponse): TemplateSummary {
     return {
       id: template.id,
@@ -120,9 +139,38 @@ export class MetaTemplateProvider implements ITemplateProvider {
       language: template.language,
       category: template.category,
       status: template.status,
-      components: template.components,
+      components: template.components.map((component) => this.toHubComponent(component)),
       parameterFormat: template.parameter_format,
       rejectedReason: template.rejected_reason,
     };
+  }
+
+  private toHubComponent(component: Record<string, unknown>): TemplateComponentDefinition {
+    return {
+      type: typeof component.type === 'string' ? component.type : '',
+      format: typeof component.format === 'string' ? component.format : undefined,
+      text: typeof component.text === 'string' ? component.text : undefined,
+      buttons: Array.isArray(component.buttons)
+        ? (component.buttons as Record<string, unknown>[])
+        : undefined,
+      location: this.isRecord(component.location) ? component.location : undefined,
+      example: this.toHubExamples(component.example),
+    };
+  }
+
+  private toHubExamples(value: unknown): TemplateComponentExamples | undefined {
+    if (!this.isRecord(value)) return undefined;
+    const headerText = this.isStringArray(value.header_text) ? value.header_text : undefined;
+    const bodyText =
+      Array.isArray(value.body_text) && value.body_text.every((item) => this.isStringArray(item))
+        ? (value.body_text as string[][])
+        : undefined;
+    return headerText || bodyText ? { headerText, bodyText } : undefined;
+  }
+  private isRecord(value: unknown): value is Record<string, unknown> {
+    return !!value && typeof value === 'object' && !Array.isArray(value);
+  }
+  private isStringArray(value: unknown): value is string[] {
+    return Array.isArray(value) && value.every((item) => typeof item === 'string');
   }
 }

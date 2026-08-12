@@ -7,6 +7,25 @@ import { MetaSendMessageResponseDto } from '../dto/meta-send-message-response.dt
 
 export class MetaMessageMapper {
   static toSendMessageRequest(message: OutgoingMessage): MetaSendMessageRequestDto {
+    if (message.template) {
+      return {
+        messaging_product: 'whatsapp',
+        to: message.to,
+        type: 'template',
+        template: {
+          name: message.template.name,
+          language: { code: message.template.language },
+          components: message.template.parameters.map((group) => ({
+            type: group.component,
+            ...(group.index !== undefined ? { index: group.index } : {}),
+            ...(group.component === 'button'
+              ? { sub_type: group.action === 'url' ? 'url' as const : 'quick_reply' as const }
+              : {}),
+            parameters: group.values.map((value) => ({ type: 'text' as const, text: value })),
+          })),
+        },
+      };
+    }
     return {
       messaging_product: 'whatsapp',
       to: message.to,

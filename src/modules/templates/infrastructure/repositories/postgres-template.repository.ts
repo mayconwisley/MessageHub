@@ -6,6 +6,7 @@ import { Template, TemplateProps } from '../../domain/entities/template.entity';
 import { TemplateStatus } from '../../domain/enums/template-status.enum';
 import { ITemplateRepository } from '../../domain/repositories/template.repository.interface';
 import { TemplateOrmEntity } from '../entities/template.orm-entity';
+import { TemplateComponentDefinition } from '../../application/ports/template-provider.interface';
 
 @Injectable()
 export class PostgresTemplateRepository implements ITemplateRepository {
@@ -54,6 +55,17 @@ export class PostgresTemplateRepository implements ITemplateRepository {
     });
     return row ? this.toDomain(row) : null;
   }
+  async findByName(
+    tenantId: UniqueId,
+    whatsAppAccountId: UniqueId,
+    name: string,
+  ): Promise<Template[]> {
+    return (
+      await this.repository.find({
+        where: { tenantId: tenantId.value, whatsAppAccountId: whatsAppAccountId.value, name },
+      })
+    ).map((row) => this.toDomain(row));
+  }
   async list(tenantId: UniqueId, whatsAppAccountId: UniqueId): Promise<Template[]> {
     return (
       await this.repository.find({
@@ -88,7 +100,7 @@ export class PostgresTemplateRepository implements ITemplateRepository {
       name: row.name,
       language: row.language,
       category: row.category,
-      components: row.components,
+      components: row.components as TemplateComponentDefinition[],
       parameterFormat: row.parameterFormat,
       status: row.status as TemplateStatus,
       rejectedReason: row.rejectedReason,

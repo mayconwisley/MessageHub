@@ -1,4 +1,4 @@
-import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import * as amqp from 'amqp-connection-manager';
 import type { Channel } from 'amqplib';
 import { RABBITMQ_CONNECTION } from '@infrastructure/messaging/rabbitmq/rabbitmq.constants';
@@ -9,7 +9,7 @@ import {
 import { MESSAGE_REQUESTED_DLQ, MESSAGE_REQUESTED_QUEUE } from './message-queues.constant';
 
 @Injectable()
-export class RabbitMqMessagePublisher implements IMessagePublisher, OnModuleInit {
+export class RabbitMqMessagePublisher implements IMessagePublisher {
   private readonly channelWrapper: amqp.ChannelWrapper;
 
   constructor(
@@ -23,10 +23,6 @@ export class RabbitMqMessagePublisher implements IMessagePublisher, OnModuleInit
           channel.assertQueue(MESSAGE_REQUESTED_QUEUE, { durable: true }),
         ]),
     });
-  }
-
-  async onModuleInit(): Promise<void> {
-    await this.channelWrapper.waitForConnect();
   }
 
   async publishMessageRequested(payload: MessageRequestedPayload): Promise<void> {

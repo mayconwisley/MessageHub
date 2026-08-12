@@ -6,6 +6,8 @@ import { MetaWhatsAppProvider } from '@infrastructure/meta/services/meta-whatsap
 import { ApplicationsModule } from '@modules/applications/applications.module';
 import { PhoneNumbersModule } from '@modules/phone-numbers/phone-numbers.module';
 import { WhatsAppAccountsModule } from '@modules/whatsapp-accounts/whatsapp-accounts.module';
+import { TemplatesModule } from '@modules/templates/templates.module';
+import { SendTemplateMessageHandler } from './application/handlers/send-template-message.handler';
 import { GetMessageHandler } from './application/handlers/get-message.handler';
 import { SendMessageHandler } from './application/handlers/send-message.handler';
 import { MESSAGE_PROVIDER } from './application/ports/message-provider.interface';
@@ -28,6 +30,7 @@ import { MessagesController } from './presentation/controllers/messages.controll
     ApplicationsModule,
     PhoneNumbersModule,
     WhatsAppAccountsModule,
+    TemplatesModule,
     MetaModule,
   ],
   controllers: [MessagesController],
@@ -38,6 +41,7 @@ import { MessagesController } from './presentation/controllers/messages.controll
     { provide: MESSAGE_PROVIDER, useExisting: MetaWhatsAppProvider },
     MessageRetryPolicy,
     SendMessageHandler,
+    SendTemplateMessageHandler,
     GetMessageHandler,
     MessageWorker,
   ],

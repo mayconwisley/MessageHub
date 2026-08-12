@@ -1,6 +1,7 @@
 import { Result } from '@shared/result';
 import { WhatsAppCredentialSource } from '@modules/whatsapp-accounts/domain/enums/whatsapp-credential-source.enum';
 import { ProviderUnavailableError } from '../../domain/errors/provider-unavailable.error';
+import { TemplateMessage } from '../../domain/value-objects/template-message.value-object';
 
 export interface OutgoingMessage {
   phoneNumberId: string;
@@ -8,6 +9,7 @@ export interface OutgoingMessage {
   accessToken: string | null;
   to: string;
   content: string;
+  template: TemplateMessage | null;
 }
 
 export interface ProviderMessageResult {

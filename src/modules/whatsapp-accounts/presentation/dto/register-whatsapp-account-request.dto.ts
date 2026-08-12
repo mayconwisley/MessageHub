@@ -3,9 +3,10 @@ import { IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validato
 import { WhatsAppCredentialSource } from '../../domain/enums/whatsapp-credential-source.enum';
 
 export class RegisterWhatsAppAccountRequestDto {
-  @ApiProperty()
+  @ApiProperty({ required: false, description: 'Obrigatório apenas para chamada administrativa.' })
+  @IsOptional()
   @IsUUID()
-  tenantId!: string;
+  tenantId?: string;
 
   @ApiProperty({ description: 'WhatsApp Business Account ID (Meta).' })
   @IsString()

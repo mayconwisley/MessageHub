@@ -11,6 +11,7 @@ export class RegisterPhoneNumberCommand extends Command<
     public readonly whatsAppAccountId: string,
     public readonly phoneNumberId: string,
     public readonly displayNumber: string,
+    public readonly tenantId?: string,
   ) {
     super();
   }

@@ -15,6 +15,9 @@ export class ApiKeyResponseDto {
   status!: string;
 
   @ApiProperty()
+  type!: string;
+
+  @ApiProperty()
   createdAt!: Date;
 
   @ApiPropertyOptional()
@@ -26,6 +29,7 @@ export class ApiKeyResponseDto {
     response.applicationId = dto.applicationId;
     response.prefix = dto.prefix;
     response.status = dto.status;
+    response.type = dto.type;
     response.createdAt = dto.createdAt;
     response.expiresAt = dto.expiresAt;
     return response;
@@ -44,6 +48,7 @@ export class CreatedApiKeyResponseDto extends ApiKeyResponseDto {
     response.applicationId = dto.applicationId;
     response.prefix = dto.prefix;
     response.status = dto.status;
+    response.type = dto.type;
     response.createdAt = dto.createdAt;
     response.expiresAt = dto.expiresAt;
     response.plainTextKey = dto.plainTextKey;

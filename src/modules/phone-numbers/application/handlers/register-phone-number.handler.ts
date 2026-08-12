@@ -30,7 +30,10 @@ export class RegisterPhoneNumberHandler implements ICommandHandler<RegisterPhone
   ): Promise<Result<PhoneNumberDto, InvalidPhoneNumberError | WhatsAppAccountNotFoundError>> {
     const whatsAppAccountId = UniqueId.create(command.whatsAppAccountId);
     const whatsAppAccount = await this.whatsAppAccountRepository.findById(whatsAppAccountId);
-    if (!whatsAppAccount) {
+    if (
+      !whatsAppAccount ||
+      (command.tenantId && !whatsAppAccount.tenantId.equals(UniqueId.create(command.tenantId)))
+    ) {
       return Result.fail(new WhatsAppAccountNotFoundError(command.whatsAppAccountId));
     }
 

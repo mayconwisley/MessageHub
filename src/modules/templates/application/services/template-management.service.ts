@@ -19,6 +19,7 @@ import {
   TemplateDefinition,
   TemplateSummary,
 } from '../ports/template-provider.interface';
+import { TemplateExamplesValidator } from './template-examples.validator';
 
 class TemplateError extends DomainError {
   constructor(code: string, message: string) {
@@ -57,6 +58,8 @@ export class TemplateManagementService {
     accountId: string,
     definition: TemplateDefinition,
   ): Promise<Result<TemplateDto, BaseError>> {
+    const examplesValidation = TemplateExamplesValidator.validate(definition);
+    if (examplesValidation.isFailure) return Result.fail(examplesValidation.error);
     const account = await this.resolveAccount(tenantId, accountId);
     if (account.isFailure) return Result.fail(account.error);
     const duplicate = await this.templates.findByNameAndLanguage(
@@ -181,7 +184,15 @@ export class TemplateManagementService {
     let published = 0;
     let failed = 0;
     for (const template of drafts) {
-      const result = await this.provider.create(account.value, this.toDefinition(template));
+      const definition = this.toDefinition(template);
+      const examplesValidation = TemplateExamplesValidator.validate(definition);
+      if (examplesValidation.isFailure) {
+        template.registerPublishFailure(examplesValidation.error.message);
+        await this.templates.save(template);
+        failed++;
+        continue;
+      }
+      const result = await this.provider.create(account.value, definition);
       if (result.isFailure) {
         template.registerPublishFailure(result.error.message);
         await this.templates.save(template);
@@ -200,6 +211,10 @@ export class TemplateManagementService {
     id: string,
     definition: Omit<TemplateDefinition, 'name' | 'language'>,
   ): Promise<Result<TemplateDto, BaseError>> {
+    const examplesValidation = TemplateExamplesValidator.validate({
+      components: definition.components,
+    });
+    if (examplesValidation.isFailure) return Result.fail(examplesValidation.error);
     const template = await this.templates.findById(UniqueId.create(tenantId), UniqueId.create(id));
     if (!template)
       return Result.fail(new TemplateError('TEMPLATE_NOT_FOUND', 'Template was not found.'));

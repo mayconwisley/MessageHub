@@ -20,6 +20,9 @@ export class MessageResponseDto {
   @ApiProperty()
   content!: string;
 
+  @ApiProperty() type!: string;
+  @ApiPropertyOptional() template!: MessageDto['template'];
+
   @ApiProperty()
   status!: string;
 
@@ -46,6 +49,8 @@ export class MessageResponseDto {
     response.phoneNumberId = dto.phoneNumberId;
     response.to = dto.to;
     response.content = dto.content;
+    response.type = dto.type;
+    response.template = dto.template;
     response.status = dto.status;
     response.idempotencyKey = dto.idempotencyKey;
     response.providerMessageId = dto.providerMessageId;

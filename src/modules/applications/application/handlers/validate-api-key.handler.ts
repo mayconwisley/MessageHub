@@ -48,6 +48,7 @@ export class ValidateApiKeyHandler implements IQueryHandler<ValidateApiKeyQuery>
       apiKeyId: apiKey.id.value,
       applicationId: application.id.value,
       tenantId: application.tenantId.value,
+      type: apiKey.type,
     });
   }
 }

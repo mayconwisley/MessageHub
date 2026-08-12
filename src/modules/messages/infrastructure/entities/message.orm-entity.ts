@@ -24,6 +24,12 @@ export class MessageOrmEntity {
   @Column({ type: 'text' })
   content!: string;
 
+  @Column({ name: 'type', type: 'varchar', length: 20, default: 'TEXT' })
+  type!: string;
+
+  @Column({ name: 'template', type: 'jsonb', nullable: true })
+  template!: Record<string, unknown> | null;
+
   @Column({ type: 'varchar', length: 20 })
   status!: string;
 

@@ -18,6 +18,7 @@ import { CreateApiKeyCommand } from '../../application/commands/create-api-key.c
 import { RevokeApiKeyCommand } from '../../application/commands/revoke-api-key.command';
 import { CreatedApiKeyResponseDto } from '../dto/api-key-response.dto';
 import { CreateApiKeyRequestDto } from '../dto/create-api-key-request.dto';
+import { ApiKeyType } from '../../domain/enums/api-key-type.enum';
 
 @ApiTags('api-keys')
 @ApiHeader({ name: 'Authorization', required: true })
@@ -34,7 +35,9 @@ export class ApiKeysController {
     @Body() dto: CreateApiKeyRequestDto,
   ): Promise<CreatedApiKeyResponseDto> {
     const expiresAt = dto.expiresAt ? new Date(dto.expiresAt) : undefined;
-    const result = await this.mediator.send(new CreateApiKeyCommand(applicationId, expiresAt));
+    const result = await this.mediator.send(
+      new CreateApiKeyCommand(applicationId, expiresAt, dto.type ?? ApiKeyType.PLATFORM),
+    );
     if (result.isFailure) {
       throw toHttpException(result.error);
     }

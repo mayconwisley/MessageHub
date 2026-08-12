@@ -35,7 +35,7 @@ export class CreateApiKeyHandler implements ICommandHandler<CreateApiKeyCommand>
     }
 
     const apiKeyId = UniqueId.create();
-    const generated = await this.apiKeyGenerator.generate(apiKeyId);
+    const generated = await this.apiKeyGenerator.generate(apiKeyId, command.type);
 
     const apiKey = ApiKey.create(
       {
@@ -43,6 +43,7 @@ export class CreateApiKeyHandler implements ICommandHandler<CreateApiKeyCommand>
         hash: generated.hash,
         prefix: generated.prefix,
         expiresAt: command.expiresAt ?? null,
+        type: command.type,
       },
       apiKeyId,
     );

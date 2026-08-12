@@ -1,5 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsDateString, IsOptional } from 'class-validator';
+import { IsDateString, IsEnum, IsOptional } from 'class-validator';
+import { ApiKeyType } from '../../domain/enums/api-key-type.enum';
 
 export class CreateApiKeyRequestDto {
   @ApiPropertyOptional({
@@ -8,4 +9,13 @@ export class CreateApiKeyRequestDto {
   @IsOptional()
   @IsDateString()
   expiresAt?: string;
+
+  @ApiPropertyOptional({
+    enum: ApiKeyType,
+    default: ApiKeyType.PLATFORM,
+    description: 'platform: envio e templates; tenant: também gerencia contas e números do próprio tenant.',
+  })
+  @IsOptional()
+  @IsEnum(ApiKeyType)
+  type?: ApiKeyType;
 }

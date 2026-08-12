@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { MediatorModule } from '@shared/mediator';
 import { MetaModule } from '@infrastructure/meta/meta.module';
 import { MetaTemplateProvider } from '@infrastructure/meta/services/meta-template.provider';
 import { WhatsAppAccountsModule } from '@modules/whatsapp-accounts/whatsapp-accounts.module';
@@ -14,12 +15,18 @@ import { PostgresTemplateRepository } from './infrastructure/repositories/postgr
  * Catálogo local de templates Meta, usado para rascunhos, sincronização e auditoria.
  */
 @Module({
-  imports: [MetaModule, WhatsAppAccountsModule, TypeOrmModule.forFeature([TemplateOrmEntity])],
+  imports: [
+    MediatorModule,
+    MetaModule,
+    WhatsAppAccountsModule,
+    TypeOrmModule.forFeature([TemplateOrmEntity]),
+  ],
   controllers: [TemplatesController],
   providers: [
     TemplateManagementService,
     { provide: TEMPLATE_REPOSITORY, useClass: PostgresTemplateRepository },
     { provide: TEMPLATE_PROVIDER, useExisting: MetaTemplateProvider },
   ],
+  exports: [TEMPLATE_REPOSITORY],
 })
 export class TemplatesModule {}

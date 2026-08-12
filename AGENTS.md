@@ -98,7 +98,6 @@ Tecnologias principais:
 - ORM compatível com TypeScript;
 - RabbitMQ;
 - Redis quando necessário;
-- Docker;
 - OpenAPI/Swagger;
 - Jest.
 
@@ -1458,20 +1457,11 @@ com valores fictícios.
 
 ---
 
-# 43. Docker
+# 43. Serviços externos
 
-O ambiente de desenvolvimento deve poder ser executado de maneira reproduzível.
-
-Serviços esperados:
-
-```text
-whatsapp-hub
-postgres
-rabbitmq
-redis
-```
-
-quando Redis for utilizado.
+Durante o desenvolvimento, PostgreSQL, RabbitMQ e Redis quando necessário são configurados por
+variáveis de ambiente e podem ser executados pela infraestrutura que o time definir. Artefatos de
+containerização e implantação serão introduzidos somente quando essa etapa for iniciada.
 
 ---
 

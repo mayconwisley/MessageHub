@@ -17,6 +17,9 @@ export class ApiKeyOrmEntity {
   @Column({ type: 'varchar', length: 20 })
   status!: string;
 
+  @Column({ type: 'varchar', length: 20, default: 'platform' })
+  type!: string;
+
   @Column({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 

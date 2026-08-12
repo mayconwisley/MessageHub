@@ -24,7 +24,7 @@ export class GetWhatsAppAccountHandler implements IQueryHandler<GetWhatsAppAccou
     const account = await this.whatsAppAccountRepository.findById(
       UniqueId.create(query.whatsAppAccountId),
     );
-    if (!account) {
+    if (!account || (query.tenantId && !account.tenantId.equals(UniqueId.create(query.tenantId)))) {
       return Result.fail(new WhatsAppAccountNotFoundError(query.whatsAppAccountId));
     }
 

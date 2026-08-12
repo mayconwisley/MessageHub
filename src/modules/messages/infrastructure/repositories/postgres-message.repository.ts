@@ -6,6 +6,8 @@ import { Message, MessageProps } from '../../domain/entities/message.entity';
 import { MessageStatus } from '../../domain/enums/message-status.enum';
 import { IMessageRepository } from '../../domain/repositories/message.repository.interface';
 import { MessageContent } from '../../domain/value-objects/message-content.value-object';
+import { MessageType } from '../../domain/enums/message-type.enum';
+import { TemplateMessage } from '../../domain/value-objects/template-message.value-object';
 import { MessageOrmEntity } from '../entities/message.orm-entity';
 
 @Injectable()
@@ -47,6 +49,15 @@ export class PostgresMessageRepository implements IMessageRepository {
     orm.phoneNumberId = message.phoneNumberId.value;
     orm.to = message.to;
     orm.content = message.content.body;
+    orm.type = message.type;
+    orm.template = message.template
+      ? {
+          metaTemplateId: message.template.metaTemplateId,
+          name: message.template.name,
+          language: message.template.language,
+          parameters: message.template.parameters,
+        }
+      : null;
     orm.status = message.status;
     orm.idempotencyKey = message.idempotencyKey;
     orm.providerMessageId = message.providerMessageId;
@@ -62,12 +73,21 @@ export class PostgresMessageRepository implements IMessageRepository {
       throw new Error(`Corrupted message content persisted for message ${row.id}.`);
     }
 
+    const templateResult = row.template ? TemplateMessage.create({
+      metaTemplateId: row.template.metaTemplateId as string | null,
+      name: row.template.name as string,
+      language: row.template.language as string,
+      parameters: row.template.parameters as [],
+    }) : null;
+    if (templateResult?.isFailure) throw new Error(`Corrupted template payload persisted for message ${row.id}.`);
     const props: MessageProps = {
       tenantId: UniqueId.create(row.tenantId),
       applicationId: UniqueId.create(row.applicationId),
       phoneNumberId: UniqueId.create(row.phoneNumberId),
       to: row.to,
       content: contentResult.value,
+      type: (row.type ?? MessageType.TEXT) as MessageType,
+      template: templateResult?.value ?? null,
       status: row.status as MessageStatus,
       idempotencyKey: row.idempotencyKey,
       providerMessageId: row.providerMessageId,

@@ -21,13 +21,18 @@ infrastructure/ → presentation/`. Módulos com fluxo de negócio completo nest
 ```bash
 cp .env.example .env
 npm install
-docker compose up -d postgres rabbitmq
 npm run migration:run
 npm run start:dev
 ```
 
-API disponível em `http://localhost:3000`, documentação Swagger em `http://localhost:3000/docs`,
-health check em `http://localhost:3000/health`.
+Antes de executar as migrations, configure no `.env` instâncias acessíveis de PostgreSQL e
+RabbitMQ por meio de `DATABASE_URL` e `RABBITMQ_URL`. A aplicação inicia mesmo que o RabbitMQ
+esteja temporariamente indisponível, mas o processamento assíncrono de mensagens e webhooks só
+ocorre após a reconexão.
+
+Com o valor padrão do `.env.example`, a API fica disponível em `http://localhost:3000`, a
+documentação Swagger em `http://localhost:3000/docs` e o health check em
+`http://localhost:3000/health`.
 
 ## Fluxo de ponta a ponta
 
@@ -54,6 +59,23 @@ Cada WABA possui uma origem de credenciais, informada no campo `credentialSource
 - `tenant`: usa o `accessToken` informado pelo tenant no cadastro. Ele é armazenado com AES-256-GCM; a chave `META_CREDENTIALS_ENCRYPTION_KEY` deve ser Base64 e conter 32 bytes.
 
 O token e o `appSecret` opcional do webhook nunca são retornados pela API, incluídos em DTOs de resposta ou registrados nos logs. Ambos são cifrados em repouso. Após implantar, execute as migrations. Credenciais legadas são protegidas automaticamente na primeira leitura; recomenda-se a rotação de tokens após a implantação.
+
+## Exemplos de parâmetros em templates
+
+Componentes `HEADER` e `BODY` que possuem placeholders posicionais (`{{1}}`, `{{2}}`, etc.)
+devem enviar valores de exemplo. O Hub recebe o contrato em camelCase e o converte internamente
+para o formato exigido pela Meta (`header_text` e `body_text`). Os placeholders precisam ser
+sequenciais e toda linha de exemplo deve fornecer um valor para cada parâmetro.
+
+```json
+{
+  "type": "BODY",
+  "text": "Olá {{1}}, o pedido {{2}} foi confirmado.",
+  "example": {
+    "bodyText": [{ "values": ["Maria Silva", "PED-2026-001"] }]
+  }
+}
+```
 
 ## Autenticação administrativa
 
@@ -89,6 +111,5 @@ npm run test:e2e  # fluxo HTTP de ponta a ponta
   reinícios do processo. Em produção, considerar o plugin de mensagens atrasadas do RabbitMQ ou
   um scheduler externo.
 - O processamento dos webhooks é persistido e deduplicado por hash; o request HTTP apenas valida e publica o evento, enquanto um worker RabbitMQ atualiza a mensagem e encaminha falhas para DLQ.
-- Redis está disponível no `docker-compose.yml` mas ainda não é consumido por nenhum módulo.
 - Hashing de API Key usa `bcryptjs` (implementação pura em JS) em vez de `bcrypt` nativo, para
   evitar dependência de build nativo no ambiente de desenvolvimento.

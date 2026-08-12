@@ -8,6 +8,8 @@ import { GlobalExceptionFilter } from '@presentation/http/filters/global-excepti
 import { ApiKeyAuthGuard } from '@presentation/http/guards/api-key-auth.guard';
 import { UserSessionAuthGuard } from '@presentation/http/guards/user-session-auth.guard';
 import { PlatformAdminGuard } from '@presentation/http/guards/platform-admin.guard';
+import { PlatformAdminOrTenantApiKeyGuard } from '@presentation/http/guards/platform-admin-or-tenant-api-key.guard';
+import { TenantApiKeyGuard } from '@presentation/http/guards/tenant-api-key.guard';
 import { IdentityService } from '@modules/identity/infrastructure/services/identity.service';
 import { CreateApiKeyHandler } from '@modules/applications/application/handlers/create-api-key.handler';
 import { CreateApplicationHandler } from '@modules/applications/application/handlers/create-application.handler';
@@ -75,6 +77,8 @@ describe('Messages flow (e2e)', () => {
         { provide: MESSAGE_PUBLISHER, useValue: messagePublisher },
         ApiKeyGeneratorService,
         ApiKeyAuthGuard,
+        TenantApiKeyGuard,
+        PlatformAdminOrTenantApiKeyGuard,
         UserSessionAuthGuard,
         PlatformAdminGuard,
         {
@@ -131,11 +135,36 @@ describe('Messages flow (e2e)', () => {
       .send({})
       .expect(201);
 
-    const whatsAppAccount = await request(server)
+    const tenantApiKey = await request(server)
+      .post(`/v1/applications/${application.body.id}/api-keys`)
+      .set('Authorization', `Bearer ${adminSession}`)
+      .send({ type: 'tenant' })
+      .expect(201);
+
+    const adminWhatsAppAccount = await request(server)
       .post('/v1/whatsapp-accounts')
       .set('Authorization', `Bearer ${adminSession}`)
       .send({
         tenantId: tenant.body.id,
+        wabaId: 'waba-admin-managed',
+        credentialSource: 'default',
+      })
+      .expect(201);
+
+    await request(server)
+      .post('/v1/phone-numbers')
+      .set('Authorization', `Bearer ${adminSession}`)
+      .send({
+        whatsAppAccountId: adminWhatsAppAccount.body.id,
+        phoneNumberId: 'meta-phone-admin-managed',
+        displayNumber: '+5511977777777',
+      })
+      .expect(201);
+
+    const whatsAppAccount = await request(server)
+      .post('/v1/whatsapp-accounts')
+      .set('Authorization', `Bearer ${tenantApiKey.body.plainTextKey}`)
+      .send({
         wabaId: 'waba-1',
         credentialSource: 'tenant',
         accessToken: 'meta-access-token',
@@ -144,7 +173,7 @@ describe('Messages flow (e2e)', () => {
 
     const phoneNumber = await request(server)
       .post('/v1/phone-numbers')
-      .set('Authorization', `Bearer ${adminSession}`)
+      .set('Authorization', `Bearer ${tenantApiKey.body.plainTextKey}`)
       .send({
         whatsAppAccountId: whatsAppAccount.body.id,
         phoneNumberId: 'meta-phone-1',

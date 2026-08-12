@@ -8,6 +8,7 @@ export class ApiKeyMapper {
       applicationId: apiKey.applicationId.value,
       prefix: apiKey.prefix,
       status: apiKey.status,
+      type: apiKey.type,
       createdAt: apiKey.createdAt,
       expiresAt: apiKey.expiresAt,
     };
