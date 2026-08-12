@@ -26,7 +26,11 @@ export class GetMessageHandler implements IQueryHandler<GetMessageQuery> {
   async execute(query: GetMessageQuery): Promise<Result<MessageDto, MessageNotFoundError>> {
     const messageId = UniqueId.create(query.messageId);
     const message = await this.messageRepository.findById(messageId);
-    if (!message || message.applicationId.value !== query.applicationId) {
+    if (
+      !message ||
+      message.applicationId.value !== query.applicationId ||
+      (query.requestingTenantId && message.tenantId.value !== query.requestingTenantId)
+    ) {
       // Nunca revelar que a Message existe em outra Application/Tenant (secao 17).
       return Result.fail(new MessageNotFoundError(query.messageId));
     }

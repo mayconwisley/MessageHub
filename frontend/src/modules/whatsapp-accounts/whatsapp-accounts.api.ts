@@ -11,10 +11,18 @@ export interface WhatsAppAccount {
   [key: string]: unknown;
 }
 
+export interface DefaultChannel {
+  enabled: boolean;
+  wabaId: string | null;
+}
+
 export const whatsAppAccountsApi = {
   list: (params: { tenantId: string; page: number; pageSize: number; status?: string }) =>
     request<PaginatedResult<WhatsAppAccount>>(`/v1/whatsapp-accounts${toQueryString(params)}`),
   create: (data: { tenantId: string; wabaId: string; credentialSource: string; accessToken?: string; appSecret?: string }) =>
     request<WhatsAppAccount>('/v1/whatsapp-accounts', { method: 'POST', body: data }),
   getById: (id: string) => request<WhatsAppAccount>(`/v1/whatsapp-accounts/${id}`),
+  getDefaultChannel: () => request<DefaultChannel>('/v1/whatsapp-accounts/default-channel'),
+  ensureDefaultChannel: (tenantId: string) =>
+    request<WhatsAppAccount>('/v1/whatsapp-accounts/default-channel/ensure', { method: 'POST', body: { tenantId } }),
 };

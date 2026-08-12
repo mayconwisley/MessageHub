@@ -29,6 +29,8 @@ import { tenantsApi, type Tenant } from './tenants.api';
 const schema = z.object({ name: z.string().min(2, 'Informe ao menos 2 caracteres.') });
 type FormData = z.infer<typeof schema>;
 
+const statusLabels: Record<string, string> = { ACTIVE: 'Ativo', SUSPENDED: 'Suspenso' };
+
 export function TenantsPage() {
   const { page, pageSize, setPage, setPageSize } = usePagination();
   const [status, setStatus] = useState('');
@@ -114,8 +116,8 @@ export function TenantsPage() {
               }}
             >
               <MenuItem value="">Todos</MenuItem>
-              <MenuItem value="ACTIVE">ACTIVE</MenuItem>
-              <MenuItem value="SUSPENDED">SUSPENDED</MenuItem>
+              <MenuItem value="ACTIVE">Ativo</MenuItem>
+              <MenuItem value="SUSPENDED">Suspenso</MenuItem>
             </Select>
           </FormControl>
         </Stack>
@@ -123,7 +125,7 @@ export function TenantsPage() {
           <PaginatedTable<Tenant>
             columns={[
               { key: 'name', label: 'Nome' },
-              { key: 'status', label: 'Status', render: (row) => <Chip label={row.status} size="small" /> },
+              { key: 'status', label: 'Status', render: (row) => <Chip label={statusLabels[row.status] ?? row.status} size="small" /> },
               { key: 'createdAt', label: 'Criado em', render: (row) => new Date(row.createdAt).toLocaleString('pt-BR') },
             ]}
             rows={list.data?.items ?? []}

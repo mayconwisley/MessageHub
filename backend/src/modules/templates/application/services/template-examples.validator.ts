@@ -32,7 +32,7 @@ export class TemplateExamplesValidator {
     if (placeholders.length !== maxIndex) {
       return Result.fail(
         new InvalidTemplateExamplesError(
-          'Text placeholders must be sequential, starting at {{1}} without gaps.',
+          'Os placeholders de texto devem ser sequenciais, começando em {{1}} sem lacunas.',
         ),
       );
     }
@@ -40,7 +40,7 @@ export class TemplateExamplesValidator {
     if (type === 'HEADER') return this.validateHeader(component, maxIndex);
     if (type === 'BODY') return this.validateBody(component, maxIndex);
     return Result.fail(
-      new InvalidTemplateExamplesError(`Component ${type} does not support text placeholders.`),
+      new InvalidTemplateExamplesError(`O componente ${type} não suporta placeholders de texto.`),
     );
   }
 
@@ -52,7 +52,7 @@ export class TemplateExamplesValidator {
     if (!examples || examples.length !== expected || examples.some((value) => !value.trim())) {
       return Result.fail(
         new InvalidTemplateExamplesError(
-          `HEADER with ${expected} placeholder(s) requires exactly ${expected} example value(s) in example.headerText.`,
+          `HEADER com ${expected} placeholder(s) exige exatamente ${expected} valor(es) de exemplo em example.headerText.`,
         ),
       );
     }
@@ -70,7 +70,7 @@ export class TemplateExamplesValidator {
     ) {
       return Result.fail(
         new InvalidTemplateExamplesError(
-          `BODY with ${expected} placeholder(s) requires one or more example rows with exactly ${expected} non-empty value(s) in example.bodyText.`,
+          `BODY com ${expected} placeholder(s) exige uma ou mais linhas de exemplo com exatamente ${expected} valor(es) não vazio(s) em example.bodyText.`,
         ),
       );
     }

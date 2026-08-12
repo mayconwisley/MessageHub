@@ -121,7 +121,7 @@ export class MessageWorker {
     if (!phoneNumber || !whatsAppAccount) {
       await this.handleFailure(
         message,
-        new MessageDeliveryRejectedError('Phone number or WhatsApp account not found.'),
+        new MessageDeliveryRejectedError('Número de telefone ou conta do WhatsApp não encontrados.'),
       );
       return;
     }

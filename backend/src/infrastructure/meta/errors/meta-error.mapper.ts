@@ -40,7 +40,7 @@ export class MetaErrorMapper {
   static toProviderError(error: unknown): MetaProviderError {
     if (isAxiosError<MetaErrorResponseDto>(error) && error.response?.data?.error) {
       const metaError = error.response.data.error;
-      const reason = `Meta error ${metaError.code} (${metaError.type}): ${metaError.message}`;
+      const reason = `Erro da Meta ${metaError.code} (${metaError.type}): ${metaError.message}`;
 
       if (RATE_LIMIT_ERROR_CODES.has(metaError.code)) {
         return new ProviderRateLimitedError(reason);
@@ -51,6 +51,6 @@ export class MetaErrorMapper {
       return new ProviderUnavailableError(reason);
     }
 
-    return new ProviderUnavailableError('Meta WhatsApp provider unavailable.');
+    return new ProviderUnavailableError('Provedor do WhatsApp da Meta indisponível.');
   }
 }

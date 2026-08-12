@@ -55,7 +55,7 @@ export class Message extends Entity<MessageProps> {
   static create(params: CreateMessageParams, id?: UniqueId): Result<Message, InvalidMessageError> {
     const to = params.to?.trim();
     if (!to) {
-      return Result.fail(new InvalidMessageError('to must not be empty.'));
+      return Result.fail(new InvalidMessageError('to não deve estar vazio.'));
     }
 
     const contentResult = MessageContent.create(params.content);
@@ -91,7 +91,7 @@ export class Message extends Entity<MessageProps> {
     id?: UniqueId,
   ): Result<Message, InvalidMessageError> {
     const to = params.to?.trim();
-    if (!to) return Result.fail(new InvalidMessageError('to must not be empty.'));
+    if (!to) return Result.fail(new InvalidMessageError('to não deve estar vazio.'));
 
     const templateResult = TemplateMessage.create({
       metaTemplateId: params.metaTemplateId,

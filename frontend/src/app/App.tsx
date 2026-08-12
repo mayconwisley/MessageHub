@@ -8,8 +8,8 @@ import {
   ExpandLess,
   ExpandMore,
   ForumOutlined,
+  HelpOutlineOutlined,
   IntegrationInstructionsOutlined,
-  KeyOutlined,
   LightModeOutlined,
   LogoutOutlined,
   MenuOutlined,
@@ -28,7 +28,6 @@ import { authStorage } from '../services/auth-storage';
 import { LoginPage } from '../modules/auth/LoginPage';
 import { logout as logoutRequest } from '../modules/auth/auth.api';
 import { DashboardPage } from '../modules/dashboard/DashboardPage';
-import { CredentialsPage } from '../modules/credentials/CredentialsPage';
 import { TenantsPage } from '../modules/tenants/TenantsPage';
 import { ApplicationsPage } from '../modules/applications/ApplicationsPage';
 import { WhatsAppAccountsPage } from '../modules/whatsapp-accounts/WhatsAppAccountsPage';
@@ -38,6 +37,7 @@ import { UsersPage } from '../modules/users/UsersPage';
 import { MessagesPage } from '../modules/messages/MessagesPage';
 import { TemplatesPage } from '../modules/templates/TemplatesPage';
 import { ApiDocsPage } from '../modules/api-docs/ApiDocsPage';
+import { HelpPage } from '../modules/help/HelpPage';
 import { ThemeModeProvider, useThemeMode } from './ThemeModeProvider';
 import { buildTheme } from './theme';
 
@@ -81,7 +81,9 @@ const navGroups: NavGroupConfig[] = [
   },
 ];
 
-const bottomLinks: NavLeaf[] = [{ to: '/credentials', label: 'Credenciais', icon: <KeyOutlined /> }];
+const bottomLinks: NavLeaf[] = [
+  { to: '/help', label: 'Manual do usuário', icon: <HelpOutlineOutlined /> },
+];
 
 const drawerWidth = 264;
 
@@ -131,7 +133,6 @@ function Layout() {
       // A sessão local é limpa mesmo que a revogação no backend falhe (ex.: token já expirado).
     }
     authStorage.removeSessionToken();
-    authStorage.removeApiKey();
     queryClient.clear();
     navigate('/login');
   };
@@ -222,10 +223,10 @@ function ThemedApp() {
               <Route path="/phone-numbers" element={<PhoneNumbersPage />} />
               <Route path="/api-keys" element={<ApiKeysPage />} />
               <Route path="/users" element={<UsersPage />} />
-              <Route path="/credentials" element={<CredentialsPage />} />
               <Route path="/messages" element={<MessagesPage />} />
               <Route path="/templates" element={<TemplatesPage />} />
               <Route path="/api-docs" element={<ApiDocsPage />} />
+              <Route path="/help" element={<HelpPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

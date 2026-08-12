@@ -1,8 +1,15 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsUUID, Matches, MaxLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsNotEmpty, IsOptional, IsString, IsUUID, Matches, MaxLength } from 'class-validator';
 import { E164_PHONE_NUMBER_REGEX } from '@shared/constants';
 
 export class SendMessageRequestDto {
+  @ApiPropertyOptional({
+    description: 'Obrigatório apenas para requisições autenticadas por sessão administrativa.',
+  })
+  @IsOptional()
+  @IsUUID()
+  applicationId?: string;
+
   @ApiProperty()
   @IsUUID()
   phoneNumberId!: string;
@@ -11,7 +18,7 @@ export class SendMessageRequestDto {
   @IsString()
   @IsNotEmpty()
   @Matches(E164_PHONE_NUMBER_REGEX, {
-    message: 'to must be a valid E.164 phone number (e.g. +5511999999999).',
+    message: 'to deve ser um número de telefone E.164 válido (ex: +5511999999999).',
   })
   to!: string;
 

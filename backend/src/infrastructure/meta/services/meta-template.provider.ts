@@ -32,7 +32,7 @@ export class MetaTemplateProvider implements ITemplateProvider {
   ): Promise<Result<TemplateSummary, MetaProviderError>> {
     const credentials = this.credentials(account);
     if (!credentials)
-      return Result.fail(new ProviderUnavailableError('Meta credentials are not configured.'));
+      return Result.fail(new ProviderUnavailableError('As credenciais da Meta não estão configuradas.'));
     try {
       const created = await this.client.createTemplate(
         credentials,
@@ -49,7 +49,7 @@ export class MetaTemplateProvider implements ITemplateProvider {
   ): Promise<Result<TemplateSummary[], MetaProviderError>> {
     const credentials = this.credentials(account);
     if (!credentials)
-      return Result.fail(new ProviderUnavailableError('Meta credentials are not configured.'));
+      return Result.fail(new ProviderUnavailableError('As credenciais da Meta não estão configuradas.'));
     try {
       return Result.ok(
         (await this.client.listTemplates(credentials)).map((template) => this.toSummary(template)),
@@ -66,7 +66,7 @@ export class MetaTemplateProvider implements ITemplateProvider {
   ): Promise<Result<void, MetaProviderError>> {
     const credentials = this.credentials(account);
     if (!credentials)
-      return Result.fail(new ProviderUnavailableError('Meta credentials are not configured.'));
+      return Result.fail(new ProviderUnavailableError('As credenciais da Meta não estão configuradas.'));
     try {
       await this.client.updateTemplate(credentials, templateId, this.toMetaDefinition(template));
       return Result.ok(undefined);
@@ -82,7 +82,7 @@ export class MetaTemplateProvider implements ITemplateProvider {
   ): Promise<Result<void, MetaProviderError>> {
     const credentials = this.credentials(account);
     if (!credentials)
-      return Result.fail(new ProviderUnavailableError('Meta credentials are not configured.'));
+      return Result.fail(new ProviderUnavailableError('As credenciais da Meta não estão configuradas.'));
     try {
       await this.client.deleteTemplate(credentials, templateId, name);
       return Result.ok(undefined);

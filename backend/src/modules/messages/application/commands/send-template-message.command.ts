@@ -21,6 +21,7 @@ export class SendTemplateMessageCommand extends Command<
     public readonly template: { id?: string; name?: string },
     public readonly parameters: string[],
     public readonly idempotencyKey?: string,
+    public readonly requestingTenantId?: string,
   ) {
     super();
   }

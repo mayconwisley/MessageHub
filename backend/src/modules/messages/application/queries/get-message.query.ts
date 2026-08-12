@@ -7,6 +7,7 @@ export class GetMessageQuery extends Query<Result<MessageDto, MessageNotFoundErr
   constructor(
     public readonly messageId: string,
     public readonly applicationId: string,
+    public readonly requestingTenantId?: string,
   ) {
     super();
   }

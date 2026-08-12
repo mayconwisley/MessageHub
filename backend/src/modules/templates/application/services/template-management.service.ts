@@ -74,7 +74,7 @@ export class TemplateManagementService {
       return Result.fail(
         new TemplateError(
           'TEMPLATE_ALREADY_EXISTS',
-          'A template with this name and language already exists.',
+          'Já existe um template com este nome e idioma.',
         ),
       );
     const template =
@@ -130,7 +130,7 @@ export class TemplateManagementService {
     const template = await this.templates.findById(UniqueId.create(tenantId), UniqueId.create(id));
     return template
       ? Result.ok(this.toDto(template))
-      : Result.fail(new TemplateError('TEMPLATE_NOT_FOUND', 'Template was not found.'));
+      : Result.fail(new TemplateError('TEMPLATE_NOT_FOUND', 'Template não foi encontrado.'));
   }
 
   async sync(tenantId: string, accountId: string): Promise<Result<SyncTemplatesResult, BaseError>> {
@@ -225,7 +225,7 @@ export class TemplateManagementService {
     if (examplesValidation.isFailure) return Result.fail(examplesValidation.error);
     const template = await this.templates.findById(UniqueId.create(tenantId), UniqueId.create(id));
     if (!template)
-      return Result.fail(new TemplateError('TEMPLATE_NOT_FOUND', 'Template was not found.'));
+      return Result.fail(new TemplateError('TEMPLATE_NOT_FOUND', 'Template não foi encontrado.'));
     const account = await this.resolveAccount(tenantId, template.whatsAppAccountId.value);
     if (account.isFailure) return Result.fail(account.error);
     if (!template.metaTemplateId) {
@@ -237,7 +237,7 @@ export class TemplateManagementService {
       return Result.fail(
         new TemplateError(
           'TEMPLATE_EDIT_NOT_ALLOWED',
-          'Only approved Meta templates can be edited.',
+          'Somente templates aprovados pela Meta podem ser editados.',
         ),
       );
     const result = await this.provider.update(account.value, template.metaTemplateId, definition);
@@ -254,12 +254,12 @@ export class TemplateManagementService {
   async delete(tenantId: string, id: string): Promise<Result<void, BaseError>> {
     const template = await this.templates.findById(UniqueId.create(tenantId), UniqueId.create(id));
     if (!template)
-      return Result.fail(new TemplateError('TEMPLATE_NOT_FOUND', 'Template was not found.'));
+      return Result.fail(new TemplateError('TEMPLATE_NOT_FOUND', 'Template não foi encontrado.'));
     if (!template.metaTemplateId)
       return Result.fail(
         new TemplateError(
           'META_TEMPLATE_ID_REQUIRED',
-          'Draft templates must be published before deletion.',
+          'Templates em rascunho devem ser publicados antes da exclusão.',
         ),
       );
     const account = await this.resolveAccount(tenantId, template.whatsAppAccountId.value);
@@ -281,13 +281,13 @@ export class TemplateManagementService {
     const account = await this.accounts.findById(UniqueId.create(accountId));
     if (!account)
       return Result.fail(
-        new TemplateError('WHATSAPP_ACCOUNT_NOT_FOUND', 'WhatsApp account was not found.'),
+        new TemplateError('WHATSAPP_ACCOUNT_NOT_FOUND', 'Conta do WhatsApp não foi encontrada.'),
       );
     if (account.tenantId.value !== tenantId)
       return Result.fail(
         new TemplateError(
           'WHATSAPP_ACCOUNT_ACCESS_DENIED',
-          'WhatsApp account does not belong to the authenticated tenant.',
+          'A conta do WhatsApp não pertence ao tenant autenticado.',
         ),
       );
     return Result.ok(account);

@@ -16,11 +16,11 @@ export class MessageContent extends ValueObject<MessageContentProps> {
   static create(body: string): Result<MessageContent, InvalidMessageError> {
     const trimmed = body?.trim();
     if (!trimmed) {
-      return Result.fail(new InvalidMessageError('content must not be empty.'));
+      return Result.fail(new InvalidMessageError('content não deve estar vazio.'));
     }
     if (trimmed.length > MAX_LENGTH) {
       return Result.fail(
-        new InvalidMessageError(`content must have at most ${MAX_LENGTH} characters.`),
+        new InvalidMessageError(`content deve ter no máximo ${MAX_LENGTH} caracteres.`),
       );
     }
 

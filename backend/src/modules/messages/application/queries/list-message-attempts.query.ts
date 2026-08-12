@@ -9,6 +9,7 @@ export class ListMessageAttemptsQuery extends Query<
   constructor(
     public readonly messageId: string,
     public readonly applicationId: string,
+    public readonly requestingTenantId?: string,
   ) {
     super();
   }

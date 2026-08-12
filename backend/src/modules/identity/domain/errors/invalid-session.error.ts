@@ -2,6 +2,6 @@ import { AuthenticationError } from '@shared/errors';
 
 export class InvalidSessionError extends AuthenticationError {
   constructor() {
-    super('INVALID_SESSION', 'The session token is missing, invalid, expired or revoked.');
+    super('INVALID_SESSION', 'O token de sessão está ausente, inválido, expirado ou revogado.');
   }
 }

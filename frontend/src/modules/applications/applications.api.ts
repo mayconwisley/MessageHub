@@ -15,6 +15,13 @@ export interface WebhookConfig {
   webhookSecret: string | null;
 }
 
+export interface LinkedPhoneNumber {
+  id: string;
+  phoneNumberId: string;
+  displayNumber: string;
+  [key: string]: unknown;
+}
+
 export const applicationsApi = {
   list: (params: { tenantId: string; page: number; pageSize: number }) =>
     request<PaginatedResult<Application>>(`/v1/applications${toQueryString(params)}`),
@@ -22,4 +29,11 @@ export const applicationsApi = {
     request<Application>('/v1/applications', { method: 'POST', body: data }),
   configureWebhook: (applicationId: string, webhookUrl: string | null) =>
     request<WebhookConfig>(`/v1/applications/${applicationId}/webhook`, { method: 'PUT', body: { webhookUrl } }),
+  listLinkedPhoneNumbers: (applicationId: string) =>
+    request<LinkedPhoneNumber[]>(`/v1/applications/${applicationId}/phone-numbers`),
+  setLinkedPhoneNumbers: (applicationId: string, phoneNumberIds: string[]) =>
+    request<LinkedPhoneNumber[]>(`/v1/applications/${applicationId}/phone-numbers`, {
+      method: 'PUT',
+      body: { phoneNumberIds },
+    }),
 };

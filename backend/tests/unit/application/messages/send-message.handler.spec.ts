@@ -48,6 +48,9 @@ class FakeWhatsAppAccountRepository implements IWhatsAppAccountRepository {
   async findById(id: UniqueId): Promise<WhatsAppAccount | null> {
     return this.accounts.find((account) => account.id.equals(id)) ?? null;
   }
+  async findByTenantAndWabaId(): Promise<WhatsAppAccount | null> {
+    return null;
+  }
   async listByTenantId(): Promise<import('@shared/types').PaginatedResult<WhatsAppAccount>> {
     return { items: [], total: 0, page: 1, pageSize: 20 };
   }

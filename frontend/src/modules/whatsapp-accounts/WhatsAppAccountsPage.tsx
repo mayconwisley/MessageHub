@@ -22,6 +22,9 @@ const schema = z.object({
 });
 type FormData = z.infer<typeof schema>;
 
+const statusLabels: Record<string, string> = { ACTIVE: 'Ativo', SUSPENDED: 'Suspenso' };
+const credentialSourceLabels: Record<string, string> = { default: 'Padrão', tenant: 'Tenant' };
+
 export function WhatsAppAccountsPage() {
   const { page, pageSize, setPage, setPageSize } = usePagination();
   const [tenantIdFilter, setTenantIdFilter] = useState('');
@@ -90,8 +93,8 @@ export function WhatsAppAccountsPage() {
               }}
             >
               <MenuItem value="">Todos</MenuItem>
-              <MenuItem value="ACTIVE">ACTIVE</MenuItem>
-              <MenuItem value="SUSPENDED">SUSPENDED</MenuItem>
+              <MenuItem value="ACTIVE">Ativo</MenuItem>
+              <MenuItem value="SUSPENDED">Suspenso</MenuItem>
             </Select>
           </FormControl>
         </Stack>
@@ -99,8 +102,8 @@ export function WhatsAppAccountsPage() {
           <PaginatedTable<WhatsAppAccount>
             columns={[
               { key: 'wabaId', label: 'WABA ID' },
-              { key: 'credentialSource', label: 'Origem' },
-              { key: 'status', label: 'Status', render: (row) => <Chip label={row.status} size="small" /> },
+              { key: 'credentialSource', label: 'Origem', render: (row) => credentialSourceLabels[row.credentialSource] ?? row.credentialSource },
+              { key: 'status', label: 'Status', render: (row) => <Chip label={statusLabels[row.status] ?? row.status} size="small" /> },
               { key: 'createdAt', label: 'Criado em', render: (row) => new Date(row.createdAt).toLocaleString('pt-BR') },
             ]}
             rows={list.data?.items ?? []}
@@ -149,8 +152,8 @@ export function WhatsAppAccountsPage() {
               />
               <TextField label="WABA ID" {...form.register('wabaId')} error={!!form.formState.errors.wabaId} helperText={form.formState.errors.wabaId?.message} fullWidth />
               <TextField label="Origem da credencial" select {...form.register('credentialSource')} fullWidth>
-                <MenuItem value="default">default</MenuItem>
-                <MenuItem value="tenant">tenant</MenuItem>
+                <MenuItem value="default">{credentialSourceLabels.default}</MenuItem>
+                <MenuItem value="tenant">{credentialSourceLabels.tenant}</MenuItem>
               </TextField>
               <TextField label="Access token (somente origem tenant)" type="password" autoComplete="off" {...form.register('accessToken')} fullWidth />
               <TextField label="App secret (opcional)" type="password" autoComplete="off" {...form.register('appSecret')} fullWidth />

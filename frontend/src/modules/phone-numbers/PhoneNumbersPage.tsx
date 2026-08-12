@@ -2,23 +2,27 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Alert, Button, Chip, FormControl, InputLabel, MenuItem, Select, Stack, TextField } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { AsyncState } from '../../components/shared/AsyncState';
 import { EntityResult } from '../../components/shared/EntityResult';
 import { FormDialog } from '../../components/shared/FormDialog';
 import { PaginatedTable } from '../../components/shared/PaginatedTable';
 import { TenantAutocomplete } from '../../components/shared/TenantAutocomplete';
+import { WhatsAppAccountAutocomplete } from '../../components/shared/WhatsAppAccountAutocomplete';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { usePagination } from '../../hooks/usePagination';
 import { phoneNumbersApi, type PhoneNumber } from './phone-numbers.api';
 
 const schema = z.object({
-  whatsAppAccountId: z.string().uuid('Informe um UUID válido.'),
+  tenantId: z.string().uuid('Selecione um tenant.'),
+  whatsAppAccountId: z.string().uuid('Selecione uma conta WhatsApp.'),
   phoneNumberId: z.string().min(1, 'Informe o Phone Number ID.'),
   displayNumber: z.string().min(1, 'Informe o número de exibição.'),
 });
 type FormData = z.infer<typeof schema>;
+
+const statusLabels: Record<string, string> = { ACTIVE: 'Ativo', SUSPENDED: 'Suspenso' };
 
 export function PhoneNumbersPage() {
   const { page, pageSize, setPage, setPageSize } = usePagination();
@@ -29,7 +33,12 @@ export function PhoneNumbersPage() {
   const client = useQueryClient();
   const form = useForm<FormData>({ resolver: zodResolver(schema) });
   const create = useMutation({
-    mutationFn: phoneNumbersApi.create,
+    mutationFn: (data: FormData) =>
+      phoneNumbersApi.create({
+        whatsAppAccountId: data.whatsAppAccountId,
+        phoneNumberId: data.phoneNumberId,
+        displayNumber: data.displayNumber,
+      }),
     onSuccess: () => {
       client.invalidateQueries({ queryKey: ['phone-numbers'] });
     },
@@ -48,11 +57,12 @@ export function PhoneNumbersPage() {
   });
 
   const openCreate = () => {
-    form.reset();
+    form.reset({ tenantId: undefined, whatsAppAccountId: undefined, phoneNumberId: '', displayNumber: '' });
     create.reset();
     setCreateOpen(true);
   };
   const closeCreate = () => setCreateOpen(false);
+  const createTenantId = form.watch('tenantId');
 
   return (
     <Stack spacing={3}>
@@ -88,8 +98,8 @@ export function PhoneNumbersPage() {
               }}
             >
               <MenuItem value="">Todos</MenuItem>
-              <MenuItem value="ACTIVE">ACTIVE</MenuItem>
-              <MenuItem value="SUSPENDED">SUSPENDED</MenuItem>
+              <MenuItem value="ACTIVE">Ativo</MenuItem>
+              <MenuItem value="SUSPENDED">Suspenso</MenuItem>
             </Select>
           </FormControl>
         </Stack>
@@ -98,7 +108,7 @@ export function PhoneNumbersPage() {
             columns={[
               { key: 'displayNumber', label: 'Número' },
               { key: 'phoneNumberId', label: 'Phone Number ID' },
-              { key: 'status', label: 'Status', render: (row) => <Chip label={row.status} size="small" /> },
+              { key: 'status', label: 'Status', render: (row) => <Chip label={statusLabels[row.status] ?? row.status} size="small" /> },
               { key: 'createdAt', label: 'Criado em', render: (row) => new Date(row.createdAt).toLocaleString('pt-BR') },
             ]}
             rows={list.data?.items ?? []}
@@ -132,7 +142,35 @@ export function PhoneNumbersPage() {
           ) : (
             <Stack component="form" spacing={2} onSubmit={form.handleSubmit((data) => create.mutate(data))}>
               {create.error && <Alert severity="error">{create.error.message}</Alert>}
-              <TextField label="ID da conta WhatsApp" {...form.register('whatsAppAccountId')} error={!!form.formState.errors.whatsAppAccountId} helperText={form.formState.errors.whatsAppAccountId?.message} fullWidth autoFocus />
+              <Controller
+                name="tenantId"
+                control={form.control}
+                render={({ field }) => (
+                  <TenantAutocomplete
+                    label="Tenant"
+                    value={field.value ?? ''}
+                    onChange={(id) => {
+                      field.onChange(id);
+                      form.setValue('whatsAppAccountId', '');
+                    }}
+                    error={!!form.formState.errors.tenantId}
+                    helperText={form.formState.errors.tenantId?.message}
+                  />
+                )}
+              />
+              <Controller
+                name="whatsAppAccountId"
+                control={form.control}
+                render={({ field }) => (
+                  <WhatsAppAccountAutocomplete
+                    tenantId={createTenantId ?? ''}
+                    value={field.value ?? ''}
+                    onChange={field.onChange}
+                    error={!!form.formState.errors.whatsAppAccountId}
+                    helperText={form.formState.errors.whatsAppAccountId?.message}
+                  />
+                )}
+              />
               <TextField label="Phone Number ID (Meta)" {...form.register('phoneNumberId')} error={!!form.formState.errors.phoneNumberId} helperText={form.formState.errors.phoneNumberId?.message} fullWidth />
               <TextField label="Número de exibição" placeholder="+5511999999999" {...form.register('displayNumber')} error={!!form.formState.errors.displayNumber} helperText={form.formState.errors.displayNumber?.message} fullWidth />
               <Button type="submit" variant="contained" disabled={create.isPending}>

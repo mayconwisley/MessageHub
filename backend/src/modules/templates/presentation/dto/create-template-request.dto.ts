@@ -12,6 +12,13 @@ import {
 import { TemplateComponentRequestDto } from './template-component-request.dto';
 
 export class CreateTemplateRequestDto {
+  @ApiPropertyOptional({
+    description: 'Obrigatório apenas para requisições autenticadas por sessão administrativa.',
+  })
+  @IsOptional()
+  @IsUUID()
+  tenantId?: string;
+
   @ApiProperty() @IsUUID() whatsAppAccountId!: string;
   @ApiProperty({ example: 'order_confirmation' })
   @IsString()

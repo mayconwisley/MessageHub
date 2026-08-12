@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -12,10 +13,12 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiPropertyOptional, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
 import { AuthContextDto } from '@modules/applications/application/dto/api-key.dto';
-import { CurrentAuthContext } from '@presentation/http/decorators/current-auth-context.decorator';
-import { ApiKeyAuthGuard } from '@presentation/http/guards/api-key-auth.guard';
+import { AuthenticatedUserDto } from '@modules/identity/application/dto/authenticated-user.dto';
+import { CurrentOptionalAuthContext } from '@presentation/http/decorators/current-optional-auth-context.decorator';
+import { CurrentAuthenticatedUser } from '@presentation/http/decorators/current-authenticated-user.decorator';
+import { PlatformAdminOrTenantApiKeyGuard } from '@presentation/http/guards/platform-admin-or-tenant-api-key.guard';
 import { toHttpException } from '@presentation/http/result-http.mapper';
 import { PaginationQueryDto } from '@presentation/http/dto/pagination-query.dto';
 import { PaginatedResult } from '@shared/types';
@@ -39,11 +42,40 @@ class ListTemplatesRequestDto extends PaginationQueryDto {
   @IsOptional()
   @IsString()
   category?: string;
+
+  @ApiPropertyOptional({
+    description: 'Obrigatório apenas para requisições autenticadas por sessão administrativa.',
+  })
+  @IsOptional()
+  @IsUUID()
+  tenantId?: string;
+}
+
+class TenantScopedQueryDto {
+  @ApiPropertyOptional({
+    description: 'Obrigatório apenas para requisições autenticadas por sessão administrativa.',
+  })
+  @IsOptional()
+  @IsUUID()
+  tenantId?: string;
+}
+
+/** Sessão administrativa exige tenantId explícito; API Key já o resolve pelo próprio token (secao 17/18). */
+function resolveTenantId(
+  auth: AuthContextDto | undefined,
+  user: AuthenticatedUserDto | undefined,
+  explicit: string | undefined,
+): string {
+  const tenantId = auth?.tenantId ?? user?.tenantId ?? explicit;
+  if (!tenantId) {
+    throw new BadRequestException('tenantId é obrigatório para requisições administrativas.');
+  }
+  return tenantId;
 }
 
 @ApiTags('templates')
 @ApiBearerAuth()
-@UseGuards(ApiKeyAuthGuard)
+@UseGuards(PlatformAdminOrTenantApiKeyGuard)
 @Controller('v1/templates')
 export class TemplatesController {
   constructor(private readonly templates: TemplateManagementService) {}
@@ -52,10 +84,12 @@ export class TemplatesController {
   @ApiResponse({ status: HttpStatus.CREATED, type: TemplateResponseDto })
   async create(
     @Body() dto: CreateTemplateRequestDto,
-    @CurrentAuthContext() auth: AuthContextDto,
+    @CurrentOptionalAuthContext() auth?: AuthContextDto,
+    @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
   ): Promise<TemplateResponseDto> {
+    const tenantId = resolveTenantId(auth, user, dto.tenantId);
     const result = await this.templates.create(
-      auth.tenantId,
+      tenantId,
       dto.whatsAppAccountId,
       TemplateRequestMapper.toCreateDefinition(dto),
     );
@@ -69,10 +103,12 @@ export class TemplatesController {
     @Query('whatsAppAccountId') accountId: string,
     @Query('sync') sync: string | undefined,
     @Query() query: ListTemplatesRequestDto,
-    @CurrentAuthContext() auth: AuthContextDto,
+    @CurrentOptionalAuthContext() auth?: AuthContextDto,
+    @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
   ): Promise<PaginatedResult<TemplateResponseDto>> {
+    const tenantId = resolveTenantId(auth, user, query.tenantId);
     const result = await this.templates.list(
-      auth.tenantId,
+      tenantId,
       accountId,
       sync === 'true',
       query.page,
@@ -87,9 +123,12 @@ export class TemplatesController {
   @ApiResponse({ status: HttpStatus.OK, type: TemplateResponseDto })
   async getById(
     @Param('id') id: string,
-    @CurrentAuthContext() auth: AuthContextDto,
+    @Query() query: TenantScopedQueryDto,
+    @CurrentOptionalAuthContext() auth?: AuthContextDto,
+    @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
   ): Promise<TemplateResponseDto> {
-    const result = await this.templates.getById(auth.tenantId, id);
+    const tenantId = resolveTenantId(auth, user, query.tenantId);
+    const result = await this.templates.getById(tenantId, id);
     if (result.isFailure) throw toHttpException(result.error);
     return TemplateResponseDto.from(result.value);
   }
@@ -99,9 +138,11 @@ export class TemplatesController {
   @ApiResponse({ status: HttpStatus.OK, type: SyncTemplatesResponseDto })
   async sync(
     @Body() dto: WhatsAppAccountReferenceRequestDto,
-    @CurrentAuthContext() auth: AuthContextDto,
+    @CurrentOptionalAuthContext() auth?: AuthContextDto,
+    @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
   ) {
-    const result = await this.templates.sync(auth.tenantId, dto.whatsAppAccountId);
+    const tenantId = resolveTenantId(auth, user, dto.tenantId);
+    const result = await this.templates.sync(tenantId, dto.whatsAppAccountId);
     if (result.isFailure) throw toHttpException(result.error);
     return result.value;
   }
@@ -111,9 +152,11 @@ export class TemplatesController {
   @ApiResponse({ status: HttpStatus.OK, type: PublishPendingTemplatesResponseDto })
   async publishPending(
     @Body() dto: WhatsAppAccountReferenceRequestDto,
-    @CurrentAuthContext() auth: AuthContextDto,
+    @CurrentOptionalAuthContext() auth?: AuthContextDto,
+    @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
   ) {
-    const result = await this.templates.publishPending(auth.tenantId, dto.whatsAppAccountId);
+    const tenantId = resolveTenantId(auth, user, dto.tenantId);
+    const result = await this.templates.publishPending(tenantId, dto.whatsAppAccountId);
     if (result.isFailure) throw toHttpException(result.error);
     return result.value;
   }
@@ -122,10 +165,12 @@ export class TemplatesController {
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateTemplateRequestDto,
-    @CurrentAuthContext() auth: AuthContextDto,
+    @CurrentOptionalAuthContext() auth?: AuthContextDto,
+    @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
   ): Promise<TemplateResponseDto> {
+    const tenantId = resolveTenantId(auth, user, dto.tenantId);
     const result = await this.templates.update(
-      auth.tenantId,
+      tenantId,
       id,
       TemplateRequestMapper.toUpdateDefinition(dto),
     );
@@ -135,8 +180,14 @@ export class TemplatesController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async delete(@Param('id') id: string, @CurrentAuthContext() auth: AuthContextDto): Promise<void> {
-    const result = await this.templates.delete(auth.tenantId, id);
+  async delete(
+    @Param('id') id: string,
+    @Query() query: TenantScopedQueryDto,
+    @CurrentOptionalAuthContext() auth?: AuthContextDto,
+    @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
+  ): Promise<void> {
+    const tenantId = resolveTenantId(auth, user, query.tenantId);
+    const result = await this.templates.delete(tenantId, id);
     if (result.isFailure) throw toHttpException(result.error);
   }
 }

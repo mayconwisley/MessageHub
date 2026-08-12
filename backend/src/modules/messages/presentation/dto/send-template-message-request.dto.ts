@@ -14,6 +14,9 @@ import { E164_PHONE_NUMBER_REGEX } from '@shared/constants';
 
 /** Contrato público simplificado. A posição de cada item representa {{1}}, {{2}}, ... do BODY. */
 export class SendTemplateMessageRequestDto {
+  /** Obrigatório apenas para requisições autenticadas por sessão administrativa. */
+  @ApiPropertyOptional() @IsOptional() @IsUUID() applicationId?: string;
+
   /** Identifica o número remetente cadastrado no Hub. */
   @ApiProperty() @IsUUID() phoneNumberId!: string;
 
@@ -21,7 +24,7 @@ export class SendTemplateMessageRequestDto {
   @IsString()
   @IsNotEmpty()
   @Matches(E164_PHONE_NUMBER_REGEX, {
-    message: 'to must be a valid E.164 phone number (e.g. +5511999999999).',
+    message: 'to deve ser um número de telefone E.164 válido (ex: +5511999999999).',
   })
   to!: string;
 

@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiPropertyOptional, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { IsEnum, IsOptional, IsUUID } from 'class-validator';
+import { MetaConfigService } from '@infrastructure/configuration/meta-config.service';
 import { IMediator, MEDIATOR } from '@shared/mediator';
 import { PlatformAdminOrTenantApiKeyGuard } from '@presentation/http/guards/platform-admin-or-tenant-api-key.guard';
 import { CurrentOptionalAuthContext } from '@presentation/http/decorators/current-optional-auth-context.decorator';
@@ -21,8 +22,10 @@ import { AuthenticatedUserDto } from '@modules/identity/application/dto/authenti
 import { AuthContextDto } from '@modules/applications/application/dto/api-key.dto';
 import { toHttpException } from '@presentation/http/result-http.mapper';
 import { RegisterWhatsAppAccountCommand } from '../../application/commands/register-whatsapp-account.command';
+import { EnsureDefaultChannelAccountCommand } from '../../application/commands/ensure-default-channel-account.command';
 import { GetWhatsAppAccountQuery } from '../../application/queries/get-whatsapp-account.query';
 import { RegisterWhatsAppAccountRequestDto } from '../dto/register-whatsapp-account-request.dto';
+import { EnsureDefaultChannelAccountRequestDto } from '../dto/ensure-default-channel-account-request.dto';
 import { WhatsAppAccountResponseDto } from '../dto/whatsapp-account-response.dto';
 import { PaginationQueryDto } from '@presentation/http/dto/pagination-query.dto';
 import { ListWhatsAppAccountsQuery } from '../../application/queries/list-whatsapp-accounts.query';
@@ -46,7 +49,34 @@ class ListWhatsAppAccountsRequestDto extends PaginationQueryDto {
 @UseGuards(PlatformAdminOrTenantApiKeyGuard)
 @Controller('v1/whatsapp-accounts')
 export class WhatsAppAccountsController {
-  constructor(@Inject(MEDIATOR) private readonly mediator: IMediator) {}
+  constructor(
+    @Inject(MEDIATOR) private readonly mediator: IMediator,
+    private readonly metaConfig: MetaConfigService,
+  ) {}
+
+  @Get('default-channel')
+  getDefaultChannel(): { enabled: boolean; wabaId: string | null } {
+    return {
+      enabled: this.metaConfig.defaultChannelEnabled && !!this.metaConfig.defaultWabaId,
+      wabaId: this.metaConfig.defaultWabaId,
+    };
+  }
+
+  @Post('default-channel/ensure')
+  @HttpCode(HttpStatus.OK)
+  @ApiResponse({ status: HttpStatus.OK, type: WhatsAppAccountResponseDto })
+  async ensureDefaultChannel(
+    @Body() dto: EnsureDefaultChannelAccountRequestDto,
+    @CurrentOptionalAuthContext() auth?: AuthContextDto,
+    @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
+  ): Promise<WhatsAppAccountResponseDto> {
+    const tenantId = auth?.tenantId ?? user?.tenantId ?? this.requireTenantId(dto.tenantId);
+    const result = await this.mediator.send(new EnsureDefaultChannelAccountCommand(tenantId));
+    if (result.isFailure) {
+      throw toHttpException(result.error);
+    }
+    return WhatsAppAccountResponseDto.fromDto(result.value);
+  }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -103,7 +133,7 @@ export class WhatsAppAccountsController {
 
   private requireTenantId(tenantId: string | undefined): string {
     if (!tenantId)
-      throw new BadRequestException('tenantId is required for administrative requests.');
+      throw new BadRequestException('tenantId é obrigatório para requisições administrativas.');
     return tenantId;
   }
 }

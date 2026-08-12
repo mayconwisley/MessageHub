@@ -48,6 +48,13 @@ export class SendMessageHandler implements ICommandHandler<SendMessageCommand> {
     if (!application) {
       return Result.fail(new ApplicationNotFoundError(command.applicationId));
     }
+    if (
+      command.requestingTenantId &&
+      application.tenantId.value !== command.requestingTenantId
+    ) {
+      // Nunca revelar que a Application existe em outro tenant (secao 17).
+      return Result.fail(new ApplicationNotFoundError(command.applicationId));
+    }
 
     const phoneNumberId = UniqueId.create(command.phoneNumberId);
     const phoneNumber = await this.phoneNumberRepository.findById(phoneNumberId);

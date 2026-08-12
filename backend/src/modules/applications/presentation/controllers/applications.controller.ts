@@ -22,11 +22,15 @@ import { PaginationQueryDto } from '@presentation/http/dto/pagination-query.dto'
 import { PaginatedResult } from '@shared/types';
 import { CreateApplicationCommand } from '../../application/commands/create-application.command';
 import { ConfigureApplicationWebhookCommand } from '../../application/commands/configure-application-webhook.command';
+import { SetApplicationPhoneNumbersCommand } from '../../application/commands/set-application-phone-numbers.command';
 import { ListApplicationsQuery } from '../../application/queries/list-applications.query';
+import { ListApplicationPhoneNumbersQuery } from '../../application/queries/list-application-phone-numbers.query';
 import { ApplicationResponseDto } from '../dto/application-response.dto';
 import { CreateApplicationRequestDto } from '../dto/create-application-request.dto';
 import { ConfigureWebhookRequestDto } from '../dto/configure-webhook-request.dto';
 import { WebhookConfigResponseDto } from '../dto/webhook-config-response.dto';
+import { SetApplicationPhoneNumbersRequestDto } from '../dto/set-application-phone-numbers-request.dto';
+import { LinkedPhoneNumberResponseDto } from '../dto/linked-phone-number-response.dto';
 
 class ListApplicationsRequestDto extends PaginationQueryDto {
   @ApiPropertyOptional()
@@ -58,7 +62,7 @@ export class ApplicationsController {
     @Query() query: ListApplicationsRequestDto,
   ): Promise<PaginatedResult<ApplicationResponseDto>> {
     if (!query.tenantId) {
-      throw new BadRequestException('tenantId is required.');
+      throw new BadRequestException('tenantId é obrigatório.');
     }
     const result = await this.mediator.query(
       new ListApplicationsQuery(query.tenantId, query.page, query.pageSize),
@@ -78,5 +82,28 @@ export class ApplicationsController {
     );
     if (result.isFailure) throw toHttpException(result.error);
     return WebhookConfigResponseDto.fromDto(result.value);
+  }
+
+  @Get(':applicationId/phone-numbers')
+  @ApiResponse({ status: HttpStatus.OK, type: [LinkedPhoneNumberResponseDto] })
+  async listPhoneNumbers(
+    @Param('applicationId') applicationId: string,
+  ): Promise<LinkedPhoneNumberResponseDto[]> {
+    const result = await this.mediator.query(new ListApplicationPhoneNumbersQuery(applicationId));
+    if (result.isFailure) throw toHttpException(result.error);
+    return result.value.map((dto) => LinkedPhoneNumberResponseDto.fromDto(dto));
+  }
+
+  @Put(':applicationId/phone-numbers')
+  @ApiResponse({ status: HttpStatus.OK, type: [LinkedPhoneNumberResponseDto] })
+  async setPhoneNumbers(
+    @Param('applicationId') applicationId: string,
+    @Body() dto: SetApplicationPhoneNumbersRequestDto,
+  ): Promise<LinkedPhoneNumberResponseDto[]> {
+    const result = await this.mediator.send(
+      new SetApplicationPhoneNumbersCommand(applicationId, dto.phoneNumberIds),
+    );
+    if (result.isFailure) throw toHttpException(result.error);
+    return result.value.map((linked) => LinkedPhoneNumberResponseDto.fromDto(linked));
   }
 }

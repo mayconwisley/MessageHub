@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -12,15 +13,18 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiPropertyOptional, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { IsEnum, IsOptional } from 'class-validator';
+import { IsEnum, IsOptional, IsUUID } from 'class-validator';
 import { IDEMPOTENCY_KEY_HEADER } from '@shared/constants';
 import { IMediator, MEDIATOR } from '@shared/mediator';
 import { PaginationQueryDto } from '@presentation/http/dto/pagination-query.dto';
 import { PaginatedResult } from '@shared/types';
-import { CurrentAuthContext } from '@presentation/http/decorators/current-auth-context.decorator';
-import { ApiKeyAuthGuard } from '@presentation/http/guards/api-key-auth.guard';
+import { CurrentOptionalAuthContext } from '@presentation/http/decorators/current-optional-auth-context.decorator';
+import { CurrentAuthenticatedUser } from '@presentation/http/decorators/current-authenticated-user.decorator';
+import { PlatformAdminOrTenantApiKeyGuard } from '@presentation/http/guards/platform-admin-or-tenant-api-key.guard';
 import { toHttpException } from '@presentation/http/result-http.mapper';
 import { AuthContextDto } from '@modules/applications/application/dto/api-key.dto';
+import { AuthenticatedUserDto } from '@modules/identity/application/dto/authenticated-user.dto';
+import { UserRole } from '@modules/identity/domain/enums/user-role.enum';
 import { SendMessageCommand } from '../../application/commands/send-message.command';
 import { GetMessageQuery } from '../../application/queries/get-message.query';
 import { ListMessagesQuery } from '../../application/queries/list-messages.query';
@@ -36,11 +40,42 @@ class ListMessagesRequestDto extends PaginationQueryDto {
   @IsOptional()
   @IsEnum(MessageStatus)
   status?: MessageStatus;
+
+  @ApiPropertyOptional({
+    description: 'Obrigatório apenas para requisições autenticadas por sessão administrativa.',
+  })
+  @IsOptional()
+  @IsUUID()
+  applicationId?: string;
+}
+
+class ApplicationScopedQueryDto {
+  @ApiPropertyOptional({
+    description: 'Obrigatório apenas para requisições autenticadas por sessão administrativa.',
+  })
+  @IsOptional()
+  @IsUUID()
+  applicationId?: string;
+}
+
+/** Sessão administrativa exige applicationId explícito; API Key já o resolve pelo próprio token (secao 17/18). */
+function resolveApplicationId(auth: AuthContextDto | undefined, explicit: string | undefined): string {
+  const applicationId = auth?.applicationId ?? explicit;
+  if (!applicationId) {
+    throw new BadRequestException('applicationId é obrigatório para requisições administrativas.');
+  }
+  return applicationId;
+}
+
+function resolveRequestingTenantId(
+  user: AuthenticatedUserDto | undefined,
+): string | undefined {
+  return user?.role === UserRole.TENANT_ADMIN ? user.tenantId ?? undefined : undefined;
 }
 
 @ApiTags('messages')
 @ApiBearerAuth()
-@UseGuards(ApiKeyAuthGuard)
+@UseGuards(PlatformAdminOrTenantApiKeyGuard)
 @Controller('v1/messages')
 export class MessagesController {
   constructor(@Inject(MEDIATOR) private readonly mediator: IMediator) {}
@@ -50,16 +85,19 @@ export class MessagesController {
   @ApiResponse({ status: HttpStatus.CREATED, type: MessageResponseDto })
   async send(
     @Body() dto: SendMessageRequestDto,
-    @CurrentAuthContext() authContext: AuthContextDto,
+    @CurrentOptionalAuthContext() authContext?: AuthContextDto,
+    @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
     @Headers(IDEMPOTENCY_KEY_HEADER) idempotencyKey?: string,
   ): Promise<MessageResponseDto> {
+    const applicationId = resolveApplicationId(authContext, dto.applicationId);
     const result = await this.mediator.send(
       new SendMessageCommand(
-        authContext.applicationId,
+        applicationId,
         dto.phoneNumberId,
         dto.to,
         dto.content,
         idempotencyKey,
+        resolveRequestingTenantId(user),
       ),
     );
     if (result.isFailure) {
@@ -73,17 +111,20 @@ export class MessagesController {
   @ApiResponse({ status: HttpStatus.CREATED, type: MessageResponseDto })
   async sendTemplate(
     @Body() dto: SendTemplateMessageRequestDto,
-    @CurrentAuthContext() authContext: AuthContextDto,
+    @CurrentOptionalAuthContext() authContext?: AuthContextDto,
+    @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
     @Headers(IDEMPOTENCY_KEY_HEADER) idempotencyKey?: string,
   ): Promise<MessageResponseDto> {
+    const applicationId = resolveApplicationId(authContext, dto.applicationId);
     const result = await this.mediator.send(
       new SendTemplateMessageCommand(
-        authContext.applicationId,
+        applicationId,
         dto.phoneNumberId,
         dto.to,
         { id: dto.templateId, name: dto.templateName },
         dto.parameters ?? [],
         idempotencyKey,
+        resolveRequestingTenantId(user),
       ),
     );
     if (result.isFailure) throw toHttpException(result.error);
@@ -93,10 +134,18 @@ export class MessagesController {
   @Get()
   async list(
     @Query() query: ListMessagesRequestDto,
-    @CurrentAuthContext() authContext: AuthContextDto,
+    @CurrentOptionalAuthContext() authContext?: AuthContextDto,
+    @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
   ): Promise<PaginatedResult<MessageResponseDto>> {
+    const applicationId = resolveApplicationId(authContext, query.applicationId);
     const result = await this.mediator.query(
-      new ListMessagesQuery(authContext.applicationId, query.page, query.pageSize, query.status),
+      new ListMessagesQuery(
+        applicationId,
+        query.page,
+        query.pageSize,
+        query.status,
+        resolveRequestingTenantId(user),
+      ),
     );
     if (result.isFailure) throw toHttpException(result.error);
     return { ...result.value, items: result.value.items.map(MessageResponseDto.fromDto) };
@@ -106,9 +155,14 @@ export class MessagesController {
   @ApiResponse({ status: HttpStatus.OK, type: MessageResponseDto })
   async getById(
     @Param('id') id: string,
-    @CurrentAuthContext() authContext: AuthContextDto,
+    @Query() query: ApplicationScopedQueryDto,
+    @CurrentOptionalAuthContext() authContext?: AuthContextDto,
+    @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
   ): Promise<MessageResponseDto> {
-    const result = await this.mediator.query(new GetMessageQuery(id, authContext.applicationId));
+    const applicationId = resolveApplicationId(authContext, query.applicationId);
+    const result = await this.mediator.query(
+      new GetMessageQuery(id, applicationId, resolveRequestingTenantId(user)),
+    );
     if (result.isFailure) {
       throw toHttpException(result.error);
     }
@@ -119,10 +173,13 @@ export class MessagesController {
   @ApiResponse({ status: HttpStatus.OK, type: [MessageAttemptResponseDto] })
   async listAttempts(
     @Param('id') id: string,
-    @CurrentAuthContext() authContext: AuthContextDto,
+    @Query() query: ApplicationScopedQueryDto,
+    @CurrentOptionalAuthContext() authContext?: AuthContextDto,
+    @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
   ): Promise<MessageAttemptResponseDto[]> {
+    const applicationId = resolveApplicationId(authContext, query.applicationId);
     const result = await this.mediator.query(
-      new ListMessageAttemptsQuery(id, authContext.applicationId),
+      new ListMessageAttemptsQuery(id, applicationId, resolveRequestingTenantId(user)),
     );
     if (result.isFailure) throw toHttpException(result.error);
     return result.value.map(MessageAttemptResponseDto.fromDto);

@@ -1,4 +1,4 @@
-import { Logger as NestLogger, ValidationPipe } from '@nestjs/common';
+import { BadRequestException, Logger as NestLogger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Logger } from 'nestjs-pino';
@@ -6,6 +6,7 @@ import compression from 'compression';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { AppConfigService } from './infrastructure/configuration/app-config.service';
+import { translateValidationErrors } from './presentation/http/validation-message.translator';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { rawBody: true });
@@ -20,7 +21,13 @@ async function bootstrap(): Promise<void> {
     appConfig.corsOrigins.length > 0 ? { origin: appConfig.corsOrigins, credentials: true } : {},
   );
 
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+      exceptionFactory: (errors) => new BadRequestException(translateValidationErrors(errors)),
+    }),
+  );
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Message Hub')

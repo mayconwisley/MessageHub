@@ -9,7 +9,7 @@ export class ApiError extends Error {
 type RequestOptions = Omit<RequestInit, 'body' | 'headers'> & {
   body?: unknown;
   headers?: Record<string, string>;
-  authorization?: 'session' | 'api-key' | 'none';
+  authorization?: 'session' | 'none';
 };
 
 export function toQueryString(params: Record<string, string | number | undefined>): string {
@@ -23,7 +23,7 @@ export function toQueryString(params: Record<string, string | number | undefined
 
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { body, headers, authorization = 'session', ...init } = options;
-  const token = authorization === 'session' ? authStorage.getSessionToken() : authStorage.getApiKey();
+  const token = authorization === 'session' ? authStorage.getSessionToken() : null;
   const response = await fetch(`${baseUrl}${path}`, {
     ...init,
     headers: { ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}), ...(token && authorization !== 'none' ? { Authorization: `Bearer ${token}` } : {}), ...headers },

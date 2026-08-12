@@ -28,12 +28,12 @@ export class PhoneNumber extends Entity<PhoneNumberProps> {
   ): Result<PhoneNumber, InvalidPhoneNumberError> {
     const phoneNumberId = params.phoneNumberId?.trim();
     if (!phoneNumberId) {
-      return Result.fail(new InvalidPhoneNumberError('phoneNumberId must not be empty.'));
+      return Result.fail(new InvalidPhoneNumberError('phoneNumberId não deve estar vazio.'));
     }
 
     const displayNumber = params.displayNumber?.trim();
     if (!displayNumber) {
-      return Result.fail(new InvalidPhoneNumberError('displayNumber must not be empty.'));
+      return Result.fail(new InvalidPhoneNumberError('displayNumber não deve estar vazio.'));
     }
 
     return Result.ok(

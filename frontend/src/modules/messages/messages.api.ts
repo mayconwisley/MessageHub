@@ -23,10 +23,12 @@ export interface MessageAttempt {
 }
 
 export const messagesApi = {
-  send: (data: { phoneNumberId: string; to: string; content: string }) =>
-    request<Message>('/v1/messages', { method: 'POST', body: data, authorization: 'api-key', headers: { 'Idempotency-Key': crypto.randomUUID() } }),
-  get: (id: string) => request<Message>(`/v1/messages/${id}`, { authorization: 'api-key' }),
-  list: (params: { page: number; pageSize: number; status?: string }) =>
-    request<PaginatedResult<Message>>(`/v1/messages${toQueryString(params)}`, { authorization: 'api-key' }),
-  listAttempts: (id: string) => request<MessageAttempt[]>(`/v1/messages/${id}/attempts`, { authorization: 'api-key' }),
+  send: (data: { applicationId: string; phoneNumberId: string; to: string; content: string }) =>
+    request<Message>('/v1/messages', { method: 'POST', body: data, headers: { 'Idempotency-Key': crypto.randomUUID() } }),
+  get: (id: string, applicationId: string) =>
+    request<Message>(`/v1/messages/${id}${toQueryString({ applicationId })}`),
+  list: (params: { applicationId: string; page: number; pageSize: number; status?: string }) =>
+    request<PaginatedResult<Message>>(`/v1/messages${toQueryString(params)}`),
+  listAttempts: (id: string, applicationId: string) =>
+    request<MessageAttempt[]>(`/v1/messages/${id}/attempts${toQueryString({ applicationId })}`),
 };

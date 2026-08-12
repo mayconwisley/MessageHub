@@ -5,6 +5,7 @@ import { TenantsModule } from '@modules/tenants/tenants.module';
 import { GetWhatsAppAccountHandler } from './application/handlers/get-whatsapp-account.handler';
 import { RegisterWhatsAppAccountHandler } from './application/handlers/register-whatsapp-account.handler';
 import { ListWhatsAppAccountsHandler } from './application/handlers/list-whatsapp-accounts.handler';
+import { EnsureDefaultChannelAccountHandler } from './application/handlers/ensure-default-channel-account.handler';
 import { WHATSAPP_ACCOUNT_REPOSITORY } from './domain/repositories/whatsapp-account.repository.interface';
 import { WhatsAppAccountOrmEntity } from './infrastructure/entities/whatsapp-account.orm-entity';
 import { PostgresWhatsAppAccountRepository } from './infrastructure/repositories/postgres-whatsapp-account.repository';
@@ -20,6 +21,7 @@ import { WhatsAppAccountsController } from './presentation/controllers/whatsapp-
     RegisterWhatsAppAccountHandler,
     GetWhatsAppAccountHandler,
     ListWhatsAppAccountsHandler,
+    EnsureDefaultChannelAccountHandler,
   ],
   exports: [WHATSAPP_ACCOUNT_REPOSITORY],
 })

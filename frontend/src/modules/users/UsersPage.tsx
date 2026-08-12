@@ -19,6 +19,12 @@ const schema = z.object({
 });
 type FormData = z.infer<typeof schema>;
 
+const roleLabels: Record<string, string> = {
+  platform_admin: 'Administrador da plataforma',
+  tenant_admin: 'Administrador do tenant',
+  operator: 'Operador',
+};
+
 export function UsersPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const form = useForm<FormData>({ resolver: zodResolver(schema), defaultValues: { role: 'tenant_admin' } });
@@ -64,9 +70,9 @@ export function UsersPage() {
               <TextField label="E-mail" type="email" autoComplete="off" {...form.register('email')} error={!!form.formState.errors.email} helperText={form.formState.errors.email?.message} fullWidth />
               <TextField label="Senha" type="password" autoComplete="new-password" {...form.register('password')} error={!!form.formState.errors.password} helperText={form.formState.errors.password?.message} fullWidth />
               <TextField label="Papel" select {...form.register('role')} fullWidth>
-                <MenuItem value="platform_admin">platform_admin</MenuItem>
-                <MenuItem value="tenant_admin">tenant_admin</MenuItem>
-                <MenuItem value="operator">operator</MenuItem>
+                <MenuItem value="platform_admin">{roleLabels.platform_admin}</MenuItem>
+                <MenuItem value="tenant_admin">{roleLabels.tenant_admin}</MenuItem>
+                <MenuItem value="operator">{roleLabels.operator}</MenuItem>
               </TextField>
               {role !== 'platform_admin' && (
                 <Controller

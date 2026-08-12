@@ -27,7 +27,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
     response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
       code: 'INTERNAL_SERVER_ERROR',
-      message: 'Unexpected error.',
+      message: 'Erro inesperado.',
       requestId,
     });
   }

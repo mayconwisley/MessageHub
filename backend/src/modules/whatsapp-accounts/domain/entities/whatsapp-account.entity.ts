@@ -33,26 +33,26 @@ export class WhatsAppAccount extends Entity<WhatsAppAccountProps> {
   ): Result<WhatsAppAccount, InvalidWhatsAppAccountError> {
     const wabaId = params.wabaId?.trim();
     if (!wabaId) {
-      return Result.fail(new InvalidWhatsAppAccountError('wabaId must not be empty.'));
+      return Result.fail(new InvalidWhatsAppAccountError('wabaId não deve estar vazio.'));
     }
 
     const credentialSource = params.credentialSource ?? WhatsAppCredentialSource.TENANT;
     if (!Object.values(WhatsAppCredentialSource).includes(credentialSource)) {
-      return Result.fail(new InvalidWhatsAppAccountError('credentialSource is invalid.'));
+      return Result.fail(new InvalidWhatsAppAccountError('credentialSource é inválido.'));
     }
 
     const accessToken = params.accessToken?.trim() ?? null;
     const appSecret = params.appSecret?.trim() ?? null;
     if (credentialSource === WhatsAppCredentialSource.TENANT && !accessToken) {
       return Result.fail(
-        new InvalidWhatsAppAccountError('accessToken must not be empty for tenant credentials.'),
+        new InvalidWhatsAppAccountError('accessToken não deve estar vazio para credenciais de tenant.'),
       );
     }
 
     if (credentialSource === WhatsAppCredentialSource.DEFAULT && accessToken) {
       return Result.fail(
         new InvalidWhatsAppAccountError(
-          'accessToken must not be provided for default credentials.',
+          'accessToken não deve ser informado para credenciais padrão.',
         ),
       );
     }

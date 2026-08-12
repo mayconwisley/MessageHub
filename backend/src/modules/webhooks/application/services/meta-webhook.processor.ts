@@ -7,7 +7,19 @@ import {
   IMessageStatusWebhookPublisher,
   MESSAGE_STATUS_WEBHOOK_PUBLISHER,
 } from '@modules/messages/application/ports/message-status-webhook-publisher.interface';
+import {
+  IPhoneNumberRepository,
+  PHONE_NUMBER_REPOSITORY,
+} from '@modules/phone-numbers/domain/repositories/phone-number.repository.interface';
+import {
+  APPLICATION_PHONE_NUMBER_LINK_REPOSITORY,
+  IApplicationPhoneNumberLinkRepository,
+} from '@modules/applications/domain/repositories/application-phone-number-link.repository.interface';
 import { PinoLogger } from 'nestjs-pino';
+import {
+  IInboundMessageWebhookPublisher,
+  INBOUND_MESSAGE_WEBHOOK_PUBLISHER,
+} from '../ports/inbound-message-webhook-publisher.interface';
 
 interface MetaStatus {
   id?: string;
@@ -15,7 +27,11 @@ interface MetaStatus {
 }
 interface MetaChange {
   field?: string;
-  value?: { statuses?: MetaStatus[] };
+  value?: {
+    statuses?: MetaStatus[];
+    messages?: Record<string, unknown>[];
+    metadata?: { phone_number_id?: string };
+  };
 }
 interface MetaWebhookPayload {
   object?: string;
@@ -28,6 +44,11 @@ export class MetaWebhookProcessor {
     @Inject(MESSAGE_REPOSITORY) private readonly messages: IMessageRepository,
     @Inject(MESSAGE_STATUS_WEBHOOK_PUBLISHER)
     private readonly statusWebhookPublisher: IMessageStatusWebhookPublisher,
+    @Inject(PHONE_NUMBER_REPOSITORY) private readonly phoneNumbers: IPhoneNumberRepository,
+    @Inject(APPLICATION_PHONE_NUMBER_LINK_REPOSITORY)
+    private readonly links: IApplicationPhoneNumberLinkRepository,
+    @Inject(INBOUND_MESSAGE_WEBHOOK_PUBLISHER)
+    private readonly inboundMessageWebhookPublisher: IInboundMessageWebhookPublisher,
     private readonly logger: PinoLogger,
   ) {
     this.logger.setContext(MetaWebhookProcessor.name);
@@ -39,7 +60,35 @@ export class MetaWebhookProcessor {
       for (const change of entry.changes ?? []) {
         if (change.field !== 'messages') continue;
         for (const status of change.value?.statuses ?? []) await this.applyStatus(status);
+        const providerPhoneNumberId = change.value?.metadata?.phone_number_id;
+        if (providerPhoneNumberId) {
+          for (const message of change.value?.messages ?? [])
+            await this.forwardInboundMessage(providerPhoneNumberId, message);
+        }
       }
+  }
+  private async forwardInboundMessage(
+    providerPhoneNumberId: string,
+    message: Record<string, unknown>,
+  ): Promise<void> {
+    const phoneNumber = await this.phoneNumbers.findByProviderPhoneNumberId(providerPhoneNumberId);
+    if (!phoneNumber) return;
+    const applicationIds = await this.links.listApplicationIdsByPhoneNumber(phoneNumber.id);
+    for (const applicationId of applicationIds) {
+      try {
+        await this.inboundMessageWebhookPublisher.publishInboundMessageReceived({
+          applicationId: applicationId.value,
+          phoneNumberId: providerPhoneNumberId,
+          message,
+          receivedAt: new Date().toISOString(),
+        });
+      } catch (error: unknown) {
+        this.logger.error(
+          { err: error, applicationId: applicationId.value },
+          'Failed to publish inbound message webhook event.',
+        );
+      }
+    }
   }
   private async applyStatus(status: MetaStatus): Promise<void> {
     if (!status.id || !status.status) return;

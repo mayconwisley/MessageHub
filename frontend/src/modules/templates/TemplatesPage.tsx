@@ -2,20 +2,41 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Alert, Button, Chip, FormControl, InputLabel, MenuItem, Select, Stack, TextField } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { AsyncState } from '../../components/shared/AsyncState';
 import { FormDialog } from '../../components/shared/FormDialog';
 import { PaginatedTable } from '../../components/shared/PaginatedTable';
+import { TenantAutocomplete } from '../../components/shared/TenantAutocomplete';
+import { WhatsAppAccountAutocomplete } from '../../components/shared/WhatsAppAccountAutocomplete';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { usePagination } from '../../hooks/usePagination';
 import { templatesApi, type Template } from './templates.api';
 
-const createSchema = z.object({ whatsAppAccountId: z.string().uuid(), name: z.string().min(1), language: z.string().min(2), category: z.string().min(1), body: z.string().min(1) });
+const createSchema = z.object({
+  tenantId: z.string().uuid('Selecione um tenant.'),
+  whatsAppAccountId: z.string().uuid('Selecione uma conta WhatsApp.'),
+  name: z.string().min(1, 'Informe o nome do template.'),
+  language: z.string().min(2, 'Informe o idioma do template.'),
+  category: z.string().min(1, 'Informe a categoria do template.'),
+  body: z.string().min(1, 'Informe o texto do corpo do template.'),
+});
 type CreateFormData = z.infer<typeof createSchema>;
 
-const editSchema = z.object({ category: z.string().min(1), body: z.string().min(1) });
+const editSchema = z.object({
+  category: z.string().min(1, 'Informe a categoria do template.'),
+  body: z.string().min(1, 'Informe o texto do corpo do template.'),
+});
 type EditFormData = z.infer<typeof editSchema>;
+
+const statusLabels: Record<string, string> = {
+  DRAFT: 'Rascunho',
+  PENDING: 'Pendente',
+  APPROVED: 'Aprovado',
+  REJECTED: 'Rejeitado',
+  PAUSED: 'Pausado',
+  DISABLED: 'Desativado',
+};
 
 function bodyTextOf(template: Template): string {
   return template.components.find((component) => component.type === 'BODY')?.text ?? '';
@@ -23,6 +44,7 @@ function bodyTextOf(template: Template): string {
 
 export function TemplatesPage() {
   const { page, pageSize, setPage, setPageSize } = usePagination();
+  const [tenantIdFilter, setTenantIdFilter] = useState('');
   const [accountId, setAccountId] = useState('');
   const [status, setStatus] = useState('');
   const [category, setCategory] = useState('');
@@ -33,32 +55,56 @@ export function TemplatesPage() {
   const createForm = useForm<CreateFormData>({ resolver: zodResolver(createSchema), defaultValues: { language: 'pt_BR', category: 'UTILITY' } });
   const editForm = useForm<EditFormData>({ resolver: zodResolver(editSchema) });
 
+  const validTenant = z.string().uuid().safeParse(tenantIdFilter).success;
   const validAccount = z.string().uuid().safeParse(accountId).success;
   const list = useQuery({
     queryKey: ['templates', accountId, page, pageSize, status, category],
-    queryFn: () => templatesApi.list({ whatsAppAccountId: accountId, page, pageSize, status: status || undefined, category: category || undefined }),
-    enabled: validAccount,
+    queryFn: () => templatesApi.list({ tenantId: tenantIdFilter, whatsAppAccountId: accountId, page, pageSize, status: status || undefined, category: category || undefined }),
+    enabled: validTenant && validAccount,
   });
 
   const invalidateList = () => client.invalidateQueries({ queryKey: ['templates', accountId] });
-  const create = useMutation({ mutationFn: templatesApi.create, onSuccess: invalidateList });
+  const create = useMutation({
+    mutationFn: (data: CreateFormData) =>
+      templatesApi.create({
+        tenantId: data.tenantId,
+        whatsAppAccountId: data.whatsAppAccountId,
+        name: data.name,
+        language: data.language,
+        category: data.category,
+        body: data.body,
+      }),
+    onSuccess: invalidateList,
+  });
   const update = useMutation({
-    mutationFn: (data: EditFormData) => templatesApi.update(editing!.id, data),
+    mutationFn: (data: EditFormData) => templatesApi.update(editing!.id, { ...data, tenantId: tenantIdFilter }),
     onSuccess: () => {
       setEditing(null);
       invalidateList();
     },
   });
-  const remove = useMutation({ mutationFn: templatesApi.delete, onSuccess: invalidateList });
-  const sync = useMutation({ mutationFn: templatesApi.sync, onSuccess: invalidateList });
-  const publishPending = useMutation({ mutationFn: templatesApi.publishPending, onSuccess: invalidateList });
+  const remove = useMutation({ mutationFn: (id: string) => templatesApi.delete(id, tenantIdFilter), onSuccess: invalidateList });
+  const sync = useMutation({
+    mutationFn: () => templatesApi.sync(tenantIdFilter, accountId),
+    onSuccess: invalidateList,
+  });
+  const publishPending = useMutation({
+    mutationFn: () => templatesApi.publishPending(tenantIdFilter, accountId),
+    onSuccess: invalidateList,
+  });
 
   const openCreate = () => {
-    createForm.reset({ language: 'pt_BR', category: 'UTILITY', whatsAppAccountId: accountId || undefined });
+    createForm.reset({
+      language: 'pt_BR',
+      category: 'UTILITY',
+      tenantId: tenantIdFilter || undefined,
+      whatsAppAccountId: accountId || undefined,
+    });
     create.reset();
     setCreateOpen(true);
   };
   const closeCreate = () => setCreateOpen(false);
+  const createTenantId = createForm.watch('tenantId');
 
   const startEdit = (template: Template) => {
     setEditing(template);
@@ -78,14 +124,25 @@ export function TemplatesPage() {
       />
       <Stack spacing={2}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ flexWrap: 'wrap' }}>
-          <TextField
-            label="ID da conta WhatsApp"
-            value={accountId}
-            onChange={(event) => {
-              setAccountId(event.target.value);
+          <TenantAutocomplete
+            label="Filtrar por tenant"
+            value={tenantIdFilter}
+            onChange={(id) => {
+              setTenantIdFilter(id);
+              setAccountId('');
               setPage(1);
             }}
-            sx={{ minWidth: 320 }}
+            sx={{ minWidth: 260 }}
+          />
+          <WhatsAppAccountAutocomplete
+            label="Filtrar por conta WhatsApp"
+            tenantId={tenantIdFilter}
+            value={accountId}
+            onChange={(id) => {
+              setAccountId(id);
+              setPage(1);
+            }}
+            sx={{ minWidth: 260 }}
           />
           <FormControl size="small" sx={{ width: 200 }}>
             <InputLabel id="template-status-filter">Status</InputLabel>
@@ -100,7 +157,7 @@ export function TemplatesPage() {
             >
               <MenuItem value="">Todos</MenuItem>
               {['DRAFT', 'PENDING', 'APPROVED', 'REJECTED', 'PAUSED', 'DISABLED'].map((value) => (
-                <MenuItem key={value} value={value}>{value}</MenuItem>
+                <MenuItem key={value} value={value}>{statusLabels[value] ?? value}</MenuItem>
               ))}
             </Select>
           </FormControl>
@@ -113,18 +170,21 @@ export function TemplatesPage() {
             }}
             sx={{ width: 200 }}
           />
-          <Button type="button" variant="outlined" onClick={() => sync.mutate(accountId)} disabled={!validAccount || sync.isPending} sx={{ whiteSpace: 'nowrap' }}>Sincronizar com Meta</Button>
-          <Button type="button" variant="outlined" onClick={() => publishPending.mutate(accountId)} disabled={!validAccount || publishPending.isPending} sx={{ whiteSpace: 'nowrap' }}>Publicar pendentes</Button>
+          <Button type="button" variant="outlined" onClick={() => sync.mutate()} disabled={!validAccount || sync.isPending} sx={{ whiteSpace: 'nowrap' }}>Sincronizar com Meta</Button>
+          <Button type="button" variant="outlined" onClick={() => publishPending.mutate()} disabled={!validAccount || publishPending.isPending} sx={{ whiteSpace: 'nowrap' }}>Publicar pendentes</Button>
         </Stack>
+        {sync.error && <Alert severity="error">{sync.error.message}</Alert>}
         {sync.data && <Alert severity="success">Sincronização concluída: {sync.data.total} templates processados.</Alert>}
+        {publishPending.error && <Alert severity="error">{publishPending.error.message}</Alert>}
         {publishPending.data && <Alert severity="success">Publicação concluída: {publishPending.data.total} templates processados.</Alert>}
+        {remove.error && <Alert severity="error">{remove.error.message}</Alert>}
         <AsyncState isLoading={validAccount && list.isLoading} error={list.error} emptyMessage={validAccount ? undefined : 'Informe uma conta válida para listar os templates.'}>
           <PaginatedTable<Template>
             columns={[
               { key: 'name', label: 'Nome' },
               { key: 'language', label: 'Idioma' },
               { key: 'category', label: 'Categoria' },
-              { key: 'status', label: 'Status', render: (row) => <Chip label={row.status} size="small" /> },
+              { key: 'status', label: 'Status', render: (row) => <Chip label={statusLabels[row.status] ?? row.status} size="small" /> },
             ]}
             rows={list.data?.items ?? []}
             total={list.data?.total ?? 0}
@@ -157,11 +217,39 @@ export function TemplatesPage() {
           ) : (
             <Stack component="form" spacing={2} onSubmit={createForm.handleSubmit((data) => create.mutate(data))}>
               {create.error && <Alert severity="error">{create.error.message}</Alert>}
-              <TextField label="ID da conta WhatsApp" {...createForm.register('whatsAppAccountId')} error={!!createForm.formState.errors.whatsAppAccountId} helperText={createForm.formState.errors.whatsAppAccountId?.message} fullWidth autoFocus />
-              <TextField label="Nome" {...createForm.register('name')} fullWidth />
-              <TextField label="Idioma" {...createForm.register('language')} fullWidth />
-              <TextField label="Categoria" {...createForm.register('category')} fullWidth />
-              <TextField label="Texto do corpo" multiline minRows={4} {...createForm.register('body')} fullWidth />
+              <Controller
+                name="tenantId"
+                control={createForm.control}
+                render={({ field }) => (
+                  <TenantAutocomplete
+                    label="Tenant"
+                    value={field.value ?? ''}
+                    onChange={(id) => {
+                      field.onChange(id);
+                      createForm.setValue('whatsAppAccountId', '');
+                    }}
+                    error={!!createForm.formState.errors.tenantId}
+                    helperText={createForm.formState.errors.tenantId?.message}
+                  />
+                )}
+              />
+              <Controller
+                name="whatsAppAccountId"
+                control={createForm.control}
+                render={({ field }) => (
+                  <WhatsAppAccountAutocomplete
+                    tenantId={createTenantId ?? ''}
+                    value={field.value ?? ''}
+                    onChange={field.onChange}
+                    error={!!createForm.formState.errors.whatsAppAccountId}
+                    helperText={createForm.formState.errors.whatsAppAccountId?.message}
+                  />
+                )}
+              />
+              <TextField label="Nome" {...createForm.register('name')} error={!!createForm.formState.errors.name} helperText={createForm.formState.errors.name?.message} fullWidth />
+              <TextField label="Idioma" {...createForm.register('language')} error={!!createForm.formState.errors.language} helperText={createForm.formState.errors.language?.message} fullWidth />
+              <TextField label="Categoria" {...createForm.register('category')} error={!!createForm.formState.errors.category} helperText={createForm.formState.errors.category?.message} fullWidth />
+              <TextField label="Texto do corpo" multiline minRows={4} {...createForm.register('body')} error={!!createForm.formState.errors.body} helperText={createForm.formState.errors.body?.message} fullWidth />
               <Button type="submit" variant="contained" disabled={create.isPending}>Criar template</Button>
             </Stack>
           )}

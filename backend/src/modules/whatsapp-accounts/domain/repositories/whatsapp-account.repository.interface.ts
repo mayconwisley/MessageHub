@@ -10,6 +10,7 @@ export interface ListWhatsAppAccountsFilter {
 export interface IWhatsAppAccountRepository {
   save(whatsAppAccount: WhatsAppAccount): Promise<void>;
   findById(id: UniqueId): Promise<WhatsAppAccount | null>;
+  findByTenantAndWabaId(tenantId: UniqueId, wabaId: string): Promise<WhatsAppAccount | null>;
   listByTenantId(
     tenantId: UniqueId,
     page: number,

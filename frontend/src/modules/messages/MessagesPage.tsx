@@ -1,36 +1,91 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Alert, Button, Card, CardContent, Chip, FormControl, InputLabel, MenuItem, Select, Stack, TextField, Typography } from '@mui/material';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useEffect, useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { AsyncState } from '../../components/shared/AsyncState';
 import { EntityResult } from '../../components/shared/EntityResult';
 import { FormDialog } from '../../components/shared/FormDialog';
 import { PaginatedTable } from '../../components/shared/PaginatedTable';
+import { ApplicationAutocomplete } from '../../components/shared/ApplicationAutocomplete';
+import { PhoneNumberAutocomplete } from '../../components/shared/PhoneNumberAutocomplete';
+import { TenantAutocomplete } from '../../components/shared/TenantAutocomplete';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { usePagination } from '../../hooks/usePagination';
+import { applicationsApi } from '../applications/applications.api';
+import { tenantsApi } from '../tenants/tenants.api';
 import { messagesApi, type Message } from './messages.api';
 
-const schema = z.object({ phoneNumberId: z.string().uuid(), to: z.string().min(8), content: z.string().min(1).max(4096) });
+const schema = z.object({
+  phoneNumberId: z.string().uuid('Informe um UUID válido.'),
+  to: z.string().min(8, 'Informe um número de telefone válido.'),
+  content: z
+    .string()
+    .min(1, 'Informe o conteúdo da mensagem.')
+    .max(4096, 'A mensagem deve ter no máximo 4096 caracteres.'),
+});
 type FormData = z.infer<typeof schema>;
+
+const statusLabels: Record<string, string> = {
+  PENDING: 'Pendente',
+  PROCESSING: 'Processando',
+  SENT: 'Enviada',
+  DELIVERED: 'Entregue',
+  READ: 'Lida',
+  FAILED: 'Falhou',
+  RETRY: 'Repetindo',
+};
+
+const attemptStatusLabels: Record<string, string> = { SUCCEEDED: 'Sucesso', FAILED: 'Falhou' };
 
 export function MessagesPage() {
   const { page, pageSize, setPage, setPageSize } = usePagination();
+  const [tenantId, setTenantId] = useState('');
+  const [applicationId, setApplicationId] = useState('');
   const [status, setStatus] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sendOpen, setSendOpen] = useState(false);
   const form = useForm<FormData>({ resolver: zodResolver(schema) });
-  const send = useMutation({ mutationFn: messagesApi.send });
-  const get = useMutation({ mutationFn: messagesApi.get });
+  const send = useMutation({ mutationFn: (data: FormData) => messagesApi.send({ ...data, applicationId }) });
+  const get = useMutation({ mutationFn: (id: string) => messagesApi.get(id, applicationId) });
+
+  const validTenantId = z.string().uuid().safeParse(tenantId).success;
+  const validApplicationId = z.string().uuid().safeParse(applicationId).success;
+
+  const tenants = useQuery({
+    queryKey: ['tenants-select'],
+    queryFn: () => tenantsApi.list({ page: 1, pageSize: 100 }),
+    staleTime: 60_000,
+  });
+  const applications = useQuery({
+    queryKey: ['applications-select', tenantId],
+    queryFn: () => applicationsApi.list({ tenantId, page: 1, pageSize: 100 }),
+    enabled: validTenantId,
+    staleTime: 60_000,
+  });
+
+  // Reduz cliques: seleciona automaticamente quando só existe uma opção disponível.
+  useEffect(() => {
+    if (!tenantId && tenants.data?.items.length === 1) {
+      setTenantId(tenants.data.items[0].id);
+    }
+  }, [tenantId, tenants.data]);
+  useEffect(() => {
+    if (validTenantId && !applicationId && applications.data?.items.length === 1) {
+      setApplicationId(applications.data.items[0].id);
+    }
+  }, [validTenantId, applicationId, applications.data]);
+
   const list = useQuery({
-    queryKey: ['messages', page, pageSize, status],
-    queryFn: () => messagesApi.list({ page, pageSize, status: status || undefined }),
+    queryKey: ['messages', applicationId, page, pageSize, status],
+    queryFn: () => messagesApi.list({ applicationId, page, pageSize, status: status || undefined }),
+    enabled: validApplicationId,
   });
   const attempts = useQuery({
-    queryKey: ['message-attempts', selectedId],
-    queryFn: () => messagesApi.listAttempts(selectedId as string),
-    enabled: !!selectedId,
+    queryKey: ['message-attempts', selectedId, applicationId],
+    queryFn: () => messagesApi.listAttempts(selectedId as string, applicationId),
+    enabled: !!selectedId && validApplicationId,
   });
 
   const openSend = () => {
@@ -46,16 +101,37 @@ export function MessagesPage() {
         title="Mensagens"
         description="Envie uma mensagem de texto e acompanhe o estado assíncrono do processamento."
         action={
-          <Button variant="contained" onClick={openSend} sx={{ mt: 2 }}>
+          <Button variant="contained" onClick={openSend} disabled={!validApplicationId} sx={{ mt: 2 }}>
             Enviar mensagem
           </Button>
         }
       />
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+        <TenantAutocomplete
+          label="Tenant"
+          value={tenantId}
+          onChange={(id) => {
+            setTenantId(id);
+            setApplicationId('');
+            setPage(1);
+          }}
+          sx={{ maxWidth: 320, flexGrow: 1 }}
+        />
+        <ApplicationAutocomplete
+          tenantId={tenantId}
+          value={applicationId}
+          onChange={(id) => {
+            setApplicationId(id);
+            setPage(1);
+          }}
+          sx={{ maxWidth: 320, flexGrow: 1 }}
+        />
+      </Stack>
       <Card variant="outlined">
         <CardContent>
           <Stack direction={{ xs: 'column', sm: 'row' }} component="form" spacing={2} onSubmit={(event) => { event.preventDefault(); const id = new FormData(event.currentTarget).get('id'); if (typeof id === 'string' && id) get.mutate(id); }}>
             <TextField name="id" label="ID da mensagem" fullWidth />
-            <Button type="submit" variant="outlined" sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}>Consultar status</Button>
+            <Button type="submit" variant="outlined" disabled={!validApplicationId} sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}>Consultar status</Button>
           </Stack>
           {get.error && <Alert severity="error" sx={{ mt: 2 }}>{get.error.message}</Alert>}
           {get.data && (
@@ -79,16 +155,16 @@ export function MessagesPage() {
           >
             <MenuItem value="">Todos</MenuItem>
             {['PENDING', 'PROCESSING', 'SENT', 'DELIVERED', 'READ', 'FAILED', 'RETRY'].map((value) => (
-              <MenuItem key={value} value={value}>{value}</MenuItem>
+              <MenuItem key={value} value={value}>{statusLabels[value] ?? value}</MenuItem>
             ))}
           </Select>
         </FormControl>
-        <AsyncState isLoading={list.isLoading} error={list.error}>
+        <AsyncState isLoading={validApplicationId && list.isLoading} error={list.error} emptyMessage={validApplicationId ? undefined : 'Selecione um tenant e uma aplicação para listar as mensagens.'}>
           <PaginatedTable<Message>
             columns={[
               { key: 'to', label: 'Destinatário' },
               { key: 'type', label: 'Tipo' },
-              { key: 'status', label: 'Status', render: (row) => <Chip label={row.status} size="small" /> },
+              { key: 'status', label: 'Status', render: (row) => <Chip label={statusLabels[row.status] ?? row.status} size="small" /> },
               { key: 'attemptCount', label: 'Tentativas' },
               { key: 'createdAt', label: 'Criado em', render: (row) => new Date(row.createdAt).toLocaleString('pt-BR') },
             ]}
@@ -121,9 +197,21 @@ export function MessagesPage() {
           ) : (
             <Stack component="form" spacing={2} onSubmit={form.handleSubmit((data) => send.mutate(data))}>
               {send.error && <Alert severity="error">{send.error.message}</Alert>}
-              <TextField label="ID do número remetente" {...form.register('phoneNumberId')} error={!!form.formState.errors.phoneNumberId} helperText={form.formState.errors.phoneNumberId?.message} fullWidth autoFocus />
-              <TextField label="Destinatário" placeholder="+5511999999999" {...form.register('to')} fullWidth />
-              <TextField label="Mensagem" multiline minRows={4} {...form.register('content')} fullWidth />
+              <Controller
+                name="phoneNumberId"
+                control={form.control}
+                render={({ field }) => (
+                  <PhoneNumberAutocomplete
+                    tenantId={tenantId}
+                    value={field.value ?? ''}
+                    onChange={field.onChange}
+                    error={!!form.formState.errors.phoneNumberId}
+                    helperText={form.formState.errors.phoneNumberId?.message}
+                  />
+                )}
+              />
+              <TextField label="Destinatário" placeholder="+5511999999999" {...form.register('to')} error={!!form.formState.errors.to} helperText={form.formState.errors.to?.message} fullWidth />
+              <TextField label="Mensagem" multiline minRows={4} {...form.register('content')} error={!!form.formState.errors.content} helperText={form.formState.errors.content?.message} fullWidth />
               <Button type="submit" variant="contained" disabled={send.isPending}>{send.isPending ? 'Enviando...' : 'Enviar mensagem'}</Button>
             </Stack>
           )}
@@ -138,8 +226,12 @@ export function MessagesPage() {
                 <Stack key={attempt.id} direction="row" justifyContent="space-between" alignItems="center" sx={{ py: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
                   <Typography>#{attempt.attemptNumber} · {new Date(attempt.occurredAt).toLocaleString('pt-BR')}</Typography>
                   <Stack direction="row" spacing={1} alignItems="center">
-                    {attempt.errorMessage && <Typography color="error" variant="body2">{attempt.errorMessage}</Typography>}
-                    <Chip label={attempt.status} size="small" />
+                    {attempt.errorMessage && (
+                      <Alert severity="error" variant="outlined" sx={{ py: 0, px: 1 }}>
+                        {attempt.errorMessage}
+                      </Alert>
+                    )}
+                    <Chip label={attemptStatusLabels[attempt.status] ?? attempt.status} size="small" />
                   </Stack>
                 </Stack>
               ))}

@@ -21,6 +21,10 @@ export class MetaConfigService {
     return this.configService.get<string>('meta.defaultAccessToken', { infer: true }) ?? null;
   }
 
+  get defaultWabaId(): string | null {
+    return this.configService.get<string>('meta.defaultWabaId', { infer: true }) ?? null;
+  }
+
   get credentialsEncryptionKey(): string {
     return this.configService.get<string>('meta.credentialsEncryptionKey', {
       infer: true,

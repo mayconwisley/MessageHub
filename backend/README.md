@@ -34,6 +34,28 @@ Com o valor padrão do `.env.example`, a API fica disponível em `http://localho
 documentação Swagger em `http://localhost:3000/docs` e o health check em
 `http://localhost:3000/health`.
 
+## Console web (frontend)
+
+O diretório `frontend/` contém um console operacional em React para administrar o Hub sem chamar a
+API diretamente.
+
+```bash
+cp frontend/.env.example frontend/.env
+npm install --prefix frontend
+npm run dev --prefix frontend
+```
+
+Com o valor padrão do `frontend/.env.example`, o console fica disponível em
+`http://localhost:5173` e consome a API configurada em `VITE_API_URL`. O login usa a sessão
+administrativa (`POST /v1/auth/sessions`); veja as credenciais iniciais em
+[Autenticação administrativa](#autenticação-administrativa).
+
+Dentro do próprio console, a tela **Manual do usuário** (`/help`, no menu lateral) explica em
+português, tela por tela, como cadastrar tenants, aplicações, contas WhatsApp, números, API keys e
+templates, e como enviar e acompanhar mensagens — é a referência recomendada para quem opera o
+Hub pela interface web. Para quem vai integrar sistemas via API, use a tela **Documentação da
+API** (`/api-docs`) ou o Swagger em `/docs`.
+
 ## Fluxo de ponta a ponta
 
 1. `POST /v1/tenants` — cria um Tenant.

@@ -30,10 +30,15 @@ export class PostgresWhatsAppAccountRepository implements IWhatsAppAccountReposi
 
   async findById(id: UniqueId): Promise<WhatsAppAccount | null> {
     const row = await this.repository.findOne({ where: { id: id.value } });
-    if (!row) {
-      return null;
-    }
+    return row ? this.hydrate(row) : null;
+  }
 
+  async findByTenantAndWabaId(tenantId: UniqueId, wabaId: string): Promise<WhatsAppAccount | null> {
+    const row = await this.repository.findOne({ where: { tenantId: tenantId.value, wabaId } });
+    return row ? this.hydrate(row) : null;
+  }
+
+  private async hydrate(row: WhatsAppAccountOrmEntity): Promise<WhatsAppAccount> {
     const accessToken = row.encryptedAccessToken
       ? this.decryptAccessToken(row.encryptedAccessToken)
       : null;
