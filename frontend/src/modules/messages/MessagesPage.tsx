@@ -1,0 +1,12 @@
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Alert, Button, Card, CardContent, Grid, Stack, TextField } from '@mui/material';
+import { useMutation } from '@tanstack/react-query';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { EntityResult } from '../../components/shared/EntityResult';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { messagesApi } from './messages.api';
+
+const schema = z.object({ phoneNumberId: z.string().uuid(), to: z.string().min(8), content: z.string().min(1).max(4096) });
+type FormData = z.infer<typeof schema>;
+export function MessagesPage() { const form = useForm<FormData>({ resolver: zodResolver(schema) }); const send = useMutation({ mutationFn: messagesApi.send }); const get = useMutation({ mutationFn: messagesApi.get }); return <Stack spacing={3}><PageHeader title="Mensagens" description="Envie uma mensagem de texto e consulte o estado assíncrono do processamento." /><Grid container spacing={3}><Grid size={{ xs: 12, md: 7 }}><Card variant="outlined"><CardContent><Stack component="form" spacing={2} onSubmit={form.handleSubmit((data) => send.mutate(data))}>{send.error && <Alert severity="error">{send.error.message}</Alert>}<TextField label="ID do número remetente" {...form.register('phoneNumberId')} error={!!form.formState.errors.phoneNumberId} helperText={form.formState.errors.phoneNumberId?.message} /><TextField label="Destinatário" placeholder="+5511999999999" {...form.register('to')} /><TextField label="Mensagem" multiline minRows={4} {...form.register('content')} /><Button type="submit" variant="contained" disabled={send.isPending}>{send.isPending ? 'Enviando...' : 'Enviar mensagem'}</Button></Stack></CardContent></Card></Grid><Grid size={{ xs: 12, md: 5 }}><Card variant="outlined"><CardContent><EntityResult title="Última mensagem" data={send.data ?? get.data ?? null} /></CardContent></Card></Grid><Grid size={12}><Card variant="outlined"><CardContent><Stack direction={{ xs: 'column', sm: 'row' }} component="form" spacing={2} onSubmit={(event) => { event.preventDefault(); const id = new FormData(event.currentTarget).get('id'); if (typeof id === 'string' && id) get.mutate(id); }}><TextField name="id" label="ID da mensagem" fullWidth /><Button type="submit" variant="outlined">Consultar status</Button></Stack>{get.error && <Alert severity="error" sx={{ mt: 2 }}>{get.error.message}</Alert>}</CardContent></Card></Grid></Grid></Stack>; }

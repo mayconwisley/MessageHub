@@ -1,0 +1,6 @@
+import { HealthAndSafetyOutlined, KeyOutlined, SendOutlined, TuneOutlined } from '@mui/icons-material';
+import { Card, CardContent, Grid, Stack, Typography } from '@mui/material';
+import { PageHeader } from '../../components/ui/PageHeader';
+
+const items = [{ icon: <TuneOutlined />, title: 'Configuração', text: 'Cadastre tenants, aplicações, contas e números.' }, { icon: <KeyOutlined />, title: 'Credenciais', text: 'Use a sessão administrativa e uma API key de aplicação separadamente.' }, { icon: <SendOutlined />, title: 'Mensagens', text: 'Envie mensagens de texto ou template e consulte seu status.' }, { icon: <HealthAndSafetyOutlined />, title: 'Operação', text: 'Sincronize templates e acompanhe respostas da API.' }];
+export function DashboardPage() { return <Stack spacing={4}><PageHeader title="Console operacional" description="Gerencie os recursos do Message Hub sem expor credenciais da Meta." /><Grid container spacing={2}>{items.map((item) => <Grid key={item.title} size={{ xs: 12, sm: 6 }}><Card variant="outlined"><CardContent><Stack direction="row" spacing={2} alignItems="flex-start">{item.icon}<div><Typography variant="h6">{item.title}</Typography><Typography color="text.secondary">{item.text}</Typography></div></Stack></CardContent></Card></Grid>)}</Grid></Stack>; }
