@@ -161,7 +161,10 @@ function PlatformStatusCard() {
     refetchInterval: REFRESH_INTERVAL_MS,
     retry: false,
   });
-  const isApiAvailable = query.data?.status === 'ok';
+  // A API respondeu (ainda que com um indicador down no corpo), então ela está
+  // disponível mesmo que uma dependência específica não esteja — não usar o
+  // status agregado aqui, senão a falha de uma dependência aparenta ser da API.
+  const isApiAvailable = query.isSuccess;
   const components = [
     { label: 'API', status: isApiAvailable ? 'up' : 'down', icon: <ApiOutlined /> },
     {

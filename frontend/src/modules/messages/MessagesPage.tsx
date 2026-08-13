@@ -190,7 +190,7 @@ export function MessagesPage() {
           sx={{ maxWidth: 320, flexGrow: 1 }}
         />
       </Stack>
-      {health.error && (
+      {health.data?.details.rabbitmq?.status === 'down' && (
         <Alert severity="warning">
           A fila RabbitMQ está indisponível. As mensagens continuarão como pendentes até a conexão
           ser restabelecida. Consulte <code>/health</code> para o diagnóstico técnico.

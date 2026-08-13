@@ -60,3 +60,15 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 }
+
+// Endpoints de health check retornam 503 quando alguma dependência está down,
+// mas o corpo continua trazendo o status individual de cada componente — por
+// isso não podemos tratar status HTTP não-2xx como falha total da requisição.
+export async function requestHealth<T>(path: string): Promise<T> {
+  const response = await fetch(`${baseUrl}${path}`, {
+    credentials: 'omit',
+    cache: 'no-store',
+    referrerPolicy: 'strict-origin-when-cross-origin',
+  });
+  return response.json() as Promise<T>;
+}

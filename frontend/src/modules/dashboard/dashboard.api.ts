@@ -1,4 +1,4 @@
-import { request } from '../../services/http-client';
+import { request, requestHealth } from '../../services/http-client';
 
 export interface ResourceSummary {
   tenants: number;
@@ -47,5 +47,5 @@ export const dashboardApi = {
   getDeliveryStatus: () => request<DeliveryStatus>('/v1/dashboard/delivery-status'),
   getOperationalHealth: () => request<OperationalHealth>('/v1/dashboard/operational-health'),
   getRecentMessages: () => request<RecentMessage[]>('/v1/dashboard/recent-messages'),
-  health: () => request<HealthCheck>('/health'),
+  health: () => requestHealth<HealthCheck>('/health'),
 };

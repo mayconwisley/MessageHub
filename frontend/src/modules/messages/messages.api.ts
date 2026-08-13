@@ -1,4 +1,4 @@
-import { request, toQueryString } from '../../services/http-client';
+import { request, requestHealth, toQueryString } from '../../services/http-client';
 import type { PaginatedResult } from '../../services/pagination';
 
 export interface Message {
@@ -69,5 +69,5 @@ export const messagesApi = {
     request<MessageTimelineEvent[]>(
       `/v1/messages/${id}/timeline${toQueryString({ applicationId })}`,
     ),
-  health: () => request<HealthCheck>('/health'),
+  health: () => requestHealth<HealthCheck>('/health'),
 };
