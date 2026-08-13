@@ -110,10 +110,18 @@ const messageEndpoints: Endpoint[] = [
   },
   {
     method: 'GET',
+    path: '/v1/messages/{id}/timeline',
+    title: 'Consultar linha do tempo da mensagem',
+    description:
+      'Retorna o histórico cronológico de eventos da mensagem (criação, tentativas de envio, atualizações de status recebidas via webhook, erros), útil para auditoria e depuração detalhada.',
+    curl: buildCurl('GET', '/v1/messages/6f1c2e6a-2222-4b3a-9a11-3d0a4f0a1234/timeline'),
+  },
+  {
+    method: 'GET',
     path: '/v1/messages',
     title: 'Listar mensagens',
     description:
-      'Lista paginada das mensagens da aplicação autenticada. Aceita os parâmetros page, pageSize e status.',
+      'Lista paginada das mensagens da aplicação autenticada. Aceita os parâmetros page, pageSize, status e search (busca por messageId, providerMessageId, requestId, Idempotency-Key ou destinatário).',
     curl: buildCurl('GET', '/v1/messages?page=1&pageSize=20&status=DELIVERED'),
   },
 ];
@@ -151,13 +159,15 @@ const templateEndpoints: Endpoint[] = [
         },
       ],
     }),
+    notes:
+      'whatsAppAccountId é obrigatório. parameterFormat é opcional (ex.: POSITIONAL) e define o formato das variáveis do template.',
   },
   {
     method: 'GET',
     path: '/v1/templates',
     title: 'Listar modelos de mensagem',
     description:
-      'Lista paginada dos modelos de mensagem de uma conta WhatsApp. Use sync=true para forçar a sincronização com a Meta antes de listar.',
+      'Lista paginada dos modelos de mensagem de uma conta WhatsApp (whatsAppAccountId é obrigatório). Use sync=true para forçar a sincronização com a Meta antes de listar. Aceita ainda os filtros status (DRAFT, PENDING, APPROVED, REJECTED, PAUSED, DISABLED) e category.',
     curl: buildCurl(
       'GET',
       '/v1/templates?whatsAppAccountId=22222222-2222-2222-2222-222222222222&page=1&pageSize=20',
@@ -186,6 +196,7 @@ const templateEndpoints: Endpoint[] = [
         },
       ],
     }),
+    notes: 'parameterFormat é opcional (ex.: POSITIONAL) e pode ser informado junto de category/components.',
   },
   {
     method: 'DELETE',

@@ -1,12 +1,15 @@
 import type { IncomingMessage, ServerResponse } from 'http';
 import { Module } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
+import pino from 'pino';
+import pretty from 'pino-pretty';
 import { REQUEST_ID_HEADER } from '@shared/constants';
 import { AppConfigService } from '../configuration/app-config.service';
 import { ConfigurationModule } from '../configuration/configuration.module';
 import { PINO_REDACT_PATHS } from './pino-redact-paths.constant';
 import { resolveRequestId } from './resolve-request-id.util';
 import { shouldIgnoreRequestLog } from './should-ignore-request-log.util';
+import { SystemLogCaptureStream } from './system-log-capture.stream';
 
 interface RequestWithAuthContext extends IncomingMessage {
   authContext?: { tenantId?: string; applicationId?: string };
@@ -16,7 +19,10 @@ interface RequestWithAuthContext extends IncomingMessage {
  * Centraliza logging estruturado (JSON em producao, colorido em dev) com
  * correlation id (`x-request-id`), redaction de secrets (secao 27) e sem
  * ruido de health checks/docs (secao 26). Substitui o logger padrao do Nest
- * via `app.useLogger` em `main.ts`.
+ * via `app.useLogger` em `main.ts`. Cada linha tambem e duplicada para
+ * `events.system_logs` via `SystemLogCaptureStream`, unica forma de tornar os
+ * logs de execucao (hoje efemeros em stdout) consultaveis pela tela de
+ * administracao.
  */
 @Module({
   imports: [
@@ -55,12 +61,20 @@ interface RequestWithAuthContext extends IncomingMessage {
               ? { tenantId: authContext.tenantId, applicationId: authContext.applicationId }
               : {};
           },
-          transport: appConfig.isProduction
-            ? undefined
-            : {
-                target: 'pino-pretty',
-                options: { colorize: true, singleLine: true, translateTime: 'HH:MM:ss.l' },
-              },
+          stream: pino.multistream([
+            appConfig.isProduction
+              ? { stream: process.stdout }
+              : {
+                  stream: pretty({
+                    colorize: true,
+                    singleLine: true,
+                    translateTime: 'HH:MM:ss.l',
+                  }),
+                },
+            ...(appConfig.isTest
+              ? []
+              : [{ stream: new SystemLogCaptureStream(appConfig.databaseUrl) }]),
+          ]),
         },
       }),
     }),

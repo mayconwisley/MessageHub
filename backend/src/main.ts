@@ -58,13 +58,9 @@ async function bootstrap(): Promise<void> {
   await app.listen(appConfig.port);
 
   const baseUrl = `http://localhost:${appConfig.port}`;
+  const docsSuffix = appConfig.swaggerEnabled ? `, docs em ${baseUrl}/docs` : '';
   logger.log(
-    {
-      apiUrl: baseUrl,
-      ...(appConfig.swaggerEnabled ? { swaggerUrl: `${baseUrl}/docs` } : {}),
-      healthUrl: `${baseUrl}/health`,
-    },
-    'Message Hub iniciado e pronto para receber requisicoes',
+    `Message Hub iniciado e pronto para receber requisicoes em ${baseUrl} (health em ${baseUrl}/health${docsSuffix})`,
   );
 }
 

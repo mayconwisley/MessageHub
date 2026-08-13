@@ -1,4 +1,5 @@
 import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
+import { PATH_METADATA } from '@nestjs/common/constants';
 import { Observable } from 'rxjs';
 import { mergeMap } from 'rxjs/operators';
 import { AuditLogService } from '@modules/audit/infrastructure/services/audit-log.service';
@@ -26,11 +27,16 @@ export class AuditLogInterceptor implements NestInterceptor {
             ? route.path
             : request.path;
         const requestId = typeof request.id === 'string' ? request.id : null;
+        const controllerPath: unknown = Reflect.getMetadata(PATH_METADATA, context.getClass());
+        const resourceType =
+          typeof controllerPath === 'string'
+            ? controllerPath.split('/').filter(Boolean).pop()
+            : undefined;
         await this.auditLogService.record({
           actorUserId: request.user?.id ?? null,
           actorEmail: request.user?.email ?? null,
           action: `${request.method} ${routePath}`,
-          resourceType: request.baseUrl.split('/').filter(Boolean).pop() ?? 'unknown',
+          resourceType: resourceType ?? 'unknown',
           resourceId: resource?.id ?? null,
           tenantId: resource?.tenantId ?? request.user?.tenantId ?? null,
           requestId,

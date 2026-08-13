@@ -17,6 +17,10 @@ export class AppConfigService {
     return this.configService.get<string>('app.logLevel', { infer: true }) as string;
   }
 
+  get databaseUrl(): string {
+    return this.configService.get<string>('database.url', { infer: true }) as string;
+  }
+
   get initialPlatformAdminEmail(): string {
     return this.configService.get<string>('app.initialPlatformAdminEmail', {
       infer: true,

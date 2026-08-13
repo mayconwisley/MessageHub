@@ -9,6 +9,7 @@ import {
   ExpandMore,
   ForumOutlined,
   HelpOutlineOutlined,
+  HistoryOutlined,
   IntegrationInstructionsOutlined,
   LightModeOutlined,
   LogoutOutlined,
@@ -116,6 +117,10 @@ const EngineeringAlertsPage = lazy(async () => {
   const module = await import('../modules/engineering-alerts/EngineeringAlertsPage');
   return { default: module.EngineeringAlertsPage };
 });
+const AuditLogsPage = lazy(async () => {
+  const module = await import('../modules/audit-logs/AuditLogsPage');
+  return { default: module.AuditLogsPage };
+});
 const SandboxPage = lazy(async () => {
   const module = await import('../modules/sandbox/SandboxPage');
   return { default: module.SandboxPage };
@@ -158,6 +163,7 @@ const navGroups: NavGroupConfig[] = [
       { to: '/phone-numbers', label: 'Números', icon: <PhoneOutlined /> },
       { to: '/api-keys', label: 'Chaves de API', icon: <VpnKeyOutlined /> },
       { to: '/users', label: 'Usuários', icon: <PeopleOutlined /> },
+      { to: '/audit-logs', label: 'Eventos e logs', icon: <HistoryOutlined /> },
     ],
   },
   {
@@ -383,6 +389,7 @@ function ThemedApp() {
                 <Route path="/phone-numbers" element={<PhoneNumbersPage />} />
                 <Route path="/api-keys" element={<ApiKeysPage />} />
                 <Route path="/users" element={<UsersPage />} />
+                <Route path="/audit-logs" element={<AuditLogsPage />} />
                 <Route path="/messages" element={<MessagesPage />} />
                 <Route path="/templates" element={<TemplatesPage />} />
                 <Route path="/api-docs" element={<ApiDocsPage />} />

@@ -24,6 +24,7 @@ import { DefaultChannelSeedService } from './modules/whatsapp-accounts/applicati
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { MonitoringModule } from './modules/monitoring/monitoring.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { SystemLogsModule } from './modules/system-logs/system-logs.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     DashboardModule,
     MonitoringModule,
     NotificationsModule,
+    SystemLogsModule,
   ],
   controllers: [HealthController],
   providers: [
