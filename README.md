@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="../frontend/src/assets/brand/message-hub-logo-light.svg" alt="Message Hub" width="312" />
+  <img src="./frontend/src/assets/brand/message-hub-logo-light.svg" alt="Message Hub" width="312" />
 </p>
 
 <p align="center">
