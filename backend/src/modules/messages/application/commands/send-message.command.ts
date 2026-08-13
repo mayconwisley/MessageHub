@@ -3,14 +3,23 @@ import { Result } from '@shared/result';
 import { ApplicationNotFoundError } from '@modules/applications/domain/errors/application-not-found.error';
 import { PhoneNumberNotFoundError } from '@modules/phone-numbers/domain/errors';
 import { InvalidMessageError } from '../../domain/errors/invalid-message.error';
+import { AmbiguousPhoneNumberError } from '../../domain/errors/ambiguous-phone-number.error';
+import { PhoneNumberNotConfiguredError } from '../../domain/errors/phone-number-not-configured.error';
 import { MessageDto } from '../dto/message.dto';
 
 export class SendMessageCommand extends Command<
-  Result<MessageDto, InvalidMessageError | ApplicationNotFoundError | PhoneNumberNotFoundError>
+  Result<
+    MessageDto,
+    | InvalidMessageError
+    | ApplicationNotFoundError
+    | PhoneNumberNotFoundError
+    | PhoneNumberNotConfiguredError
+    | AmbiguousPhoneNumberError
+  >
 > {
   constructor(
     public readonly applicationId: string,
-    public readonly phoneNumberId: string,
+    public readonly phoneNumberId: string | undefined,
     public readonly to: string,
     public readonly content: string,
     public readonly idempotencyKey?: string,

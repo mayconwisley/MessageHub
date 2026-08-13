@@ -21,6 +21,7 @@ import { MESSAGE_PUBLISHER } from './application/ports/message-publisher.interfa
 import { MESSAGE_STATUS_WEBHOOK_PUBLISHER } from './application/ports/message-status-webhook-publisher.interface';
 import { MessageRetryPolicy } from './application/services/message-retry-policy';
 import { ApplicationQuotaService } from './application/services/application-quota.service';
+import { PhoneNumberResolverService } from './application/services/phone-number-resolver.service';
 import { MESSAGE_ATTEMPT_REPOSITORY } from './domain/repositories/message-attempt.repository.interface';
 import { MESSAGE_REPOSITORY } from './domain/repositories/message.repository.interface';
 import { MessageAttemptOrmEntity } from './infrastructure/entities/message-attempt.orm-entity';
@@ -71,6 +72,7 @@ import { SandboxController } from './presentation/controllers/sandbox.controller
     },
     MessageRetryPolicy,
     ApplicationQuotaService,
+    PhoneNumberResolverService,
     SendMessageHandler,
     SendTemplateMessageHandler,
     GetMessageHandler,

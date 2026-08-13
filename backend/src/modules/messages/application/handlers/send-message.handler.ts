@@ -8,16 +8,10 @@ import {
 } from '@modules/applications/domain/repositories/application.repository.interface';
 import { ApplicationNotFoundError } from '@modules/applications/domain/errors/application-not-found.error';
 import { PhoneNumberNotFoundError } from '@modules/phone-numbers/domain/errors';
-import {
-  IPhoneNumberRepository,
-  PHONE_NUMBER_REPOSITORY,
-} from '@modules/phone-numbers/domain/repositories/phone-number.repository.interface';
-import {
-  IWhatsAppAccountRepository,
-  WHATSAPP_ACCOUNT_REPOSITORY,
-} from '@modules/whatsapp-accounts/domain/repositories/whatsapp-account.repository.interface';
 import { Message } from '../../domain/entities/message.entity';
 import { InvalidMessageError } from '../../domain/errors/invalid-message.error';
+import { AmbiguousPhoneNumberError } from '../../domain/errors/ambiguous-phone-number.error';
+import { PhoneNumberNotConfiguredError } from '../../domain/errors/phone-number-not-configured.error';
 import {
   IMessageRepository,
   MESSAGE_REPOSITORY,
@@ -31,15 +25,14 @@ import {
   MESSAGE_TIMELINE_REPOSITORY,
 } from '../ports/message-timeline.repository.interface';
 import { ApplicationQuotaService } from '../services/application-quota.service';
+import { PhoneNumberResolverService } from '../services/phone-number-resolver.service';
 
 @CommandHandler(SendMessageCommand)
 export class SendMessageHandler implements ICommandHandler<SendMessageCommand> {
   constructor(
     @Inject(MESSAGE_REPOSITORY) private readonly messageRepository: IMessageRepository,
     @Inject(APPLICATION_REPOSITORY) private readonly applicationRepository: IApplicationRepository,
-    @Inject(PHONE_NUMBER_REPOSITORY) private readonly phoneNumberRepository: IPhoneNumberRepository,
-    @Inject(WHATSAPP_ACCOUNT_REPOSITORY)
-    private readonly whatsAppAccountRepository: IWhatsAppAccountRepository,
+    private readonly phoneNumberResolver: PhoneNumberResolverService,
     @Inject(MESSAGE_PUBLISHER) private readonly messagePublisher: IMessagePublisher,
     @Inject(MESSAGE_TIMELINE_REPOSITORY) private readonly timeline?: IMessageTimelineRepository,
     private readonly quotaService?: ApplicationQuotaService,
@@ -48,7 +41,14 @@ export class SendMessageHandler implements ICommandHandler<SendMessageCommand> {
   async execute(
     command: SendMessageCommand,
   ): Promise<
-    Result<MessageDto, InvalidMessageError | ApplicationNotFoundError | PhoneNumberNotFoundError>
+    Result<
+      MessageDto,
+      | InvalidMessageError
+      | ApplicationNotFoundError
+      | PhoneNumberNotFoundError
+      | PhoneNumberNotConfiguredError
+      | AmbiguousPhoneNumberError
+    >
   > {
     const applicationId = UniqueId.create(command.applicationId);
     const application = await this.applicationRepository.findById(applicationId);
@@ -61,19 +61,15 @@ export class SendMessageHandler implements ICommandHandler<SendMessageCommand> {
     }
     await this.quotaService?.assertCanAcceptMessage(application);
 
-    const phoneNumberId = UniqueId.create(command.phoneNumberId);
-    const phoneNumber = await this.phoneNumberRepository.findById(phoneNumberId);
-    if (!phoneNumber) {
-      return Result.fail(new PhoneNumberNotFoundError(command.phoneNumberId));
-    }
-
-    const whatsAppAccount = await this.whatsAppAccountRepository.findById(
-      phoneNumber.whatsAppAccountId,
+    const phoneNumberResult = await this.phoneNumberResolver.resolve(
+      application,
+      command.phoneNumberId,
     );
-    if (!whatsAppAccount || !whatsAppAccount.tenantId.equals(application.tenantId)) {
-      // Nunca revelar que o PhoneNumber existe em outro tenant (secao 17).
-      return Result.fail(new PhoneNumberNotFoundError(command.phoneNumberId));
+    if (phoneNumberResult.isFailure) {
+      return Result.fail(phoneNumberResult.error);
     }
+    const phoneNumber = phoneNumberResult.value;
+    const phoneNumberId = phoneNumber.id;
 
     if (command.idempotencyKey) {
       const existing = await this.messageRepository.findByIdempotencyKey(

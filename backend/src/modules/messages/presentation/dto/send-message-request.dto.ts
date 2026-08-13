@@ -9,9 +9,14 @@ export class SendMessageRequestDto {
   @IsUUID()
   applicationId?: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional({
+    description:
+      'Obrigatório apenas se a aplicação tiver mais de um número vinculado, ou nenhum. ' +
+      'Quando omitido, usa o único número vinculado via PUT /v1/applications/{id}/phone-numbers.',
+  })
+  @IsOptional()
   @IsUUID()
-  phoneNumberId!: string;
+  phoneNumberId?: string;
 
   @ApiProperty({
     example: '+5511999999999',

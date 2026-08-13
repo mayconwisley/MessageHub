@@ -2,8 +2,7 @@
   "info": { "name": "Message Hub - Integração", "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json" },
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:3000" },
-    { "key": "apiKey", "value": "wh_live_SUBSTITUA_AQUI" },
-    { "key": "phoneNumberId", "value": "00000000-0000-0000-0000-000000000000" }
+    { "key": "apiKey", "value": "wh_live_SUBSTITUA_AQUI" }
   ],
-  "item": [{ "name": "Enviar mensagem", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{apiKey}}" }, { "key": "Idempotency-Key", "value": "{{$guid}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"phoneNumberId\": \"{{phoneNumberId}}\",\n  \"to\": \"+5511999999999\",\n  \"content\": \"Olá do Message Hub\"\n}" }, "url": "{{baseUrl}}/v1/messages" } }]
+  "item": [{ "name": "Enviar mensagem", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{apiKey}}" }, { "key": "Idempotency-Key", "value": "{{$guid}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"to\": \"+5511999999999\",\n  \"content\": \"Olá do Message Hub\"\n}" }, "url": "{{baseUrl}}/v1/messages" } }]
 }

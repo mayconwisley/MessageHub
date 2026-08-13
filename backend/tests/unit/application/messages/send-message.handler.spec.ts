@@ -2,12 +2,14 @@ import { UniqueId } from '@shared/domain';
 import { Result } from '@shared/result';
 import { Application } from '@modules/applications/domain/entities/application.entity';
 import { IApplicationRepository } from '@modules/applications/domain/repositories/application.repository.interface';
+import { IApplicationPhoneNumberLinkRepository } from '@modules/applications/domain/repositories/application-phone-number-link.repository.interface';
 import { PhoneNumber } from '@modules/phone-numbers/domain/entities/phone-number.entity';
 import { IPhoneNumberRepository } from '@modules/phone-numbers/domain/repositories/phone-number.repository.interface';
 import { WhatsAppAccount } from '@modules/whatsapp-accounts/domain/entities/whatsapp-account.entity';
 import { IWhatsAppAccountRepository } from '@modules/whatsapp-accounts/domain/repositories/whatsapp-account.repository.interface';
 import { SendMessageCommand } from '@modules/messages/application/commands/send-message.command';
 import { SendMessageHandler } from '@modules/messages/application/handlers/send-message.handler';
+import { PhoneNumberResolverService } from '@modules/messages/application/services/phone-number-resolver.service';
 import {
   IMessagePublisher,
   MessageRequestedPayload,
@@ -59,6 +61,19 @@ class FakeWhatsAppAccountRepository implements IWhatsAppAccountRepository {
   }
 }
 
+class FakeApplicationPhoneNumberLinkRepository implements IApplicationPhoneNumberLinkRepository {
+  constructor(private readonly linked: Map<string, UniqueId[]> = new Map()) {}
+  async replaceForApplication(applicationId: UniqueId, phoneNumberIds: UniqueId[]): Promise<void> {
+    this.linked.set(applicationId.value, phoneNumberIds);
+  }
+  async listPhoneNumberIdsByApplication(applicationId: UniqueId): Promise<UniqueId[]> {
+    return this.linked.get(applicationId.value) ?? [];
+  }
+  async listApplicationIdsByPhoneNumber(): Promise<UniqueId[]> {
+    return [];
+  }
+}
+
 class FakeMessageRepository implements IMessageRepository {
   readonly saved: Message[] = [];
   async save(message: Message): Promise<void> {
@@ -95,6 +110,18 @@ function expectOk<T>(result: Result<T, unknown>): T {
   return result.value;
 }
 
+function buildResolver(
+  phoneNumbers: PhoneNumber[],
+  accounts: WhatsAppAccount[],
+  links: Map<string, UniqueId[]> = new Map(),
+) {
+  return new PhoneNumberResolverService(
+    new FakePhoneNumberRepository(phoneNumbers),
+    new FakeWhatsAppAccountRepository(accounts),
+    new FakeApplicationPhoneNumberLinkRepository(links),
+  );
+}
+
 describe('SendMessageHandler', () => {
   const tenantId = UniqueId.create();
   const otherTenantId = UniqueId.create();
@@ -117,8 +144,7 @@ describe('SendMessageHandler', () => {
     const handler = new SendMessageHandler(
       messageRepository,
       new FakeApplicationRepository([application]),
-      new FakePhoneNumberRepository([phoneNumber]),
-      new FakeWhatsAppAccountRepository([whatsAppAccount]),
+      buildResolver([phoneNumber], [whatsAppAccount]),
       messagePublisher,
     );
 
@@ -193,8 +219,7 @@ describe('SendMessageHandler', () => {
     const handler = new SendMessageHandler(
       new FakeMessageRepository(),
       new FakeApplicationRepository([application]),
-      new FakePhoneNumberRepository([foreignPhoneNumber]),
-      new FakeWhatsAppAccountRepository([foreignAccount]),
+      buildResolver([foreignPhoneNumber], [foreignAccount]),
       new FakeMessagePublisher(),
     );
 
@@ -209,5 +234,93 @@ describe('SendMessageHandler', () => {
 
     expect(result.isFailure).toBe(true);
     expect(result.error.code).toBe('PHONE_NUMBER_NOT_FOUND');
+  });
+
+  it('resolves the phone number from the application link when phoneNumberId is omitted', async () => {
+    const application = expectOk(Application.create({ tenantId, name: 'Notifications' }));
+    const whatsAppAccount = expectOk(
+      WhatsAppAccount.create({ tenantId, wabaId: 'waba-1', accessToken: 'token-1' }),
+    );
+    const phoneNumber = expectOk(
+      PhoneNumber.create({
+        whatsAppAccountId: whatsAppAccount.id,
+        phoneNumberId: 'meta-phone-1',
+        displayNumber: '+5511999999999',
+      }),
+    );
+
+    const handler = new SendMessageHandler(
+      new FakeMessageRepository(),
+      new FakeApplicationRepository([application]),
+      buildResolver(
+        [phoneNumber],
+        [whatsAppAccount],
+        new Map([[application.id.value, [phoneNumber.id]]]),
+      ),
+      new FakeMessagePublisher(),
+    );
+
+    const result = await handler.execute(
+      new SendMessageCommand(application.id.value, undefined, '+5511988888888', 'Ola!'),
+    );
+
+    expect(expectOk(result).status).toBe('PENDING');
+  });
+
+  it('fails with PHONE_NUMBER_NOT_CONFIGURED when no phone number is linked and none is informed', async () => {
+    const application = expectOk(Application.create({ tenantId, name: 'Notifications' }));
+
+    const handler = new SendMessageHandler(
+      new FakeMessageRepository(),
+      new FakeApplicationRepository([application]),
+      buildResolver([], []),
+      new FakeMessagePublisher(),
+    );
+
+    const result = await handler.execute(
+      new SendMessageCommand(application.id.value, undefined, '+5511988888888', 'Ola!'),
+    );
+
+    expect(result.isFailure).toBe(true);
+    expect(result.error.code).toBe('PHONE_NUMBER_NOT_CONFIGURED');
+  });
+
+  it('fails with AMBIGUOUS_PHONE_NUMBER when multiple phone numbers are linked and none is informed', async () => {
+    const application = expectOk(Application.create({ tenantId, name: 'Notifications' }));
+    const whatsAppAccount = expectOk(
+      WhatsAppAccount.create({ tenantId, wabaId: 'waba-1', accessToken: 'token-1' }),
+    );
+    const phoneNumberA = expectOk(
+      PhoneNumber.create({
+        whatsAppAccountId: whatsAppAccount.id,
+        phoneNumberId: 'meta-phone-1',
+        displayNumber: '+5511999999999',
+      }),
+    );
+    const phoneNumberB = expectOk(
+      PhoneNumber.create({
+        whatsAppAccountId: whatsAppAccount.id,
+        phoneNumberId: 'meta-phone-2',
+        displayNumber: '+5511988888888',
+      }),
+    );
+
+    const handler = new SendMessageHandler(
+      new FakeMessageRepository(),
+      new FakeApplicationRepository([application]),
+      buildResolver(
+        [phoneNumberA, phoneNumberB],
+        [whatsAppAccount],
+        new Map([[application.id.value, [phoneNumberA.id, phoneNumberB.id]]]),
+      ),
+      new FakeMessagePublisher(),
+    );
+
+    const result = await handler.execute(
+      new SendMessageCommand(application.id.value, undefined, '+5511988888888', 'Ola!'),
+    );
+
+    expect(result.isFailure).toBe(true);
+    expect(result.error.code).toBe('AMBIGUOUS_PHONE_NUMBER');
   });
 });

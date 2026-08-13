@@ -65,14 +65,13 @@ const messageEndpoints: Endpoint[] = [
       'POST',
       '/v1/messages',
       {
-        phoneNumberId: '11111111-1111-1111-1111-111111111111',
         to: '+5511999999999',
         content: 'Seu pedido foi confirmado!',
       },
       ['Idempotency-Key: 5e28f2f0-9a3c-4c34-9b7a-2f2f4d0a9d11'],
     ),
     notes:
-      'O header Idempotency-Key é opcional, mas recomendado: reenviar a mesma chave evita duplicar o envio em caso de retry. Quando um webhook trouxer sender.id como BSUID, reutilize esse valor em to; o @username não é um identificador de API.',
+      'phoneNumberId é opcional: por padrão o Hub usa o único número vinculado à aplicação em PUT /v1/applications/{id}/phone-numbers (cadastro inicial, feito uma vez). Informe phoneNumberId explicitamente apenas se a aplicação tiver mais de um número vinculado, ou nenhum. O header Idempotency-Key é opcional, mas recomendado: reenviar a mesma chave evita duplicar o envio em caso de retry. Quando um webhook trouxer sender.id como BSUID, reutilize esse valor em to; o @username não é um identificador de API.',
   },
   {
     method: 'POST',
@@ -84,7 +83,6 @@ const messageEndpoints: Endpoint[] = [
       'POST',
       '/v1/messages/templates',
       {
-        phoneNumberId: '11111111-1111-1111-1111-111111111111',
         to: '+5511999999999',
         templateName: 'order_confirmation',
         parameters: ['Maycon', '12345'],
@@ -92,7 +90,7 @@ const messageEndpoints: Endpoint[] = [
       ['Idempotency-Key: 5e28f2f0-9a3c-4c34-9b7a-2f2f4d0a9d11'],
     ),
     notes:
-      'Os itens de parameters preenchem {{1}}, {{2}}, ... do BODY do template, na ordem em que aparecem.',
+      'phoneNumberId é opcional pelo mesmo motivo do envio de texto livre (veja acima). Os itens de parameters preenchem {{1}}, {{2}}, ... do BODY do template, na ordem em que aparecem.',
   },
   {
     method: 'GET',

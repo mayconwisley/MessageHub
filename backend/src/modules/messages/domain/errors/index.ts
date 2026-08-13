@@ -6,3 +6,5 @@ export * from './provider-unavailable.error';
 export * from './message-delivery-rejected.error';
 export * from './provider-rate-limited.error';
 export * from './meta-provider-error.type';
+export * from './phone-number-not-configured.error';
+export * from './ambiguous-phone-number.error';

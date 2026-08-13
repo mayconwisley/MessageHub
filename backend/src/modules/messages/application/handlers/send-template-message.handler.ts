@@ -6,10 +6,6 @@ import {
   IApplicationRepository,
 } from '@modules/applications/domain/repositories/application.repository.interface';
 import { PhoneNumberNotFoundError } from '@modules/phone-numbers/domain/errors';
-import {
-  IPhoneNumberRepository,
-  PHONE_NUMBER_REPOSITORY,
-} from '@modules/phone-numbers/domain/repositories/phone-number.repository.interface';
 import { TemplateStatus } from '@modules/templates/domain/enums/template-status.enum';
 import {
   ITemplateRepository,
@@ -22,7 +18,12 @@ import {
 import { UniqueId } from '@shared/domain';
 import { Result } from '@shared/result';
 import { Message } from '../../domain/entities/message.entity';
-import { InvalidMessageError, TemplateNotFoundError } from '../../domain/errors';
+import {
+  AmbiguousPhoneNumberError,
+  InvalidMessageError,
+  PhoneNumberNotConfiguredError,
+  TemplateNotFoundError,
+} from '../../domain/errors';
 import { SendTemplateMessageCommand } from '../commands/send-template-message.command';
 import { MessageDto } from '../dto/message.dto';
 import { MessageMapper } from '../mappers/message.mapper';
@@ -36,13 +37,14 @@ import {
   MESSAGE_TIMELINE_REPOSITORY,
 } from '../ports/message-timeline.repository.interface';
 import { ApplicationQuotaService } from '../services/application-quota.service';
+import { PhoneNumberResolverService } from '../services/phone-number-resolver.service';
 
 @CommandHandler(SendTemplateMessageCommand)
 export class SendTemplateMessageHandler implements ICommandHandler<SendTemplateMessageCommand> {
   constructor(
     @Inject(MESSAGE_REPOSITORY) private readonly messageRepository: IMessageRepository,
     @Inject(APPLICATION_REPOSITORY) private readonly applicationRepository: IApplicationRepository,
-    @Inject(PHONE_NUMBER_REPOSITORY) private readonly phoneNumberRepository: IPhoneNumberRepository,
+    private readonly phoneNumberResolver: PhoneNumberResolverService,
     @Inject(WHATSAPP_ACCOUNT_REPOSITORY)
     private readonly whatsAppAccountRepository: IWhatsAppAccountRepository,
     @Inject(TEMPLATE_REPOSITORY) private readonly templateRepository: ITemplateRepository,
@@ -59,6 +61,8 @@ export class SendTemplateMessageHandler implements ICommandHandler<SendTemplateM
       | InvalidMessageError
       | ApplicationNotFoundError
       | PhoneNumberNotFoundError
+      | PhoneNumberNotConfiguredError
+      | AmbiguousPhoneNumberError
       | TemplateNotFoundError
     >
   > {
@@ -71,12 +75,16 @@ export class SendTemplateMessageHandler implements ICommandHandler<SendTemplateM
     }
     await this.quotaService?.assertCanAcceptMessage(application);
 
-    const phoneNumberId = UniqueId.create(command.phoneNumberId);
-    const phoneNumber = await this.phoneNumberRepository.findById(phoneNumberId);
-    if (!phoneNumber) return Result.fail(new PhoneNumberNotFoundError(command.phoneNumberId));
+    const phoneNumberResult = await this.phoneNumberResolver.resolve(
+      application,
+      command.phoneNumberId,
+    );
+    if (phoneNumberResult.isFailure) return Result.fail(phoneNumberResult.error);
+    const phoneNumber = phoneNumberResult.value;
+    const phoneNumberId = phoneNumber.id;
     const account = await this.whatsAppAccountRepository.findById(phoneNumber.whatsAppAccountId);
-    if (!account || !account.tenantId.equals(application.tenantId)) {
-      return Result.fail(new PhoneNumberNotFoundError(command.phoneNumberId));
+    if (!account) {
+      return Result.fail(new PhoneNumberNotFoundError(phoneNumber.id.value));
     }
 
     if (command.idempotencyKey) {

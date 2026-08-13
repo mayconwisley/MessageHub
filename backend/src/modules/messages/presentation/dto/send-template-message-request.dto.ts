@@ -15,8 +15,12 @@ export class SendTemplateMessageRequestDto {
   /** Obrigatório apenas para requisições autenticadas por sessão administrativa. */
   @ApiPropertyOptional() @IsOptional() @IsUUID() applicationId?: string;
 
-  /** Identifica o número remetente cadastrado no Hub. */
-  @ApiProperty() @IsUUID() phoneNumberId!: string;
+  /**
+   * Identifica o número remetente cadastrado no Hub. Obrigatório apenas se a
+   * aplicação tiver mais de um número vinculado, ou nenhum — do contrário, usa
+   * o único número vinculado via PUT /v1/applications/{id}/phone-numbers.
+   */
+  @ApiPropertyOptional() @IsOptional() @IsUUID() phoneNumberId?: string;
 
   @ApiProperty({
     example: '+5511999999999',

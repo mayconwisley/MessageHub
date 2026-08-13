@@ -84,13 +84,18 @@ API** (`/api-docs`) ou o Swagger em `/docs`.
    texto puro **apenas nesta resposta**; hash é o único dado persistido).
 4. `POST /v1/whatsapp-accounts` — registra uma WhatsApp Business Account (WABA) da Meta.
 5. `POST /v1/phone-numbers` — registra um Phone Number da Meta vinculado à WABA.
-6. `POST /v1/messages` com `Authorization: Bearer wh_live_...` — envia uma mensagem. O envio é
+6. `PUT /v1/applications/:applicationId/phone-numbers` — vincula um ou mais Phone Numbers à
+   Application (cadastro inicial, feito uma única vez pela sessão administrativa).
+7. `POST /v1/messages` com `Authorization: Bearer wh_live_...` — envia uma mensagem. O envio é
    assíncrono: a Message é criada com status `PENDING`, publicada no RabbitMQ e processada pelo
-   `MessageWorker`, que chama a Graph API através do `MetaWhatsAppProvider`.
-7. `POST /v1/templates`, `GET /v1/templates`, `GET/PUT/DELETE /v1/templates/:id`,
+   `MessageWorker`, que chama a Graph API através do `MetaWhatsAppProvider`. `phoneNumberId` no
+   corpo da requisição é opcional: quando omitido, o Hub usa o único Phone Number vinculado à
+   Application no passo anterior — só é obrigatório informá-lo se a Application tiver mais de um
+   número vinculado, ou nenhum.
+8. `POST /v1/templates`, `GET /v1/templates`, `GET/PUT/DELETE /v1/templates/:id`,
    `POST /v1/templates/sync` e `POST /v1/templates/publish-pending` — administram o catálogo
    local de templates da Meta no escopo da WABA do tenant, incluindo rascunhos e sincronização.
-8. `GET /webhooks/meta` realiza o handshake da Meta e `POST /webhooks/meta` valida
+9. `GET /webhooks/meta` realiza o handshake da Meta e `POST /webhooks/meta` valida
    `X-Hub-Signature-256` antes de atualizar o status da mensagem (`SENT → DELIVERED → READ`).
 
 ## Destinatários, usernames e BSUID
