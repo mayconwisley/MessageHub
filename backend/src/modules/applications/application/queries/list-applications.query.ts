@@ -10,6 +10,7 @@ export class ListApplicationsQuery extends Query<
     public readonly tenantId: string,
     public readonly page: number,
     public readonly pageSize: number,
+    public readonly search?: string,
   ) {
     super();
   }

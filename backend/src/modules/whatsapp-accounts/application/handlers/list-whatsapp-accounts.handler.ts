@@ -23,7 +23,7 @@ export class ListWhatsAppAccountsHandler implements IQueryHandler<ListWhatsAppAc
       UniqueId.create(query.tenantId),
       query.page,
       query.pageSize,
-      { status: query.status },
+      { status: query.status, search: query.search },
     );
     return Result.ok({
       ...result,

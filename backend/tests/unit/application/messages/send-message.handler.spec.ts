@@ -98,8 +98,12 @@ class FakeMessageRepository implements IMessageRepository {
 
 class FakeMessagePublisher implements IMessagePublisher {
   readonly published: MessageRequestedPayload[] = [];
+  readonly deadLettered: MessageRequestedPayload[] = [];
   async publishMessageRequested(payload: MessageRequestedPayload): Promise<void> {
     this.published.push(payload);
+  }
+  async publishToDeadLetterQueue(payload: MessageRequestedPayload): Promise<void> {
+    this.deadLettered.push(payload);
   }
 }
 

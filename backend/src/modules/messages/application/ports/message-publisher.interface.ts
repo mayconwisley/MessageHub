@@ -4,6 +4,7 @@ export interface MessageRequestedPayload {
 
 export interface IMessagePublisher {
   publishMessageRequested(payload: MessageRequestedPayload): Promise<void>;
+  publishToDeadLetterQueue(payload: MessageRequestedPayload): Promise<void>;
 }
 
 export const MESSAGE_PUBLISHER = Symbol('MESSAGE_PUBLISHER');

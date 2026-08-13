@@ -1,10 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { FindOptionsWhere, ILike, Repository } from 'typeorm';
 import { UniqueId } from '@shared/domain';
 import { Application, ApplicationProps } from '../../domain/entities/application.entity';
 import { ApplicationStatus } from '../../domain/enums/application-status.enum';
-import { IApplicationRepository } from '../../domain/repositories/application.repository.interface';
+import {
+  IApplicationRepository,
+  ListApplicationsFilter,
+} from '../../domain/repositories/application.repository.interface';
 import { ApplicationOrmEntity } from '../entities/application.orm-entity';
 import { PaginatedResult } from '@shared/types';
 
@@ -28,9 +31,13 @@ export class PostgresApplicationRepository implements IApplicationRepository {
     tenantId: UniqueId,
     page: number,
     pageSize: number,
+    filter?: ListApplicationsFilter,
   ): Promise<PaginatedResult<Application>> {
+    const where: FindOptionsWhere<ApplicationOrmEntity> = { tenantId: tenantId.value };
+    if (filter?.search) where.name = ILike(`%${filter.search}%`);
+
     const [rows, total] = await this.repository.findAndCount({
-      where: { tenantId: tenantId.value },
+      where,
       order: { createdAt: 'DESC' },
       skip: (page - 1) * pageSize,
       take: pageSize,

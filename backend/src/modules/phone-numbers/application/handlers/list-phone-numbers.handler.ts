@@ -31,7 +31,7 @@ export class ListPhoneNumbersHandler implements IQueryHandler<ListPhoneNumbersQu
       accountIds,
       query.page,
       query.pageSize,
-      { status: query.status },
+      { status: query.status, search: query.search },
     );
     return Result.ok({
       ...result,

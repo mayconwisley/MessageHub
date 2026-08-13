@@ -260,6 +260,95 @@ messages/
 
 Preferir essa abordagem quando houver vários Bounded Contexts.
 
+## 5.1 Estrutura real atual (referência viva)
+
+O backend já adota a organização por módulo/Bounded Context descrita acima. Estrutura atual de `backend/src/`:
+
+```text
+backend/src/
+├── app.module.ts
+├── main.ts
+│
+├── infrastructure/
+│   ├── configuration/        # app.config, database.config, meta.config, rabbitmq.config, env.validation
+│   ├── database/              # data-source.ts, database.module.ts, migrations/
+│   ├── logging/                # pino, captura de logs de sistema
+│   ├── messaging/rabbitmq/    # módulo, constants, health indicator
+│   ├── meta/                   # clients/ dto/ errors/ mappers/ services/ (Graph API)
+│   └── sandbox/                 # provider de mensagens para ambiente sandbox
+│
+├── presentation/http/
+│   ├── controllers/            # ex.: health.controller.ts
+│   ├── decorators/             # current-auth-context, current-authenticated-user...
+│   ├── dto/                     # pagination-query.dto.ts
+│   ├── filters/                  # global-exception.filter.ts
+│   ├── guards/                   # api-key, platform-admin, tenant-api-key, user-session...
+│   ├── interceptors/            # audit-log.interceptor.ts
+│   ├── result-http.mapper.ts
+│   └── validation-message.translator.ts
+│
+├── shared/
+│   ├── constants/
+│   ├── domain/                  # entity.base.ts, value-object.base.ts, unique-id.ts
+│   ├── errors/                   # base.error.ts, rate-limit-exceeded.error.ts
+│   ├── mediator/                # mediator.ts, command.base.ts, query.base.ts
+│   ├── result/                   # result.ts
+│   ├── security/                 # webhook-url.security.ts
+│   └── types/
+│
+└── modules/
+    ├── applications/            # Application + ApiKey (contexto Identity)
+    ├── audit/                    # trilha de auditoria administrativa
+    ├── dashboard/                # queries agregadas para o painel operacional
+    ├── identity/                 # User, autenticação, sessão
+    ├── messages/                 # Message, MessageAttempt, worker de envio
+    ├── monitoring/                # monitor de integrações (quotas, saúde de credenciais)
+    ├── notifications/             # alertas de engenharia (Slack/Teams/E-mail)
+    ├── phone-numbers/
+    ├── system-logs/               # captura de logs técnicos em banco
+    ├── templates/
+    ├── tenants/
+    ├── webhooks/                  # WebhookEvent, processamento e replays
+    └── whatsapp-accounts/
+```
+
+Cada módulo em `modules/` segue a mesma separação interna:
+
+```text
+modules/<contexto>/
+├── domain/
+│   ├── entities/
+│   ├── enums/
+│   ├── errors/
+│   ├── repositories/           # interfaces (ex.: *.repository.interface.ts)
+│   └── value-objects/           # quando aplicável
+│
+├── application/
+│   ├── commands/
+│   ├── queries/
+│   ├── handlers/
+│   ├── dto/
+│   ├── mappers/
+│   ├── ports/                   # interfaces de infraestrutura (publishers, providers)
+│   └── services/                # regra específica que não é Command/Query
+│
+├── infrastructure/
+│   ├── entities/                 # *.orm-entity.ts
+│   ├── repositories/              # postgres-*.repository.ts
+│   ├── messaging/                 # publishers/constants RabbitMQ do módulo
+│   ├── workers/                    # consumers RabbitMQ
+│   └── security/                   # ex.: access-token-cipher.service.ts
+│
+├── presentation/
+│   ├── controllers/
+│   ├── dto/
+│   └── mappers/
+│
+└── <contexto>.module.ts
+```
+
+**Desvio conhecido a corrigir:** o módulo `templates` ainda não possui `commands/`, `queries/` nem `handlers/` — `TemplatesController` chama `TemplateManagementService` diretamente, fora do Mediator. Ao refatorar esse módulo, alinhar à estrutura acima (ver seção 12).
+
 ---
 
 # 6. DDD
@@ -1732,27 +1821,48 @@ O frontend fica em `frontend/` e é um console operacional para a API do Message
 
 Organizar React por funcionalidade, e não por tipo técnico global. Cada módulo concentra suas páginas, componentes específicos, chamadas de API, hooks, esquemas e tipos.
 
+Estrutura atual de `frontend/src/`:
+
 ```text
 frontend/src/
-├── app/                           # rotas, providers e layouts
+├── app/                           # App.tsx (rotas/layout), ThemeModeProvider, theme.ts
+├── assets/brand/                  # logos e marca
 ├── modules/
+│   ├── api-docs/
+│   ├── api-keys/
+│   ├── applications/
+│   ├── audit-logs/                # EventsTab + SystemLogsTab
 │   ├── auth/
 │   ├── dashboard/
-│   ├── tenants/
-│   ├── applications/
-│   ├── whatsapp-accounts/
-│   ├── phone-numbers/
-│   ├── api-keys/
+│   ├── engineering-alerts/
+│   ├── help/
 │   ├── messages/
-│   └── templates/
+│   ├── monitoring/
+│   ├── phone-numbers/
+│   ├── sandbox/
+│   ├── templates/
+│   ├── tenants/
+│   ├── users/
+│   ├── webhooks/
+│   └── whatsapp-accounts/
 ├── components/
-│   ├── ui/                        # design system
-│   └── shared/                    # componentes entre módulos
-├── services/                      # cliente HTTP e autenticação
-├── hooks/
-├── lib/
+│   ├── ui/                        # design system (ex.: PageHeader)
+│   └── shared/                    # PaginatedTable, FormDialog, TableActionsMenu,
+│                                   # AsyncState, EntityResult, CodeBlock e os
+│                                   # *Autocomplete (Tenant/Application/PhoneNumber/
+│                                   # PhoneNumberMulti/WhatsAppAccount/Message)
+├── services/                      # http-client.ts, auth-storage.ts, pagination.ts
+├── hooks/                         # usePagination.ts
+├── lib/                           # presentation.ts (labels/formatação)
 └── styles/
 ```
+
+Cada módulo concentra `<Modulo>Page.tsx` + `<modulo>.api.ts` (e, quando necessário, diálogos/abas próprios, ex.: `TemplateFormDialog.tsx`, `MessageTimelineDialog.tsx`).
+
+**Desvios conhecidos a corrigir:**
+- Os `*Autocomplete` compartilhados (exceto `MessageAutocomplete`) buscam uma página fixa de 100 itens e filtram no cliente, em vez de repassar o termo digitado para o parâmetro `search` do backend — registros após o 100º ficam inacessíveis.
+- `UsersPage` cai para exibir o UUID crú do tenant quando ele não está nessa lista de 100 (contraria a convenção de nunca expor IDs crus).
+- `MonitoringPage` renderiza `PaginatedTable` com paginação decorativa (`page=1`, `pageSize=100`, `onPageChange`/`onPageSizeChange` vazios).
 
 ## Regras obrigatórias
 

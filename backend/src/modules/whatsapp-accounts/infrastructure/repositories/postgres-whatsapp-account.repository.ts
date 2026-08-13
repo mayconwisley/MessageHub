@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { FindOptionsWhere, ILike, Repository } from 'typeorm';
 import { UniqueId } from '@shared/domain';
 import {
   WhatsAppAccount,
@@ -61,11 +61,14 @@ export class PostgresWhatsAppAccountRepository implements IWhatsAppAccountReposi
     pageSize: number,
     filter?: ListWhatsAppAccountsFilter,
   ): Promise<PaginatedResult<WhatsAppAccount>> {
+    const where: FindOptionsWhere<WhatsAppAccountOrmEntity> = {
+      tenantId: tenantId.value,
+      ...(filter?.status ? { status: filter.status } : {}),
+    };
+    if (filter?.search) where.wabaId = ILike(`%${filter.search}%`);
+
     const [rows, total] = await this.repository.findAndCount({
-      where: {
-        tenantId: tenantId.value,
-        ...(filter?.status ? { status: filter.status } : {}),
-      },
+      where,
       order: { createdAt: 'DESC' },
       skip: (page - 1) * pageSize,
       take: pageSize,

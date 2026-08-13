@@ -1,7 +1,8 @@
 import { Autocomplete, CircularProgress, TextField } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 import { z } from 'zod';
-import { phoneNumbersApi } from '../../modules/phone-numbers/phone-numbers.api';
+import { phoneNumbersApi, type PhoneNumber } from '../../modules/phone-numbers/phone-numbers.api';
 
 export function PhoneNumberAutocomplete({
   tenantId,
@@ -23,21 +24,40 @@ export function PhoneNumberAutocomplete({
   sx?: object;
 }) {
   const validTenantId = z.string().uuid().safeParse(tenantId).success;
+  const [inputValue, setInputValue] = useState('');
+  const [search, setSearch] = useState('');
+  const [selectedOption, setSelectedOption] = useState<PhoneNumber | null>(null);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setSearch(inputValue), 300);
+    return () => clearTimeout(timeout);
+  }, [inputValue]);
+
   const { data, isLoading } = useQuery({
-    queryKey: ['phone-numbers-select', tenantId],
-    queryFn: () => phoneNumbersApi.list({ tenantId, page: 1, pageSize: 100 }),
+    queryKey: ['phone-numbers-select', tenantId, search],
+    queryFn: () =>
+      phoneNumbersApi.list({ tenantId, page: 1, pageSize: 20, search: search || undefined }),
     enabled: validTenantId,
-    staleTime: 60_000,
+    staleTime: 30_000,
   });
   const options = data?.items ?? [];
-  const selected = options.find((phoneNumber) => phoneNumber.id === value) ?? null;
+
+  useEffect(() => {
+    if (!value) {
+      setSelectedOption(null);
+      return;
+    }
+    const match = data?.items.find((phoneNumber) => phoneNumber.id === value);
+    if (match) setSelectedOption(match);
+  }, [data, value]);
 
   return (
     <Autocomplete
       options={options}
       loading={isLoading}
-      value={selected}
+      value={selectedOption}
       onChange={(_, newValue) => onChange(newValue?.id ?? '')}
+      onInputChange={(_, newInputValue) => setInputValue(newInputValue)}
       getOptionLabel={(phoneNumber) => phoneNumber.displayNumber}
       isOptionEqualToValue={(option, val) => option.id === val.id}
       disabled={!validTenantId}

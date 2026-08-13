@@ -5,6 +5,7 @@ import {
   Headers,
   HttpCode,
   HttpStatus,
+  Inject,
   Post,
   Req,
   UseGuards,
@@ -14,14 +15,15 @@ import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { toHttpException } from '@presentation/http/result-http.mapper';
 import { UserSessionAuthGuard } from '@presentation/http/guards/user-session-auth.guard';
-import { IdentityService } from '../../infrastructure/services/identity.service';
+import { IMediator, MEDIATOR } from '@shared/mediator';
+import { LoginCommand } from '../../application/commands/login.command';
+import { LogoutCommand } from '../../application/commands/logout.command';
 import { LoginRequestDto } from '../dto/login-request.dto';
-import { InvalidCredentialsError } from '../../domain/errors';
 
 @ApiTags('auth')
 @Controller('v1/auth')
 export class AuthController {
-  constructor(private readonly identity: IdentityService) {}
+  constructor(@Inject(MEDIATOR) private readonly mediator: IMediator) {}
 
   @Post('sessions')
   @HttpCode(HttpStatus.OK)
@@ -29,12 +31,11 @@ export class AuthController {
   @ApiBody({ type: LoginRequestDto })
   @ApiResponse({ status: HttpStatus.OK, description: 'Sessão autenticada criada.' })
   async login(@Body() dto: LoginRequestDto, @Req() request: Request) {
-    const result = await this.identity.authenticate(dto.email, dto.password, {
-      ipAddress: request.ip,
-      userAgent: request.header('user-agent'),
-    });
-    if (!result) throw toHttpException(new InvalidCredentialsError());
-    return result;
+    const result = await this.mediator.send(
+      new LoginCommand(dto.email, dto.password, request.ip, request.header('user-agent')),
+    );
+    if (result.isFailure) throw toHttpException(result.error);
+    return result.value;
   }
 
   @Delete('sessions')
@@ -44,6 +45,6 @@ export class AuthController {
   @ApiResponse({ status: HttpStatus.NO_CONTENT, description: 'Sessão revogada.' })
   async logout(@Headers('authorization') authorization?: string): Promise<void> {
     const token = authorization?.replace(/^Bearer\s+/i, '');
-    if (token) await this.identity.revokeSession(token);
+    await this.mediator.send(new LogoutCommand(token));
   }
 }

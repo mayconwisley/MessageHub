@@ -1,7 +1,8 @@
 import { Autocomplete, CircularProgress, TextField } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 import { z } from 'zod';
-import { applicationsApi } from '../../modules/applications/applications.api';
+import { applicationsApi, type Application } from '../../modules/applications/applications.api';
 
 export function ApplicationAutocomplete({
   tenantId,
@@ -23,21 +24,39 @@ export function ApplicationAutocomplete({
   sx?: object;
 }) {
   const validTenantId = z.string().uuid().safeParse(tenantId).success;
+  const [inputValue, setInputValue] = useState('');
+  const [search, setSearch] = useState('');
+  const [selectedOption, setSelectedOption] = useState<Application | null>(null);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setSearch(inputValue), 300);
+    return () => clearTimeout(timeout);
+  }, [inputValue]);
+
   const { data, isLoading } = useQuery({
-    queryKey: ['applications-select', tenantId],
-    queryFn: () => applicationsApi.list({ tenantId, page: 1, pageSize: 100 }),
+    queryKey: ['applications-select', tenantId, search],
+    queryFn: () => applicationsApi.list({ tenantId, page: 1, pageSize: 20, search: search || undefined }),
     enabled: validTenantId,
-    staleTime: 60_000,
+    staleTime: 30_000,
   });
   const options = data?.items ?? [];
-  const selected = options.find((application) => application.id === value) ?? null;
+
+  useEffect(() => {
+    if (!value) {
+      setSelectedOption(null);
+      return;
+    }
+    const match = data?.items.find((application) => application.id === value);
+    if (match) setSelectedOption(match);
+  }, [data, value]);
 
   return (
     <Autocomplete
       options={options}
       loading={isLoading}
-      value={selected}
+      value={selectedOption}
       onChange={(_, newValue) => onChange(newValue?.id ?? '')}
+      onInputChange={(_, newInputValue) => setInputValue(newInputValue)}
       getOptionLabel={(application) => application.name}
       isOptionEqualToValue={(option, val) => option.id === val.id}
       disabled={!validTenantId}

@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { TemplateDto } from '../../application/services/template-management.service';
+import { TemplateDto } from '../../application/dto/template.dto';
 import { TemplateComponentDefinition } from '../../application/ports/template-provider.interface';
 
 export class TemplateResponseDto implements TemplateDto {

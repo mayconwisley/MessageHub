@@ -1,7 +1,8 @@
 import { Autocomplete, CircularProgress, TextField } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 import { z } from 'zod';
-import { phoneNumbersApi } from '../../modules/phone-numbers/phone-numbers.api';
+import { phoneNumbersApi, type PhoneNumber } from '../../modules/phone-numbers/phone-numbers.api';
 
 export function PhoneNumberMultiAutocomplete({
   tenantId,
@@ -23,22 +24,47 @@ export function PhoneNumberMultiAutocomplete({
   sx?: object;
 }) {
   const validTenantId = z.string().uuid().safeParse(tenantId).success;
+  const [inputValue, setInputValue] = useState('');
+  const [search, setSearch] = useState('');
+  const [selectedOptions, setSelectedOptions] = useState<PhoneNumber[]>([]);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setSearch(inputValue), 300);
+    return () => clearTimeout(timeout);
+  }, [inputValue]);
+
   const { data, isLoading } = useQuery({
-    queryKey: ['phone-numbers-select', tenantId],
-    queryFn: () => phoneNumbersApi.list({ tenantId, page: 1, pageSize: 100 }),
+    queryKey: ['phone-numbers-select', tenantId, search],
+    queryFn: () =>
+      phoneNumbersApi.list({ tenantId, page: 1, pageSize: 20, search: search || undefined }),
     enabled: validTenantId,
-    staleTime: 60_000,
+    staleTime: 30_000,
   });
   const options = data?.items ?? [];
-  const selected = options.filter((phoneNumber) => value.includes(phoneNumber.id));
+
+  useEffect(() => {
+    setSelectedOptions((previous) => {
+      const known = new Map(previous.map((phoneNumber) => [phoneNumber.id, phoneNumber]));
+      for (const option of data?.items ?? []) known.set(option.id, option);
+      return value
+        .map((id) => known.get(id))
+        .filter((phoneNumber): phoneNumber is PhoneNumber => Boolean(phoneNumber));
+    });
+  }, [data, value]);
+
+  const mergedOptions = [
+    ...options,
+    ...selectedOptions.filter((option) => !options.some((o) => o.id === option.id)),
+  ];
 
   return (
     <Autocomplete
       multiple
-      options={options}
+      options={mergedOptions}
       loading={isLoading}
-      value={selected}
+      value={selectedOptions}
       onChange={(_, newValue) => onChange(newValue.map((phoneNumber) => phoneNumber.id))}
+      onInputChange={(_, newInputValue) => setInputValue(newInputValue)}
       getOptionLabel={(phoneNumber) => phoneNumber.displayNumber}
       isOptionEqualToValue={(option, val) => option.id === val.id}
       disabled={!validTenantId}

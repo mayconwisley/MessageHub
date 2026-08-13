@@ -5,6 +5,7 @@ import { PhoneNumberStatus } from '../enums/phone-number-status.enum';
 
 export interface ListPhoneNumbersFilter {
   status?: PhoneNumberStatus;
+  search?: string;
 }
 
 export interface IPhoneNumberRepository {

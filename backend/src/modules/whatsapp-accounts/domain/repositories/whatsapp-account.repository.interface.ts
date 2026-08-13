@@ -5,6 +5,7 @@ import { WhatsAppAccountStatus } from '../enums/whatsapp-account-status.enum';
 
 export interface ListWhatsAppAccountsFilter {
   status?: WhatsAppAccountStatus;
+  search?: string;
 }
 
 export interface IWhatsAppAccountRepository {

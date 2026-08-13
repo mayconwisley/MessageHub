@@ -10,6 +10,9 @@ export class UserResponseDto {
   @ApiPropertyOptional({ format: 'uuid', nullable: true })
   tenantId!: string | null;
 
+  @ApiPropertyOptional({ nullable: true })
+  tenantName?: string | null;
+
   @ApiProperty()
   name!: string;
 
@@ -35,6 +38,7 @@ export class UserResponseDto {
     const response = new UserResponseDto();
     response.id = dto.id;
     response.tenantId = dto.tenantId;
+    response.tenantName = dto.tenantName;
     response.name = dto.name;
     response.email = dto.email;
     response.role = dto.role;

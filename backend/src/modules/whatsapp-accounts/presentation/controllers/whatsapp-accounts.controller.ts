@@ -12,7 +12,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiPropertyOptional, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsUUID } from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import { MetaConfigService } from '@infrastructure/configuration/meta-config.service';
 import { IMediator, MEDIATOR } from '@shared/mediator';
 import { PlatformAdminOrTenantApiKeyGuard } from '@presentation/http/guards/platform-admin-or-tenant-api-key.guard';
@@ -43,6 +43,12 @@ class ListWhatsAppAccountsRequestDto extends PaginationQueryDto {
   @IsOptional()
   @IsEnum(WhatsAppAccountStatus)
   status?: WhatsAppAccountStatus;
+
+  @ApiPropertyOptional({ description: 'Busca por WABA ID.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  search?: string;
 }
 
 @ApiTags('whatsapp-accounts')
@@ -121,7 +127,7 @@ export class WhatsAppAccountsController {
   ): Promise<PaginatedResult<WhatsAppAccountResponseDto>> {
     const tenantId = auth?.tenantId ?? user?.tenantId ?? this.requireTenantId(query.tenantId);
     const result = await this.mediator.query(
-      new ListWhatsAppAccountsQuery(tenantId, query.page, query.pageSize, query.status),
+      new ListWhatsAppAccountsQuery(tenantId, query.page, query.pageSize, query.status, query.search),
     );
     if (result.isFailure) throw toHttpException(result.error);
     return {

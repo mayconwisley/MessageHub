@@ -36,7 +36,9 @@ interface BufferedRow {
  * Duplica as linhas NDJSON escritas pelo Pino (que hoje só existem em stdout,
  * de forma efêmera) para a tabela `events.system_logs`, em lotes, sem nunca
  * lançar erro — uma falha de persistência de log técnico não pode derrubar o
- * pipeline de logging nem a aplicação.
+ * pipeline de logging nem a aplicação. Descarta ruído de bootstrap do Nest e
+ * requisições HTTP bem-sucedidas (sem valor diagnóstico); falhas de
+ * requisição continuam sendo gravadas.
  */
 export class SystemLogCaptureStream extends Writable {
   private buffer: BufferedRow[] = [];
@@ -86,6 +88,12 @@ export class SystemLogCaptureStream extends Writable {
     }
     const { level, time, msg, context, reqId, ...metadata } = parsed;
     if (typeof context === 'string' && NOISY_CONTEXTS.has(context)) {
+      return;
+    }
+    const res = metadata.res as { statusCode?: unknown } | undefined;
+    const isSuccessfulHttpAccessLog =
+      msg === 'request completed' && typeof res?.statusCode === 'number' && res.statusCode < 400;
+    if (isSuccessfulHttpAccessLog) {
       return;
     }
     delete metadata.pid;

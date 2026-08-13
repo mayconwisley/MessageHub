@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Get,
@@ -20,6 +19,7 @@ import { IDEMPOTENCY_KEY_HEADER } from '@shared/constants';
 import { IMediator, MEDIATOR } from '@shared/mediator';
 import { PaginationQueryDto } from '@presentation/http/dto/pagination-query.dto';
 import { PaginatedResult } from '@shared/types';
+import { resolveRequiredApplicationId } from '@presentation/http/auth-scope.resolver';
 import { CurrentOptionalAuthContext } from '@presentation/http/decorators/current-optional-auth-context.decorator';
 import { CurrentAuthenticatedUser } from '@presentation/http/decorators/current-authenticated-user.decorator';
 import { PlatformAdminOrApiKeyGuard } from '@presentation/http/guards/platform-admin-or-api-key.guard';
@@ -68,18 +68,6 @@ class ApplicationScopedQueryDto {
   applicationId?: string;
 }
 
-/** Sessão administrativa exige applicationId explícito; API Key já o resolve pelo próprio token (secao 17/18). */
-function resolveApplicationId(
-  auth: AuthContextDto | undefined,
-  explicit: string | undefined,
-): string {
-  const applicationId = auth?.applicationId ?? explicit;
-  if (!applicationId) {
-    throw new BadRequestException('applicationId é obrigatório para requisições administrativas.');
-  }
-  return applicationId;
-}
-
 function resolveRequestingTenantId(user: AuthenticatedUserDto | undefined): string | undefined {
   return user?.role === UserRole.TENANT_ADMIN ? (user.tenantId ?? undefined) : undefined;
 }
@@ -101,7 +89,7 @@ export class MessagesController {
     @Headers(IDEMPOTENCY_KEY_HEADER) idempotencyKey?: string,
     @Req() request?: Request & { id?: string },
   ): Promise<MessageResponseDto> {
-    const applicationId = resolveApplicationId(authContext, dto.applicationId);
+    const applicationId = resolveRequiredApplicationId(authContext, dto.applicationId);
     const result = await this.mediator.send(
       new SendMessageCommand(
         applicationId,
@@ -129,7 +117,7 @@ export class MessagesController {
     @Headers(IDEMPOTENCY_KEY_HEADER) idempotencyKey?: string,
     @Req() request?: Request & { id?: string },
   ): Promise<MessageResponseDto> {
-    const applicationId = resolveApplicationId(authContext, dto.applicationId);
+    const applicationId = resolveRequiredApplicationId(authContext, dto.applicationId);
     const result = await this.mediator.send(
       new SendTemplateMessageCommand(
         applicationId,
@@ -152,7 +140,7 @@ export class MessagesController {
     @CurrentOptionalAuthContext() authContext?: AuthContextDto,
     @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
   ): Promise<PaginatedResult<MessageResponseDto>> {
-    const applicationId = resolveApplicationId(authContext, query.applicationId);
+    const applicationId = resolveRequiredApplicationId(authContext, query.applicationId);
     const result = await this.mediator.query(
       new ListMessagesQuery(
         applicationId,
@@ -178,7 +166,7 @@ export class MessagesController {
     @CurrentOptionalAuthContext() authContext?: AuthContextDto,
     @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
   ): Promise<MessageResponseDto> {
-    const applicationId = resolveApplicationId(authContext, query.applicationId);
+    const applicationId = resolveRequiredApplicationId(authContext, query.applicationId);
     const result = await this.mediator.query(
       new GetMessageQuery(id, applicationId, resolveRequestingTenantId(user)),
     );
@@ -196,7 +184,7 @@ export class MessagesController {
     @CurrentOptionalAuthContext() authContext?: AuthContextDto,
     @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
   ): Promise<MessageAttemptResponseDto[]> {
-    const applicationId = resolveApplicationId(authContext, query.applicationId);
+    const applicationId = resolveRequiredApplicationId(authContext, query.applicationId);
     const result = await this.mediator.query(
       new ListMessageAttemptsQuery(id, applicationId, resolveRequestingTenantId(user)),
     );
@@ -211,7 +199,7 @@ export class MessagesController {
     @CurrentOptionalAuthContext() authContext?: AuthContextDto,
     @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
   ) {
-    const applicationId = resolveApplicationId(authContext, query.applicationId);
+    const applicationId = resolveRequiredApplicationId(authContext, query.applicationId);
     const result = await this.mediator.query(
       new ListMessageTimelineQuery(id, applicationId, resolveRequestingTenantId(user)),
     );

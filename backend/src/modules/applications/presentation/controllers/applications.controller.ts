@@ -13,7 +13,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiHeader, ApiPropertyOptional, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { IsOptional, IsUUID } from 'class-validator';
+import { IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import { IMediator, MEDIATOR } from '@shared/mediator';
 import { UserSessionAuthGuard } from '@presentation/http/guards/user-session-auth.guard';
 import { PlatformAdminGuard } from '@presentation/http/guards/platform-admin.guard';
@@ -40,6 +40,12 @@ class ListApplicationsRequestDto extends PaginationQueryDto {
   @IsOptional()
   @IsUUID()
   tenantId?: string;
+
+  @ApiPropertyOptional({ description: 'Busca por nome da aplicação.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  search?: string;
 }
 
 @ApiTags('applications')
@@ -68,7 +74,7 @@ export class ApplicationsController {
       throw new BadRequestException('tenantId é obrigatório.');
     }
     const result = await this.mediator.query(
-      new ListApplicationsQuery(query.tenantId, query.page, query.pageSize),
+      new ListApplicationsQuery(query.tenantId, query.page, query.pageSize, query.search),
     );
     if (result.isFailure) throw toHttpException(result.error);
     return {

@@ -123,6 +123,11 @@ export class User extends Entity<UserProps> {
     this.touch();
   }
 
+  recordLogin(): void {
+    this.props.lastLoginAt = new Date();
+    this.touch();
+  }
+
   updateProfile(
     params: UpdateUserProfileParams,
   ): Result<void, InvalidUserNameError | InvalidUserEmailError> {

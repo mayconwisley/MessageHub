@@ -4,6 +4,7 @@ import type { PaginatedResult } from '../../services/pagination';
 export interface User {
   id: string;
   tenantId: string | null;
+  tenantName?: string | null;
   name: string;
   email: string;
   role: 'platform_admin' | 'tenant_admin' | 'operator';

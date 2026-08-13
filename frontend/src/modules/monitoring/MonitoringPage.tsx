@@ -6,11 +6,14 @@ import { AsyncState } from '../../components/shared/AsyncState';
 import { PaginatedTable } from '../../components/shared/PaginatedTable';
 import { TenantAutocomplete } from '../../components/shared/TenantAutocomplete';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { usePagination } from '../../hooks/usePagination';
 import { monitoringApi } from './monitoring.api';
 
 export function MonitoringPage() {
   const [tenantId, setTenantId] = useState('');
   const [applicationId, setApplicationId] = useState('');
+  const apiKeysPagination = usePagination(10);
+  const phoneNumbersPagination = usePagination(10);
   const monitor = useQuery({
     queryKey: ['integration-monitor', applicationId],
     queryFn: () => monitoringApi.getApplication(applicationId),
@@ -115,12 +118,18 @@ export function MonitoringPage() {
                     row.lastUsedAt ? new Date(row.lastUsedAt).toLocaleString('pt-BR') : 'Nunca',
                 },
               ]}
-              rows={monitor.data.apiKeys}
+              rows={monitor.data.apiKeys.slice(
+                (apiKeysPagination.page - 1) * apiKeysPagination.pageSize,
+                apiKeysPagination.page * apiKeysPagination.pageSize,
+              )}
               total={monitor.data.apiKeys.length}
-              page={1}
-              pageSize={100}
-              onPageChange={() => undefined}
-              onPageSizeChange={() => undefined}
+              page={apiKeysPagination.page}
+              pageSize={apiKeysPagination.pageSize}
+              onPageChange={apiKeysPagination.setPage}
+              onPageSizeChange={(size) => {
+                apiKeysPagination.setPageSize(size);
+                apiKeysPagination.setPage(1);
+              }}
             />
             <Typography variant="h6">Números e credenciais Meta</Typography>
             <PaginatedTable
@@ -157,12 +166,18 @@ export function MonitoringPage() {
                       : 'Não informado',
                 },
               ]}
-              rows={monitor.data.phoneNumbers}
+              rows={monitor.data.phoneNumbers.slice(
+                (phoneNumbersPagination.page - 1) * phoneNumbersPagination.pageSize,
+                phoneNumbersPagination.page * phoneNumbersPagination.pageSize,
+              )}
               total={monitor.data.phoneNumbers.length}
-              page={1}
-              pageSize={100}
-              onPageChange={() => undefined}
-              onPageSizeChange={() => undefined}
+              page={phoneNumbersPagination.page}
+              pageSize={phoneNumbersPagination.pageSize}
+              onPageChange={phoneNumbersPagination.setPage}
+              onPageSizeChange={(size) => {
+                phoneNumbersPagination.setPageSize(size);
+                phoneNumbersPagination.setPage(1);
+              }}
             />
           </>
         )}

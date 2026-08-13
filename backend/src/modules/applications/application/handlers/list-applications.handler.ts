@@ -23,6 +23,7 @@ export class ListApplicationsHandler implements IQueryHandler<ListApplicationsQu
       UniqueId.create(query.tenantId),
       query.page,
       query.pageSize,
+      { search: query.search },
     );
     return Result.ok({
       ...result,

@@ -13,6 +13,7 @@ export interface ListUsersFilter {
 
 export interface IUserRepository {
   save(user: User): Promise<void>;
+  count(): Promise<number>;
   findById(id: UniqueId): Promise<User | null>;
   findByEmail(email: string): Promise<User | null>;
   list(page: number, pageSize: number, filter?: ListUsersFilter): Promise<PaginatedResult<User>>;

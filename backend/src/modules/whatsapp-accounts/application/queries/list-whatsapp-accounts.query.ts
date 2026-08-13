@@ -12,6 +12,7 @@ export class ListWhatsAppAccountsQuery extends Query<
     public readonly page: number,
     public readonly pageSize: number,
     public readonly status?: WhatsAppAccountStatus,
+    public readonly search?: string,
   ) {
     super();
   }

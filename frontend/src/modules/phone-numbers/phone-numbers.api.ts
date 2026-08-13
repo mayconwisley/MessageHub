@@ -12,8 +12,13 @@ export interface PhoneNumber {
 }
 
 export const phoneNumbersApi = {
-  list: (params: { tenantId: string; page: number; pageSize: number; status?: string }) =>
-    request<PaginatedResult<PhoneNumber>>(`/v1/phone-numbers${toQueryString(params)}`),
+  list: (params: {
+    tenantId: string;
+    page: number;
+    pageSize: number;
+    status?: string;
+    search?: string;
+  }) => request<PaginatedResult<PhoneNumber>>(`/v1/phone-numbers${toQueryString(params)}`),
   create: (data: { whatsAppAccountId: string; phoneNumberId: string; displayNumber: string }) =>
     request<PhoneNumber>('/v1/phone-numbers', { method: 'POST', body: data }),
   getById: (id: string) => request<PhoneNumber>(`/v1/phone-numbers/${id}`),

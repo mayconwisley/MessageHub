@@ -21,7 +21,9 @@ import { MetaWebhookWorker } from './infrastructure/workers/meta-webhook.worker'
 import { InboundMessageWebhookWorker } from './infrastructure/workers/inbound-message-webhook.worker';
 import { WEBHOOK_EVENT_OPERATIONS_REPOSITORY } from './application/ports/webhook-event-operations.repository.interface';
 import { ListWebhookEventsHandler } from './application/handlers/list-webhook-events.handler';
+import { ReceiveMetaWebhookHandler } from './application/handlers/receive-meta-webhook.handler';
 import { ReprocessWebhookEventHandler } from './application/handlers/reprocess-webhook-event.handler';
+import { MetaWebhookSignatureVerifierService } from './application/services/meta-webhook-signature-verifier.service';
 import { WebhookEventsController } from './presentation/controllers/webhook-events.controller';
 
 /**
@@ -53,7 +55,9 @@ import { WebhookEventsController } from './presentation/controllers/webhook-even
     WebhookRetryPolicy,
     MetaWebhookWorker,
     InboundMessageWebhookWorker,
+    MetaWebhookSignatureVerifierService,
     ListWebhookEventsHandler,
+    ReceiveMetaWebhookHandler,
     ReprocessWebhookEventHandler,
   ],
 })

@@ -17,7 +17,6 @@ import { PaginatedTable } from '../../components/shared/PaginatedTable';
 import { TableActionsMenu } from '../../components/shared/TableActionsMenu';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { usePagination } from '../../hooks/usePagination';
-import { tenantsApi } from '../tenants/tenants.api';
 import { UserFormDialog, type UserFormData } from './UserFormDialog';
 import { usersApi, type User } from './users.api';
 
@@ -58,13 +57,6 @@ export function UsersPage() {
         search: search || undefined,
       }),
   });
-  const tenants = useQuery({
-    queryKey: ['tenants-select'],
-    queryFn: () => tenantsApi.list({ page: 1, pageSize: 100 }),
-    staleTime: 60_000,
-  });
-  const tenantNames = new Map((tenants.data?.items ?? []).map((tenant) => [tenant.id, tenant.name]));
-
   const invalidate = () => client.invalidateQueries({ queryKey: ['users'] });
 
   const create = useMutation({
@@ -168,7 +160,7 @@ export function UsersPage() {
               {
                 key: 'tenantId',
                 label: 'Tenant',
-                render: (row) => (row.tenantId ? (tenantNames.get(row.tenantId) ?? row.tenantId) : '—'),
+                render: (row) => row.tenantName ?? '—',
               },
               {
                 key: 'status',

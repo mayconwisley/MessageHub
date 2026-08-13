@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { FindOptionsWhere, ILike, In, Repository } from 'typeorm';
 import { UniqueId } from '@shared/domain';
 import { PhoneNumber, PhoneNumberProps } from '../../domain/entities/phone-number.entity';
 import { PhoneNumberStatus } from '../../domain/enums/phone-number-status.enum';
@@ -39,11 +39,20 @@ export class PostgresPhoneNumberRepository implements IPhoneNumberRepository {
     filter?: ListPhoneNumbersFilter,
   ): Promise<PaginatedResult<PhoneNumber>> {
     if (accountIds.length === 0) return { items: [], total: 0, page, pageSize };
+    const baseWhere: FindOptionsWhere<PhoneNumberOrmEntity> = {
+      whatsAppAccountId: In(accountIds.map((id) => id.value)),
+      ...(filter?.status ? { status: filter.status } : {}),
+    };
+    const where: FindOptionsWhere<PhoneNumberOrmEntity> | FindOptionsWhere<PhoneNumberOrmEntity>[] =
+      filter?.search
+        ? [
+            { ...baseWhere, displayNumber: ILike(`%${filter.search}%`) },
+            { ...baseWhere, phoneNumberId: ILike(`%${filter.search}%`) },
+          ]
+        : baseWhere;
+
     const [rows, total] = await this.repository.findAndCount({
-      where: {
-        whatsAppAccountId: In(accountIds.map((id) => id.value)),
-        ...(filter?.status ? { status: filter.status } : {}),
-      },
+      where,
       order: { createdAt: 'DESC' },
       skip: (page - 1) * pageSize,
       take: pageSize,

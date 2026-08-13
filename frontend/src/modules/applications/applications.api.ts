@@ -23,7 +23,7 @@ export interface LinkedPhoneNumber {
 }
 
 export const applicationsApi = {
-  list: (params: { tenantId: string; page: number; pageSize: number }) =>
+  list: (params: { tenantId: string; page: number; pageSize: number; search?: string }) =>
     request<PaginatedResult<Application>>(`/v1/applications${toQueryString(params)}`),
   create: (data: { tenantId: string; name: string }) =>
     request<Application>('/v1/applications', { method: 'POST', body: data }),

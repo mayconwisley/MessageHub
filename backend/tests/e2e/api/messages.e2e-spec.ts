@@ -11,7 +11,7 @@ import { PlatformAdminGuard } from '@presentation/http/guards/platform-admin.gua
 import { PlatformAdminOrTenantApiKeyGuard } from '@presentation/http/guards/platform-admin-or-tenant-api-key.guard';
 import { PlatformAdminOrApiKeyGuard } from '@presentation/http/guards/platform-admin-or-api-key.guard';
 import { TenantApiKeyGuard } from '@presentation/http/guards/tenant-api-key.guard';
-import { IdentityService } from '@modules/identity/infrastructure/services/identity.service';
+import { UserSessionService } from '@modules/identity/application/services/user-session.service';
 import { MetaConfigService } from '@infrastructure/configuration/meta-config.service';
 import { CreateApiKeyHandler } from '@modules/applications/application/handlers/create-api-key.handler';
 import { CreateApplicationHandler } from '@modules/applications/application/handlers/create-application.handler';
@@ -124,7 +124,7 @@ describe('Messages flow (e2e)', () => {
         UserSessionAuthGuard,
         PlatformAdminGuard,
         {
-          provide: IdentityService,
+          provide: UserSessionService,
           useValue: {
             resolveSession: jest.fn().mockResolvedValue({
               id: '4f666ed7-c819-4f3e-bcc3-b951c6ed8e2a',

@@ -12,7 +12,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiPropertyOptional, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsUUID } from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import { IMediator, MEDIATOR } from '@shared/mediator';
 import { PlatformAdminOrTenantApiKeyGuard } from '@presentation/http/guards/platform-admin-or-tenant-api-key.guard';
 import { CurrentOptionalAuthContext } from '@presentation/http/decorators/current-optional-auth-context.decorator';
@@ -39,6 +39,12 @@ class ListPhoneNumbersRequestDto extends PaginationQueryDto {
   @IsOptional()
   @IsEnum(PhoneNumberStatus)
   status?: PhoneNumberStatus;
+
+  @ApiPropertyOptional({ description: 'Busca por número ou ID do número na Meta.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  search?: string;
 }
 
 @ApiTags('phone-numbers')
@@ -80,7 +86,7 @@ export class PhoneNumbersController {
     if (!tenantId)
       throw new BadRequestException('tenantId é obrigatório para requisições administrativas.');
     const result = await this.mediator.query(
-      new ListPhoneNumbersQuery(tenantId, query.page, query.pageSize, query.status),
+      new ListPhoneNumbersQuery(tenantId, query.page, query.pageSize, query.status, query.search),
     );
     if (result.isFailure) throw toHttpException(result.error);
     return {

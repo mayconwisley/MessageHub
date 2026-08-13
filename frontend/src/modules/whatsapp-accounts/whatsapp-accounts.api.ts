@@ -17,8 +17,13 @@ export interface DefaultChannel {
 }
 
 export const whatsAppAccountsApi = {
-  list: (params: { tenantId: string; page: number; pageSize: number; status?: string }) =>
-    request<PaginatedResult<WhatsAppAccount>>(`/v1/whatsapp-accounts${toQueryString(params)}`),
+  list: (params: {
+    tenantId: string;
+    page: number;
+    pageSize: number;
+    status?: string;
+    search?: string;
+  }) => request<PaginatedResult<WhatsAppAccount>>(`/v1/whatsapp-accounts${toQueryString(params)}`),
   create: (data: {
     tenantId: string;
     wabaId: string;

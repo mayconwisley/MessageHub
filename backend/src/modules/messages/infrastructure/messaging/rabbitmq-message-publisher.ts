@@ -28,4 +28,8 @@ export class RabbitMqMessagePublisher implements IMessagePublisher {
   async publishMessageRequested(payload: MessageRequestedPayload): Promise<void> {
     await this.channelWrapper.sendToQueue(MESSAGE_REQUESTED_QUEUE, payload, { persistent: true });
   }
+
+  async publishToDeadLetterQueue(payload: MessageRequestedPayload): Promise<void> {
+    await this.channelWrapper.sendToQueue(MESSAGE_REQUESTED_DLQ, payload, { persistent: true });
+  }
 }
