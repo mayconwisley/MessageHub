@@ -1,192 +1,247 @@
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Delete, Edit } from '@mui/icons-material';
-import { Alert, Button, Chip, FormControl, InputLabel, MenuItem, Select, Stack, TextField } from '@mui/material';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
-import { z } from 'zod';
-import { AsyncState } from '../../components/shared/AsyncState';
-import { FormDialog } from '../../components/shared/FormDialog';
-import { PaginatedTable } from '../../components/shared/PaginatedTable';
-import { TableActionsMenu } from '../../components/shared/TableActionsMenu';
-import { TenantAutocomplete } from '../../components/shared/TenantAutocomplete';
-import { WhatsAppAccountAutocomplete } from '../../components/shared/WhatsAppAccountAutocomplete';
-import { PageHeader } from '../../components/ui/PageHeader';
-import { usePagination } from '../../hooks/usePagination';
-import { templatesApi, type Template } from './templates.api';
-
-const createSchema = z.object({
-  tenantId: z.string().uuid('Selecione um tenant.'),
-  whatsAppAccountId: z.string().uuid('Selecione uma conta WhatsApp.'),
-  name: z.string().min(1, 'Informe o nome do template.'),
-  language: z.string().min(2, 'Informe o idioma do template.'),
-  category: z.string().min(1, 'Informe a categoria do template.'),
-  body: z.string().min(1, 'Informe o texto do corpo do template.'),
-});
-type CreateFormData = z.infer<typeof createSchema>;
-
-const editSchema = z.object({
-  category: z.string().min(1, 'Informe a categoria do template.'),
-  body: z.string().min(1, 'Informe o texto do corpo do template.'),
-});
-type EditFormData = z.infer<typeof editSchema>;
+import { Delete, Edit, Preview, Sync } from "@mui/icons-material";
+import {
+  Alert,
+  Button,
+  Chip,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  Stack,
+  TextField,
+} from "@mui/material";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { AsyncState } from "../../components/shared/AsyncState";
+import { FormDialog } from "../../components/shared/FormDialog";
+import { PaginatedTable } from "../../components/shared/PaginatedTable";
+import { TableActionsMenu } from "../../components/shared/TableActionsMenu";
+import { TenantAutocomplete } from "../../components/shared/TenantAutocomplete";
+import { WhatsAppAccountAutocomplete } from "../../components/shared/WhatsAppAccountAutocomplete";
+import { PageHeader } from "../../components/ui/PageHeader";
+import { usePagination } from "../../hooks/usePagination";
+import { TemplateFormDialog } from "./TemplateFormDialog";
+import { bodyExampleValues } from "./template-example.utils";
+import { TemplateWhatsAppPreview } from "./TemplateWhatsAppPreview";
+import { toMutationData } from "./template-form.mapper";
+import type { TemplateFormData } from "./template-form.schema";
+import { templatesApi, type Template } from "./templates.api";
 
 const statusLabels: Record<string, string> = {
-  DRAFT: 'Rascunho',
-  PENDING: 'Pendente',
-  APPROVED: 'Aprovado',
-  REJECTED: 'Rejeitado',
-  PAUSED: 'Pausado',
-  DISABLED: 'Desativado',
+  DRAFT: "Rascunho",
+  PENDING: "Pendente",
+  APPROVED: "Aprovado",
+  REJECTED: "Rejeitado",
+  PAUSED: "Pausado",
+  DISABLED: "Desativado",
 };
 
-function bodyTextOf(template: Template): string {
-  return template.components.find((component) => component.type === 'BODY')?.text ?? '';
+function previewValues(template: Template) {
+  const component = (type: string) =>
+    template.components.find((item) => item.type.toUpperCase() === type);
+  const button = component("BUTTONS")?.buttons?.find(
+    (item) => item.type.toUpperCase() === "URL",
+  );
+  return {
+    headerText: component("HEADER")?.text,
+    bodyText: component("BODY")?.text,
+    footerText: component("FOOTER")?.text,
+    examples: bodyExampleValues(component("BODY")).join(", "),
+    buttonText: button?.text,
+  };
 }
 
 export function TemplatesPage() {
   const { page, pageSize, setPage, setPageSize } = usePagination();
-  const [tenantIdFilter, setTenantIdFilter] = useState('');
-  const [accountId, setAccountId] = useState('');
-  const [status, setStatus] = useState('');
-  const [category, setCategory] = useState('');
-  const [createOpen, setCreateOpen] = useState(false);
+  const [tenantId, setTenantId] = useState("");
+  const [accountId, setAccountId] = useState("");
+  const [status, setStatus] = useState("");
+  const [category, setCategory] = useState("");
   const [editing, setEditing] = useState<Template | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [previewing, setPreviewing] = useState<Template | null>(null);
+  const [deleting, setDeleting] = useState<Template | null>(null);
   const client = useQueryClient();
-
-  const createForm = useForm<CreateFormData>({ resolver: zodResolver(createSchema), defaultValues: { language: 'pt_BR', category: 'UTILITY' } });
-  const editForm = useForm<EditFormData>({ resolver: zodResolver(editSchema) });
-
-  const validTenant = z.string().uuid().safeParse(tenantIdFilter).success;
-  const validAccount = z.string().uuid().safeParse(accountId).success;
+  const isSelectionValid = Boolean(tenantId && accountId);
   const list = useQuery({
-    queryKey: ['templates', accountId, page, pageSize, status, category],
-    queryFn: () => templatesApi.list({ tenantId: tenantIdFilter, whatsAppAccountId: accountId, page, pageSize, status: status || undefined, category: category || undefined }),
-    enabled: validTenant && validAccount,
-  });
-
-  const invalidateList = () => client.invalidateQueries({ queryKey: ['templates', accountId] });
-  const create = useMutation({
-    mutationFn: (data: CreateFormData) =>
-      templatesApi.create({
-        tenantId: data.tenantId,
-        whatsAppAccountId: data.whatsAppAccountId,
-        name: data.name,
-        language: data.language,
-        category: data.category,
-        body: data.body,
+    queryKey: [
+      "templates",
+      tenantId,
+      accountId,
+      page,
+      pageSize,
+      status,
+      category,
+    ],
+    queryFn: () =>
+      templatesApi.list({
+        tenantId,
+        whatsAppAccountId: accountId,
+        page,
+        pageSize,
+        status: status || undefined,
+        category: category || undefined,
       }),
-    onSuccess: invalidateList,
+    enabled: isSelectionValid,
   });
-  const update = useMutation({
-    mutationFn: (data: EditFormData) => templatesApi.update(editing!.id, { ...data, tenantId: tenantIdFilter }),
+  const invalidate = () =>
+    client.invalidateQueries({ queryKey: ["templates", tenantId, accountId] });
+  const create = useMutation({
+    mutationFn: (data: TemplateFormData) =>
+      templatesApi.create(toMutationData(data)),
     onSuccess: () => {
-      setEditing(null);
-      invalidateList();
+      setCreating(false);
+      invalidate();
     },
   });
-  const remove = useMutation({ mutationFn: (id: string) => templatesApi.delete(id, tenantIdFilter), onSuccess: invalidateList });
+  const update = useMutation({
+    mutationFn: (data: TemplateFormData) => {
+      const model = toMutationData(data);
+      return templatesApi.update(editing!.id, {
+        tenantId: model.tenantId,
+        category: model.category,
+        components: model.components,
+      });
+    },
+    onSuccess: () => {
+      setEditing(null);
+      invalidate();
+    },
+  });
+  const remove = useMutation({
+    mutationFn: (template: Template) =>
+      templatesApi.delete(template.id, tenantId),
+    onSuccess: () => {
+      setDeleting(null);
+      invalidate();
+    },
+  });
   const sync = useMutation({
-    mutationFn: () => templatesApi.sync(tenantIdFilter, accountId),
-    onSuccess: invalidateList,
+    mutationFn: () => templatesApi.sync(tenantId, accountId),
+    onSuccess: invalidate,
   });
-  const publishPending = useMutation({
-    mutationFn: () => templatesApi.publishPending(tenantIdFilter, accountId),
-    onSuccess: invalidateList,
+  const publish = useMutation({
+    mutationFn: () => templatesApi.publishPending(tenantId, accountId),
+    onSuccess: invalidate,
   });
-
-  const openCreate = () => {
-    createForm.reset({
-      language: 'pt_BR',
-      category: 'UTILITY',
-      tenantId: tenantIdFilter || undefined,
-      whatsAppAccountId: accountId || undefined,
-    });
-    create.reset();
-    setCreateOpen(true);
-  };
-  const closeCreate = () => setCreateOpen(false);
-  const createTenantId = createForm.watch('tenantId');
-
-  const startEdit = (template: Template) => {
-    setEditing(template);
-    editForm.reset({ category: template.category, body: bodyTextOf(template) });
-  };
+  const preview = previewing ? previewValues(previewing) : null;
 
   return (
     <Stack spacing={3}>
       <PageHeader
         title="Modelos de mensagem"
-        description="Cadastre, edite e sincronize os modelos de mensagem da conta WhatsApp selecionada."
+        description="Crie, revise, publique e sincronize modelos da Meta sem acessar o painel externo."
         action={
-          <Button variant="contained" onClick={openCreate} sx={{ mt: 2 }}>
+          <Button variant="contained" onClick={() => setCreating(true)}>
             Criar modelo
           </Button>
         }
       />
       <Stack spacing={2}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ flexWrap: 'wrap' }}>
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={2}
+          flexWrap="wrap"
+        >
           <TenantAutocomplete
-            label="Filtrar por tenant"
-            value={tenantIdFilter}
+            label="Tenant"
+            value={tenantId}
             onChange={(id) => {
-              setTenantIdFilter(id);
-              setAccountId('');
+              setTenantId(id);
+              setAccountId("");
               setPage(1);
             }}
-            sx={{ minWidth: 260 }}
+            sx={{ minWidth: 240 }}
           />
           <WhatsAppAccountAutocomplete
-            label="Filtrar por conta WhatsApp"
-            tenantId={tenantIdFilter}
+            tenantId={tenantId}
             value={accountId}
             onChange={(id) => {
               setAccountId(id);
               setPage(1);
             }}
-            sx={{ minWidth: 260 }}
+            sx={{ minWidth: 240 }}
           />
-          <FormControl size="small" sx={{ width: 200 }}>
-            <InputLabel id="template-status-filter">Status</InputLabel>
+          <FormControl size="small" sx={{ width: 180 }}>
+            <InputLabel>Status</InputLabel>
             <Select
-              labelId="template-status-filter"
               label="Status"
               value={status}
-              onChange={(event) => {
-                setStatus(event.target.value);
-                setPage(1);
-              }}
+              onChange={(event) => setStatus(event.target.value)}
             >
               <MenuItem value="">Todos</MenuItem>
-              {['DRAFT', 'PENDING', 'APPROVED', 'REJECTED', 'PAUSED', 'DISABLED'].map((value) => (
-                <MenuItem key={value} value={value}>{statusLabels[value] ?? value}</MenuItem>
+              {Object.entries(statusLabels).map(([value, label]) => (
+                <MenuItem key={value} value={value}>
+                  {label}
+                </MenuItem>
               ))}
             </Select>
           </FormControl>
           <TextField
+            size="small"
             label="Categoria"
             value={category}
-            onChange={(event) => {
-              setCategory(event.target.value);
-              setPage(1);
-            }}
-            sx={{ width: 200 }}
+            onChange={(event) => setCategory(event.target.value)}
           />
-          <Button type="button" variant="outlined" onClick={() => sync.mutate()} disabled={!validAccount || sync.isPending} sx={{ whiteSpace: 'nowrap' }}>Sincronizar com a Meta</Button>
-          <Button type="button" variant="outlined" onClick={() => publishPending.mutate()} disabled={!validAccount || publishPending.isPending} sx={{ whiteSpace: 'nowrap' }}>Publicar pendentes</Button>
+          <Button
+            variant="outlined"
+            startIcon={<Sync />}
+            disabled={!isSelectionValid || sync.isPending}
+            onClick={() => sync.mutate()}
+          >
+            Sincronizar Meta
+          </Button>
+          <Button
+            variant="outlined"
+            disabled={!isSelectionValid || publish.isPending}
+            onClick={() => publish.mutate()}
+          >
+            Publicar pendentes
+          </Button>
         </Stack>
         {sync.error && <Alert severity="error">{sync.error.message}</Alert>}
-        {sync.data && <Alert severity="success">Sincronização concluída: {sync.data.total} modelos processados.</Alert>}
-        {publishPending.error && <Alert severity="error">{publishPending.error.message}</Alert>}
-        {publishPending.data && <Alert severity="success">Publicação concluída: {publishPending.data.total} modelos processados.</Alert>}
-        {remove.error && <Alert severity="error">{remove.error.message}</Alert>}
-        <AsyncState isLoading={validAccount && list.isLoading} error={list.error} emptyMessage={validAccount ? undefined : 'Informe uma conta válida para listar os modelos.'}>
+        {sync.data && (
+          <Alert severity="success">
+            Sincronização concluída: {sync.data.total} modelos processados.
+          </Alert>
+        )}
+        {publish.error && (
+          <Alert severity="error">{publish.error.message}</Alert>
+        )}
+        {publish.data && (
+          <Alert severity="success">
+            Publicação concluída: {publish.data.total} modelos processados.
+          </Alert>
+        )}
+        <AsyncState
+          isLoading={isSelectionValid && list.isLoading}
+          error={list.error}
+          emptyMessage={
+            isSelectionValid
+              ? undefined
+              : "Selecione tenant e conta WhatsApp para gerenciar modelos."
+          }
+        >
           <PaginatedTable<Template>
             columns={[
-              { key: 'name', label: 'Nome' },
-              { key: 'language', label: 'Idioma' },
-              { key: 'category', label: 'Categoria' },
-              { key: 'status', label: 'Status', render: (row) => <Chip label={statusLabels[row.status] ?? row.status} size="small" /> },
+              { key: "name", label: "Nome" },
+              { key: "language", label: "Idioma" },
+              { key: "category", label: "Categoria" },
+              {
+                key: "status",
+                label: "Status",
+                render: (row) => (
+                  <Chip
+                    label={statusLabels[row.status] ?? row.status}
+                    size="small"
+                  />
+                ),
+              },
+              {
+                key: "lastError",
+                label: "Retorno da Meta",
+                render: (row) => row.rejectedReason ?? row.lastError ?? "—",
+              },
             ]}
             rows={list.data?.items ?? []}
             total={list.data?.total ?? 0}
@@ -200,74 +255,72 @@ export function TemplatesPage() {
             rowActions={(row) => (
               <TableActionsMenu
                 actions={[
-                  { label: 'Editar modelo', icon: <Edit fontSize="small" />, onClick: () => startEdit(row) },
-                  { label: 'Excluir modelo', icon: <Delete fontSize="small" />, color: 'error', disabled: remove.isPending, onClick: () => remove.mutate(row.id) },
+                  {
+                    label: "Visualizar no WhatsApp",
+                    icon: <Preview fontSize="small" />,
+                    onClick: () => setPreviewing(row),
+                  },
+                  {
+                    label: "Editar modelo",
+                    icon: <Edit fontSize="small" />,
+                    onClick: () => setEditing(row),
+                  },
+                  {
+                    label: "Excluir modelo",
+                    icon: <Delete fontSize="small" />,
+                    color: "error",
+                    onClick: () => setDeleting(row),
+                  },
                 ]}
               />
             )}
           />
         </AsyncState>
       </Stack>
-
-      <FormDialog open={createOpen} onClose={closeCreate} title="Novo modelo de mensagem">
-        <Stack spacing={2} sx={{ mt: 1 }}>
-          {create.isSuccess ? (
-            <>
-              <Alert severity="success">Modelo criado com sucesso.</Alert>
-              <Button variant="contained" onClick={closeCreate}>
-                Fechar
-              </Button>
-            </>
-          ) : (
-            <Stack component="form" spacing={2} onSubmit={createForm.handleSubmit((data) => create.mutate(data))}>
-              {create.error && <Alert severity="error">{create.error.message}</Alert>}
-              <Controller
-                name="tenantId"
-                control={createForm.control}
-                render={({ field }) => (
-                  <TenantAutocomplete
-                    label="Tenant"
-                    value={field.value ?? ''}
-                    onChange={(id) => {
-                      field.onChange(id);
-                      createForm.setValue('whatsAppAccountId', '');
-                    }}
-                    error={!!createForm.formState.errors.tenantId}
-                    helperText={createForm.formState.errors.tenantId?.message}
-                  />
-                )}
-              />
-              <Controller
-                name="whatsAppAccountId"
-                control={createForm.control}
-                render={({ field }) => (
-                  <WhatsAppAccountAutocomplete
-                    tenantId={createTenantId ?? ''}
-                    value={field.value ?? ''}
-                    onChange={field.onChange}
-                    error={!!createForm.formState.errors.whatsAppAccountId}
-                    helperText={createForm.formState.errors.whatsAppAccountId?.message}
-                  />
-                )}
-              />
-              <TextField label="Nome" {...createForm.register('name')} error={!!createForm.formState.errors.name} helperText={createForm.formState.errors.name?.message} fullWidth />
-              <TextField label="Idioma" {...createForm.register('language')} error={!!createForm.formState.errors.language} helperText={createForm.formState.errors.language?.message} fullWidth />
-              <TextField label="Categoria" {...createForm.register('category')} error={!!createForm.formState.errors.category} helperText={createForm.formState.errors.category?.message} fullWidth />
-              <TextField label="Texto do corpo" multiline minRows={4} {...createForm.register('body')} error={!!createForm.formState.errors.body} helperText={createForm.formState.errors.body?.message} fullWidth />
-              <Button type="submit" variant="contained" disabled={create.isPending}>Criar modelo</Button>
-            </Stack>
-          )}
+      <TemplateFormDialog
+        open={creating || Boolean(editing)}
+        template={editing}
+        tenantId={tenantId}
+        accountId={accountId}
+        isSubmitting={create.isPending || update.isPending}
+        error={creating ? create.error : update.error}
+        onClose={() => {
+          setCreating(false);
+          setEditing(null);
+        }}
+        onSubmit={(data) =>
+          creating ? create.mutate(data) : update.mutate(data)
+        }
+      />
+      <FormDialog
+        open={Boolean(previewing)}
+        title={previewing?.name ?? "Visualização"}
+        onClose={() => setPreviewing(null)}
+      >
+        <Stack alignItems="center" sx={{ mt: 1 }}>
+          {preview && <TemplateWhatsAppPreview {...preview} />}
         </Stack>
       </FormDialog>
-
-      <FormDialog open={!!editing} onClose={() => setEditing(null)} title={editing ? `Editar "${editing.name}"` : 'Editar modelo'}>
-        <Stack component="form" spacing={2} sx={{ mt: 1 }} onSubmit={editForm.handleSubmit((data) => update.mutate(data))}>
-          {update.error && <Alert severity="error">{update.error.message}</Alert>}
-          <TextField label="Categoria" {...editForm.register('category')} error={!!editForm.formState.errors.category} helperText={editForm.formState.errors.category?.message} fullWidth autoFocus />
-          <TextField label="Texto do corpo" multiline minRows={4} {...editForm.register('body')} error={!!editForm.formState.errors.body} helperText={editForm.formState.errors.body?.message} fullWidth />
+      <FormDialog
+        open={Boolean(deleting)}
+        title="Excluir modelo"
+        onClose={() => setDeleting(null)}
+      >
+        <Stack spacing={2} sx={{ mt: 1 }}>
+          <Alert severity="warning">
+            A exclusão remove o modelo também da Meta. Esta ação não pode ser
+            desfeita.
+          </Alert>
           <Stack direction="row" spacing={2}>
-            <Button type="submit" variant="contained" disabled={update.isPending}>{update.isPending ? 'Salvando...' : 'Salvar alterações'}</Button>
-            <Button type="button" variant="text" onClick={() => setEditing(null)}>Cancelar</Button>
+            <Button
+              color="error"
+              variant="contained"
+              disabled={remove.isPending}
+              onClick={() => deleting && remove.mutate(deleting)}
+            >
+              Excluir
+            </Button>
+            <Button onClick={() => setDeleting(null)}>Cancelar</Button>
           </Stack>
         </Stack>
       </FormDialog>

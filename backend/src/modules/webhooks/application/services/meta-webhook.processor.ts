@@ -30,8 +30,13 @@ interface MetaChange {
   value?: {
     statuses?: MetaStatus[];
     messages?: Record<string, unknown>[];
+    contacts?: MetaContact[];
     metadata?: { phone_number_id?: string };
   };
+}
+interface MetaContact {
+  wa_id?: string;
+  profile?: { name?: string };
 }
 interface MetaWebhookPayload {
   object?: string;
@@ -63,22 +68,33 @@ export class MetaWebhookProcessor {
         const providerPhoneNumberId = change.value?.metadata?.phone_number_id;
         if (providerPhoneNumberId) {
           for (const message of change.value?.messages ?? [])
-            await this.forwardInboundMessage(providerPhoneNumberId, message);
+            await this.forwardInboundMessage(
+              providerPhoneNumberId,
+              message,
+              change.value?.contacts ?? [],
+            );
         }
       }
   }
   private async forwardInboundMessage(
     providerPhoneNumberId: string,
     message: Record<string, unknown>,
+    contacts: MetaContact[],
   ): Promise<void> {
     const phoneNumber = await this.phoneNumbers.findByProviderPhoneNumberId(providerPhoneNumberId);
     if (!phoneNumber) return;
     const applicationIds = await this.links.listApplicationIdsByPhoneNumber(phoneNumber.id);
+    const senderId = typeof message.from === 'string' ? message.from : '';
+    const contact = contacts.find((item) => item.wa_id === senderId);
     for (const applicationId of applicationIds) {
       try {
         await this.inboundMessageWebhookPublisher.publishInboundMessageReceived({
           applicationId: applicationId.value,
           phoneNumberId: providerPhoneNumberId,
+          sender: {
+            id: contact?.wa_id ?? senderId,
+            ...(contact?.profile?.name ? { displayName: contact.profile.name } : {}),
+          },
           message,
           receivedAt: new Date().toISOString(),
         });

@@ -1,6 +1,11 @@
 export interface InboundMessageReceivedPayload {
   applicationId: string;
   phoneNumberId: string;
+  /** Identificador fornecido pela Meta: telefone/wa_id ou BSUID quando o usuário ocultar o número. */
+  sender: {
+    id: string;
+    displayName?: string;
+  };
   message: Record<string, unknown>;
   receivedAt: string;
 }

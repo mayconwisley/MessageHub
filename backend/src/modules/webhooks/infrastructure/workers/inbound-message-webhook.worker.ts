@@ -19,6 +19,10 @@ import {
 interface InboundMessageWebhookQueuePayload {
   applicationId: string;
   phoneNumberId: string;
+  sender: {
+    id: string;
+    displayName?: string;
+  };
   message: Record<string, unknown>;
   receivedAt: string;
   attempt: number;
@@ -65,6 +69,7 @@ export class InboundMessageWebhookWorker {
         data: {
           applicationId: payload.applicationId,
           phoneNumberId: payload.phoneNumberId,
+          sender: payload.sender,
           message: payload.message,
           receivedAt: payload.receivedAt,
         },
@@ -116,12 +121,19 @@ export class InboundMessageWebhookWorker {
 
   private parsePayload(content: Buffer): InboundMessageWebhookQueuePayload {
     const value = JSON.parse(content.toString()) as Partial<InboundMessageWebhookQueuePayload>;
-    if (!value.applicationId || !value.phoneNumberId || !value.message || !value.receivedAt) {
+    if (
+      !value.applicationId ||
+      !value.phoneNumberId ||
+      !value.sender?.id ||
+      !value.message ||
+      !value.receivedAt
+    ) {
       throw new Error('Invalid inbound message webhook queue payload.');
     }
     return {
       applicationId: value.applicationId,
       phoneNumberId: value.phoneNumberId,
+      sender: value.sender,
       message: value.message,
       receivedAt: value.receivedAt,
       attempt: typeof value.attempt === 'number' && value.attempt > 0 ? value.attempt : 1,

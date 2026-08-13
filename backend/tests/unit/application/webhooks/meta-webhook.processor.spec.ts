@@ -170,6 +170,42 @@ describe('MetaWebhookProcessor', () => {
     );
   });
 
+  it('forwards the BSUID and profile name when a WhatsApp username hides the phone number', async () => {
+    const phoneNumberCreated = PhoneNumber.create({
+      whatsAppAccountId: UniqueId.create(),
+      phoneNumberId: '1234567890',
+      displayNumber: '+55 11 90000-0000',
+    });
+    if (phoneNumberCreated.isFailure) throw new Error('Fixture creation failed.');
+    const { processor, inboundMessageWebhookPublisher } = createProcessor({
+      phoneNumber: phoneNumberCreated.value,
+      linkedApplicationIds: [UniqueId.create()],
+    });
+
+    await processor.process({
+      object: 'whatsapp_business_account',
+      entry: [
+        {
+          changes: [
+            {
+              field: 'messages',
+              value: {
+                metadata: { phone_number_id: '1234567890' },
+                contacts: [{ wa_id: 'bsuid:customer-123', profile: { name: 'Maria Silva' } }],
+                messages: [{ id: 'wamid.4', from: 'bsuid:customer-123', type: 'text' }],
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(inboundMessageWebhookPublisher.published[0]?.sender).toEqual({
+      id: 'bsuid:customer-123',
+      displayName: 'Maria Silva',
+    });
+  });
+
   it('does not publish anything when the phone number has no linked Application', async () => {
     const phoneNumberCreated = PhoneNumber.create({
       whatsAppAccountId: UniqueId.create(),
