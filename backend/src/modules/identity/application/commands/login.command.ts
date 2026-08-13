@@ -1,9 +1,12 @@
 import { Command } from '@shared/mediator';
 import { Result } from '@shared/result';
+import { AccountLockedError } from '../../domain/errors/account-locked.error';
 import { InvalidCredentialsError } from '../../domain/errors/invalid-credentials.error';
 import { AuthenticatedSessionDto } from '../dto/authenticated-session.dto';
 
-export class LoginCommand extends Command<Result<AuthenticatedSessionDto, InvalidCredentialsError>> {
+export class LoginCommand extends Command<
+  Result<AuthenticatedSessionDto, InvalidCredentialsError | AccountLockedError>
+> {
   constructor(
     public readonly email: string,
     public readonly password: string,

@@ -15,6 +15,8 @@ export class UserOrmMapper {
     orm.createdAt = user.createdAt;
     orm.updatedAt = user.updatedAt;
     orm.lastLoginAt = user.lastLoginAt;
+    orm.failedLoginAttempts = user.failedLoginAttempts;
+    orm.lockedUntil = user.lockedUntil;
     return orm;
   }
 
@@ -29,6 +31,8 @@ export class UserOrmMapper {
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
       lastLoginAt: row.lastLoginAt,
+      failedLoginAttempts: row.failedLoginAttempts,
+      lockedUntil: row.lockedUntil,
     };
     return User.reconstitute(props, UniqueId.create(row.id));
   }

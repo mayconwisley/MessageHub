@@ -1,5 +1,16 @@
-import { Controller, ForbiddenException, Get, HttpCode, HttpStatus, Inject, Post, Query, Req } from '@nestjs/common';
+import {
+  Controller,
+  ForbiddenException,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Inject,
+  Post,
+  Query,
+  Req,
+} from '@nestjs/common';
 import { ApiExcludeEndpoint, ApiTags } from '@nestjs/swagger';
+import { timingSafeEqual } from 'crypto';
 import { Request } from 'express';
 import { MetaConfigService } from '@infrastructure/configuration/meta-config.service';
 import { toHttpException } from '@presentation/http/result-http.mapper';
@@ -26,14 +37,19 @@ export class MetaWebhooksController {
     @Query('hub.verify_token') verifyToken?: string,
     @Query('hub.challenge') challenge?: string,
   ): string {
-    if (
-      mode !== 'subscribe' ||
-      !this.config.webhookVerifyToken ||
-      verifyToken !== this.config.webhookVerifyToken
-    ) {
+    if (mode !== 'subscribe' || !this.isVerifyTokenValid(verifyToken)) {
       throw new ForbiddenException();
     }
     return challenge ?? '';
+  }
+
+  private isVerifyTokenValid(received: string | undefined): boolean {
+    const expected = this.config.webhookVerifyToken;
+    if (!expected || !received) return false;
+    const expectedBuffer = Buffer.from(expected);
+    const receivedBuffer = Buffer.from(received);
+    if (expectedBuffer.length !== receivedBuffer.length) return false;
+    return timingSafeEqual(expectedBuffer, receivedBuffer);
   }
 
   @Post()

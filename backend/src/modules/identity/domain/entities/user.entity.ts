@@ -15,6 +15,8 @@ export interface UserProps {
   createdAt: Date;
   updatedAt: Date;
   lastLoginAt: Date | null;
+  failedLoginAttempts: number;
+  lockedUntil: Date | null;
 }
 
 export interface CreateUserParams {
@@ -31,6 +33,10 @@ export interface UpdateUserProfileParams {
   role?: UserRole;
   tenantId?: string | null;
 }
+
+/** Sessão administrativa: limite de tentativas de senha antes de bloquear temporariamente a conta (secao 27). */
+const MAX_FAILED_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 15 * 60_000;
 
 export class User extends Entity<UserProps> {
   private constructor(props: UserProps, id?: UniqueId) {
@@ -63,6 +69,8 @@ export class User extends Entity<UserProps> {
           createdAt: now,
           updatedAt: now,
           lastLoginAt: null,
+          failedLoginAttempts: 0,
+          lockedUntil: null,
         },
         id,
       ),
@@ -109,8 +117,36 @@ export class User extends Entity<UserProps> {
     return this.props.lastLoginAt;
   }
 
+  get failedLoginAttempts(): number {
+    return this.props.failedLoginAttempts;
+  }
+
+  get lockedUntil(): Date | null {
+    return this.props.lockedUntil;
+  }
+
   isActive(): boolean {
     return this.props.status === UserStatus.ACTIVE;
+  }
+
+  isLocked(now: Date = new Date()): boolean {
+    return this.props.lockedUntil !== null && this.props.lockedUntil > now;
+  }
+
+  /** Incrementa tentativas falhas; ao atingir o limite, bloqueia a conta e zera o contador. */
+  recordFailedLogin(now: Date = new Date()): void {
+    this.props.failedLoginAttempts += 1;
+    if (this.props.failedLoginAttempts >= MAX_FAILED_LOGIN_ATTEMPTS) {
+      this.props.lockedUntil = new Date(now.getTime() + LOCKOUT_DURATION_MS);
+      this.props.failedLoginAttempts = 0;
+    }
+    this.touch();
+  }
+
+  resetFailedLogin(): void {
+    this.props.failedLoginAttempts = 0;
+    this.props.lockedUntil = null;
+    this.touch();
   }
 
   suspend(): void {

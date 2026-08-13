@@ -14,4 +14,6 @@ export class UserOrmEntity {
   @Column({ name: 'created_at', type: 'timestamptz' }) createdAt!: Date;
   @Column({ name: 'updated_at', type: 'timestamptz' }) updatedAt!: Date;
   @Column({ name: 'last_login_at', type: 'timestamptz', nullable: true }) lastLoginAt!: Date | null;
+  @Column({ name: 'failed_login_attempts', type: 'int', default: 0 }) failedLoginAttempts!: number;
+  @Column({ name: 'locked_until', type: 'timestamptz', nullable: true }) lockedUntil!: Date | null;
 }

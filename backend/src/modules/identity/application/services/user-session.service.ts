@@ -17,6 +17,11 @@ import { AuthenticatedUserDto } from '../dto/authenticated-user.dto';
 const SESSION_PREFIX = 'mh_session_';
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 
+export type AuthenticationOutcome =
+  | { status: 'ok'; session: AuthenticatedSessionDto }
+  | { status: 'invalid' }
+  | { status: 'locked'; lockedUntil: Date };
+
 /** Emite, valida e revoga sessões de usuário administrativo. */
 @Injectable()
 export class UserSessionService {
@@ -29,14 +34,27 @@ export class UserSessionService {
     email: string,
     password: string,
     metadata: { ipAddress?: string; userAgent?: string },
-  ): Promise<AuthenticatedSessionDto | null> {
+  ): Promise<AuthenticationOutcome> {
     const user = await this.users.findByEmail(email.trim().toLowerCase());
-    if (!user || !user.isActive() || !(await bcrypt.compare(password, user.passwordHash))) {
-      return null;
+    if (!user || !user.isActive()) {
+      return { status: 'invalid' };
+    }
+    if (user.isLocked()) {
+      return { status: 'locked', lockedUntil: user.lockedUntil as Date };
+    }
+
+    const passwordMatches = await bcrypt.compare(password, user.passwordHash);
+    if (!passwordMatches) {
+      user.recordFailedLogin();
+      await this.users.save(user);
+      return user.isLocked()
+        ? { status: 'locked', lockedUntil: user.lockedUntil as Date }
+        : { status: 'invalid' };
     }
 
     const token = `${SESSION_PREFIX}${randomBytes(32).toString('base64url')}`;
     const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
+    user.resetFailedLogin();
     user.recordLogin();
     await this.sessions.createForUser(user, {
       id: uuidv7(),
@@ -48,7 +66,10 @@ export class UserSessionService {
       userAgent: metadata.userAgent?.slice(0, 1024) ?? null,
     });
 
-    return { accessToken: token, expiresAt, user: this.toAuthenticatedUser(user) };
+    return {
+      status: 'ok',
+      session: { accessToken: token, expiresAt, user: this.toAuthenticatedUser(user) },
+    };
   }
 
   async resolveSession(token: string): Promise<AuthenticatedUserDto | null> {

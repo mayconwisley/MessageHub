@@ -1,4 +1,5 @@
 export * from './invalid-credentials.error';
+export * from './account-locked.error';
 export * from './invalid-session.error';
 export * from './insufficient-permissions.error';
 export * from './user-not-found.error';

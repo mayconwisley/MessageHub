@@ -347,8 +347,6 @@ modules/<contexto>/
 └── <contexto>.module.ts
 ```
 
-**Desvio conhecido a corrigir:** o módulo `templates` ainda não possui `commands/`, `queries/` nem `handlers/` — `TemplatesController` chama `TemplateManagementService` diretamente, fora do Mediator. Ao refatorar esse módulo, alinhar à estrutura acima (ver seção 12).
-
 ---
 
 # 6. DDD
@@ -1858,11 +1856,6 @@ frontend/src/
 ```
 
 Cada módulo concentra `<Modulo>Page.tsx` + `<modulo>.api.ts` (e, quando necessário, diálogos/abas próprios, ex.: `TemplateFormDialog.tsx`, `MessageTimelineDialog.tsx`).
-
-**Desvios conhecidos a corrigir:**
-- Os `*Autocomplete` compartilhados (exceto `MessageAutocomplete`) buscam uma página fixa de 100 itens e filtram no cliente, em vez de repassar o termo digitado para o parâmetro `search` do backend — registros após o 100º ficam inacessíveis.
-- `UsersPage` cai para exibir o UUID crú do tenant quando ele não está nessa lista de 100 (contraria a convenção de nunca expor IDs crus).
-- `MonitoringPage` renderiza `PaginatedTable` com paginação decorativa (`page=1`, `pageSize=100`, `onPageChange`/`onPageSizeChange` vazios).
 
 ## Regras obrigatórias
 

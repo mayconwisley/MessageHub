@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ApplicationOrmEntity } from '@modules/applications/infrastructure/entities/application.orm-entity';
 import { ApiKeyOrmEntity } from '@modules/applications/infrastructure/entities/api-key.orm-entity';
+import { ApplicationPhoneNumberLinkOrmEntity } from '@modules/applications/infrastructure/entities/application-phone-number-link.orm-entity';
 import { MessageOrmEntity } from '@modules/messages/infrastructure/entities/message.orm-entity';
 import { PhoneNumberOrmEntity } from '@modules/phone-numbers/infrastructure/entities/phone-number.orm-entity';
 import { WhatsAppAccountOrmEntity } from '@modules/whatsapp-accounts/infrastructure/entities/whatsapp-account.orm-entity';
@@ -56,7 +57,7 @@ export class MonitoringReadRepository implements IMonitoringReadRepository {
       this.phones
         .createQueryBuilder('p')
         .innerJoin(WhatsAppAccountOrmEntity, 'a', 'a.id = p.whatsapp_account_id')
-        .innerJoin('app.application_phone_number_links', 'l', 'l.phone_number_id = p.id')
+        .innerJoin(ApplicationPhoneNumberLinkOrmEntity, 'l', 'l.phone_number_id = p.id')
         .where('l.application_id = :applicationId', { applicationId })
         .select([
           'p.id AS id',
