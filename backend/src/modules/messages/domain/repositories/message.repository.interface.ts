@@ -5,6 +5,8 @@ import { MessageStatus } from '../enums/message-status.enum';
 
 export interface ListMessagesFilter {
   status?: MessageStatus;
+  /** Busca por messageId, providerMessageId, requestId, chave de idempotência ou destinatário. */
+  search?: string;
 }
 
 export interface IMessageRepository {
@@ -12,6 +14,7 @@ export interface IMessageRepository {
   findById(id: UniqueId): Promise<Message | null>;
   findByIdempotencyKey(applicationId: UniqueId, idempotencyKey: string): Promise<Message | null>;
   findByProviderMessageId(providerMessageId: string): Promise<Message | null>;
+  countCreatedSince(applicationId: UniqueId, since: Date): Promise<number>;
   listByApplicationId(
     applicationId: UniqueId,
     page: number,

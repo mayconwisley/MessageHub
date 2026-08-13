@@ -31,6 +31,9 @@ class FakeMessageRepository implements IMessageRepository {
   async findByProviderMessageId(): Promise<Message | null> {
     return this.message;
   }
+  async countCreatedSince(): Promise<number> {
+    return 0;
+  }
   async listByApplicationId(): Promise<import('@shared/types').PaginatedResult<Message>> {
     return { items: [], total: 0, page: 1, pageSize: 20 };
   }

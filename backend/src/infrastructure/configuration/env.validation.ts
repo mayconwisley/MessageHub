@@ -83,6 +83,32 @@ class EnvironmentVariables {
   @IsOptional()
   @IsString()
   LOG_LEVEL?: string;
+
+  @IsOptional()
+  @IsString()
+  CORS_ORIGINS?: string;
+
+  @IsOptional()
+  @IsIn(['true', 'false'])
+  SWAGGER_ENABLED?: string;
+
+  @IsOptional()
+  @IsIn(['meta', 'sandbox'])
+  MESSAGE_PROVIDER?: string;
+
+  @IsOptional()
+  @IsIn(['true', 'false'])
+  SANDBOX_ENABLED?: string;
+
+  @IsOptional()
+  @IsString()
+  ENGINEERING_SLACK_WEBHOOK_URL?: string;
+  @IsOptional()
+  @IsString()
+  ENGINEERING_TEAMS_WEBHOOK_URL?: string;
+  @IsOptional()
+  @IsString()
+  ENGINEERING_EMAIL_WEBHOOK_URL?: string;
 }
 
 export function validateEnv(config: Record<string, unknown>): EnvironmentVariables {
@@ -97,6 +123,55 @@ export function validateEnv(config: Record<string, unknown>): EnvironmentVariabl
 
   if (Buffer.from(validatedConfig.META_CREDENTIALS_ENCRYPTION_KEY, 'base64').length !== 32) {
     throw new Error('META_CREDENTIALS_ENCRYPTION_KEY deve conter exatamente 32 bytes em Base64.');
+  }
+
+  const corsOrigins = (validatedConfig.CORS_ORIGINS ?? '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  for (const origin of corsOrigins) {
+    let parsed: URL;
+    try {
+      parsed = new URL(origin);
+    } catch {
+      throw new Error(
+        'CORS_ORIGINS deve conter apenas origins HTTP(S) válidos, separados por vírgula.',
+      );
+    }
+    if (
+      parsed.origin !== origin ||
+      !['http:', 'https:'].includes(parsed.protocol) ||
+      (validatedConfig.NODE_ENV === 'production' && parsed.protocol !== 'https:') ||
+      origin === '*'
+    ) {
+      throw new Error(
+        'CORS_ORIGINS deve conter origins HTTP(S) exatos; em produção somente HTTPS é permitido, sem curingas ou caminhos.',
+      );
+    }
+  }
+
+  if (validatedConfig.NODE_ENV === 'production' && validatedConfig.SWAGGER_ENABLED === 'true') {
+    throw new Error('SWAGGER_ENABLED não pode ser true em produção.');
+  }
+
+  for (const endpoint of [
+    validatedConfig.ENGINEERING_SLACK_WEBHOOK_URL,
+    validatedConfig.ENGINEERING_TEAMS_WEBHOOK_URL,
+    validatedConfig.ENGINEERING_EMAIL_WEBHOOK_URL,
+  ]) {
+    if (!endpoint) continue;
+    let url: URL;
+    try {
+      url = new URL(endpoint);
+    } catch {
+      throw new Error('URLs de notificação de engenharia devem ser HTTP(S) válidas.');
+    }
+    if (
+      !['http:', 'https:'].includes(url.protocol) ||
+      (validatedConfig.NODE_ENV === 'production' && url.protocol !== 'https:')
+    ) {
+      throw new Error('Em produção, URLs de notificação de engenharia devem usar HTTPS.');
+    }
   }
 
   if (

@@ -46,6 +46,8 @@ export class PostgresApplicationRepository implements IApplicationRepository {
     orm.status = application.status;
     orm.webhookUrl = application.webhookUrl;
     orm.webhookSecret = application.webhookSecret;
+    orm.quotaPerMinute = application.quotaPerMinute;
+    orm.quotaPerDay = application.quotaPerDay;
     orm.createdAt = application.createdAt;
     return orm;
   }
@@ -57,6 +59,8 @@ export class PostgresApplicationRepository implements IApplicationRepository {
       status: row.status as ApplicationStatus,
       webhookUrl: row.webhookUrl,
       webhookSecret: row.webhookSecret,
+      quotaPerMinute: row.quotaPerMinute ?? 60,
+      quotaPerDay: row.quotaPerDay ?? 10_000,
       createdAt: row.createdAt,
     };
     return Application.reconstitute(props, UniqueId.create(row.id));

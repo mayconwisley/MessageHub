@@ -5,5 +5,7 @@ export interface ApplicationDto {
   status: string;
   webhookUrl: string | null;
   webhookSecret: string | null;
+  quotaPerMinute: number;
+  quotaPerDay: number;
   createdAt: Date;
 }

@@ -12,9 +12,7 @@ import { ApplicationDto } from '../dto/application.dto';
 import { ApplicationMapper } from '../mappers/application.mapper';
 
 @CommandHandler(ConfigureApplicationWebhookCommand)
-export class ConfigureApplicationWebhookHandler
-  implements ICommandHandler<ConfigureApplicationWebhookCommand>
-{
+export class ConfigureApplicationWebhookHandler implements ICommandHandler<ConfigureApplicationWebhookCommand> {
   constructor(
     @Inject(APPLICATION_REPOSITORY) private readonly applications: IApplicationRepository,
   ) {}

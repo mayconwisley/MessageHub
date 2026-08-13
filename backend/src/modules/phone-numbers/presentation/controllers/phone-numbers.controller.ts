@@ -77,7 +77,8 @@ export class PhoneNumbersController {
     @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
   ): Promise<PaginatedResult<PhoneNumberResponseDto>> {
     const tenantId = auth?.tenantId ?? user?.tenantId ?? query.tenantId;
-    if (!tenantId) throw new BadRequestException('tenantId é obrigatório para requisições administrativas.');
+    if (!tenantId)
+      throw new BadRequestException('tenantId é obrigatório para requisições administrativas.');
     const result = await this.mediator.query(
       new ListPhoneNumbersQuery(tenantId, query.page, query.pageSize, query.status),
     );

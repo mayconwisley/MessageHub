@@ -41,7 +41,12 @@ export class ApiKeysController {
   ): Promise<CreatedApiKeyResponseDto> {
     const expiresAt = dto.expiresAt ? new Date(dto.expiresAt) : undefined;
     const result = await this.mediator.send(
-      new CreateApiKeyCommand(applicationId, expiresAt, dto.type ?? ApiKeyType.PLATFORM),
+      new CreateApiKeyCommand(
+        applicationId,
+        expiresAt,
+        dto.type ?? ApiKeyType.PLATFORM,
+        dto.scopes,
+      ),
     );
     if (result.isFailure) {
       throw toHttpException(result.error);

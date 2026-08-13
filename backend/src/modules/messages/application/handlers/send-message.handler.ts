@@ -26,6 +26,11 @@ import { SendMessageCommand } from '../commands/send-message.command';
 import { MessageDto } from '../dto/message.dto';
 import { MessageMapper } from '../mappers/message.mapper';
 import { IMessagePublisher, MESSAGE_PUBLISHER } from '../ports/message-publisher.interface';
+import {
+  IMessageTimelineRepository,
+  MESSAGE_TIMELINE_REPOSITORY,
+} from '../ports/message-timeline.repository.interface';
+import { ApplicationQuotaService } from '../services/application-quota.service';
 
 @CommandHandler(SendMessageCommand)
 export class SendMessageHandler implements ICommandHandler<SendMessageCommand> {
@@ -36,6 +41,8 @@ export class SendMessageHandler implements ICommandHandler<SendMessageCommand> {
     @Inject(WHATSAPP_ACCOUNT_REPOSITORY)
     private readonly whatsAppAccountRepository: IWhatsAppAccountRepository,
     @Inject(MESSAGE_PUBLISHER) private readonly messagePublisher: IMessagePublisher,
+    @Inject(MESSAGE_TIMELINE_REPOSITORY) private readonly timeline?: IMessageTimelineRepository,
+    private readonly quotaService?: ApplicationQuotaService,
   ) {}
 
   async execute(
@@ -48,13 +55,11 @@ export class SendMessageHandler implements ICommandHandler<SendMessageCommand> {
     if (!application) {
       return Result.fail(new ApplicationNotFoundError(command.applicationId));
     }
-    if (
-      command.requestingTenantId &&
-      application.tenantId.value !== command.requestingTenantId
-    ) {
+    if (command.requestingTenantId && application.tenantId.value !== command.requestingTenantId) {
       // Nunca revelar que a Application existe em outro tenant (secao 17).
       return Result.fail(new ApplicationNotFoundError(command.applicationId));
     }
+    await this.quotaService?.assertCanAcceptMessage(application);
 
     const phoneNumberId = UniqueId.create(command.phoneNumberId);
     const phoneNumber = await this.phoneNumberRepository.findById(phoneNumberId);
@@ -87,6 +92,7 @@ export class SendMessageHandler implements ICommandHandler<SendMessageCommand> {
       to: command.to,
       content: command.content,
       idempotencyKey: command.idempotencyKey,
+      requestId: command.requestId,
     });
     if (messageResult.isFailure) {
       return Result.fail(messageResult.error);
@@ -94,6 +100,13 @@ export class SendMessageHandler implements ICommandHandler<SendMessageCommand> {
 
     const message = messageResult.value;
     await this.messageRepository.save(message);
+    await this.timeline?.record({
+      messageId: message.id.value,
+      eventType: 'MESSAGE_ACCEPTED',
+      status: message.status,
+      source: 'API',
+      metadata: { requestId: message.requestId, idempotencyKey: message.idempotencyKey },
+    });
     await this.messagePublisher.publishMessageRequested({ messageId: message.id.value });
 
     return Result.ok(MessageMapper.toDto(message));

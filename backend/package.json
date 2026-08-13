@@ -9,6 +9,9 @@
     "npm": ">=10.0.0"
   },
   "packageManager": "npm@10.9.2",
+  "overrides": {
+    "js-yaml": "4.3.1"
+  },
   "keywords": [
     "messaging",
     "whatsapp",

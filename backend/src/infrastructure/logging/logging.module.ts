@@ -40,10 +40,12 @@ interface RequestWithAuthContext extends IncomingMessage {
             censor: '[REDACTED]',
           },
           serializers: {
-            req: (req: { id: unknown; method: string; url: string }) => ({
+            req: (req: { id: unknown; method: string; url?: string }) => ({
               id: req.id,
               method: req.method,
-              url: req.url,
+              // Query strings podem carregar dados pessoais ou secrets enviados
+              // incorretamente por clientes; logs operacionais não precisam delas.
+              url: req.url?.split('?')[0],
             }),
             res: (res: { statusCode: number }) => ({ statusCode: res.statusCode }),
           },

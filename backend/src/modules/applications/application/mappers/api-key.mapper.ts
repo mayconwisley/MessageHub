@@ -11,6 +11,9 @@ export class ApiKeyMapper {
       type: apiKey.type,
       createdAt: apiKey.createdAt,
       expiresAt: apiKey.expiresAt,
+      scopes: apiKey.scopes,
+      lastUsedAt: apiKey.lastUsedAt,
+      lastUsedIp: apiKey.lastUsedIp,
     };
   }
 }

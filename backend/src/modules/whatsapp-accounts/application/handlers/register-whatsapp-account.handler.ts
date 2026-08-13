@@ -40,6 +40,7 @@ export class RegisterWhatsAppAccountHandler implements ICommandHandler<RegisterW
       credentialSource: command.credentialSource,
       accessToken: command.accessToken,
       appSecret: command.appSecret,
+      credentialExpiresAt: command.credentialExpiresAt,
     });
     if (accountResult.isFailure) {
       return Result.fail(accountResult.error);

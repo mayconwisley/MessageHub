@@ -7,6 +7,7 @@ import { WhatsAppAccountsModule } from '@modules/whatsapp-accounts/whatsapp-acco
 import { CreateApiKeyHandler } from './application/handlers/create-api-key.handler';
 import { CreateApplicationHandler } from './application/handlers/create-application.handler';
 import { ConfigureApplicationWebhookHandler } from './application/handlers/configure-application-webhook.handler';
+import { ConfigureApplicationQuotasHandler } from './application/handlers/configure-application-quotas.handler';
 import { SetApplicationPhoneNumbersHandler } from './application/handlers/set-application-phone-numbers.handler';
 import { ListApiKeysHandler } from './application/handlers/list-api-keys.handler';
 import { ListApplicationsHandler } from './application/handlers/list-applications.handler';
@@ -49,6 +50,7 @@ import { ApplicationsController } from './presentation/controllers/applications.
     ApiKeyGeneratorService,
     CreateApplicationHandler,
     ConfigureApplicationWebhookHandler,
+    ConfigureApplicationQuotasHandler,
     SetApplicationPhoneNumbersHandler,
     CreateApiKeyHandler,
     ListApplicationsHandler,

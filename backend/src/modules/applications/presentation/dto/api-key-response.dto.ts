@@ -23,6 +23,15 @@ export class ApiKeyResponseDto {
   @ApiPropertyOptional()
   expiresAt!: Date | null;
 
+  @ApiProperty({ type: [String] })
+  scopes!: string[];
+
+  @ApiPropertyOptional()
+  lastUsedAt!: Date | null;
+
+  @ApiPropertyOptional()
+  lastUsedIp!: string | null;
+
   static fromDto(dto: ApiKeyDto): ApiKeyResponseDto {
     const response = new ApiKeyResponseDto();
     response.id = dto.id;
@@ -32,6 +41,9 @@ export class ApiKeyResponseDto {
     response.type = dto.type;
     response.createdAt = dto.createdAt;
     response.expiresAt = dto.expiresAt;
+    response.scopes = dto.scopes;
+    response.lastUsedAt = dto.lastUsedAt;
+    response.lastUsedIp = dto.lastUsedIp;
     return response;
   }
 }
@@ -51,6 +63,9 @@ export class CreatedApiKeyResponseDto extends ApiKeyResponseDto {
     response.type = dto.type;
     response.createdAt = dto.createdAt;
     response.expiresAt = dto.expiresAt;
+    response.scopes = dto.scopes;
+    response.lastUsedAt = dto.lastUsedAt;
+    response.lastUsedIp = dto.lastUsedIp;
     response.plainTextKey = dto.plainTextKey;
     return response;
   }

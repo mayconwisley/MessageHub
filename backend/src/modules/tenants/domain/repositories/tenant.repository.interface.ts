@@ -11,7 +11,11 @@ export interface ListTenantsFilter {
 export interface ITenantRepository {
   save(tenant: Tenant): Promise<void>;
   findById(id: UniqueId): Promise<Tenant | null>;
-  list(page: number, pageSize: number, filter?: ListTenantsFilter): Promise<PaginatedResult<Tenant>>;
+  list(
+    page: number,
+    pageSize: number,
+    filter?: ListTenantsFilter,
+  ): Promise<PaginatedResult<Tenant>>;
 }
 
 export const TENANT_REPOSITORY = Symbol('TENANT_REPOSITORY');

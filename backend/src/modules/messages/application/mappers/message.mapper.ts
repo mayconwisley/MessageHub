@@ -23,6 +23,7 @@ export class MessageMapper {
         : null,
       status: message.status,
       idempotencyKey: message.idempotencyKey,
+      requestId: message.requestId,
       providerMessageId: message.providerMessageId,
       attemptCount: message.attemptCount,
       lastError:

@@ -13,6 +13,7 @@ import {
   META_WEBHOOK_RECEIVED_DLQ,
   META_WEBHOOK_RECEIVED_QUEUE,
 } from '../messaging/webhook-queues.constant';
+import { EngineeringAlertService } from '@modules/notifications/application/services/engineering-alert.service';
 
 interface MetaWebhookQueuePayload {
   eventId: string;
@@ -28,6 +29,7 @@ export class MetaWebhookWorker {
     private readonly processor: MetaWebhookProcessor,
     private readonly retryPolicy: WebhookRetryPolicy,
     private readonly logger: PinoLogger,
+    private readonly alerts?: EngineeringAlertService,
   ) {
     this.logger.setContext(MetaWebhookWorker.name);
     this.channel = connection.createChannel({
@@ -52,6 +54,7 @@ export class MetaWebhookWorker {
       if (!eventId) throw new Error('Invalid meta webhook queue payload.');
       const event = await this.events.findById(eventId);
       if (event?.status === 'PENDING') {
+        await this.events.markAttempted(event.id);
         await this.processor.process(event.payload);
         await this.events.markProcessed(event.id);
       }
@@ -86,6 +89,13 @@ export class MetaWebhookWorker {
           'Meta webhook processing failed permanently - sending to DLQ.',
         );
         if (eventId) await this.events.markFailed(eventId, reason);
+        await this.alerts?.notify({
+          type: 'META_WEBHOOK_DLQ',
+          severity: 'CRITICAL',
+          title: 'Webhook Meta enviado para DLQ',
+          message: `O evento ${eventId ?? 'desconhecido'} esgotou todas as tentativas.`,
+          metadata: { eventId, reason },
+        });
         await this.channel.sendToQueue(META_WEBHOOK_RECEIVED_DLQ, message.content, {
           persistent: true,
         });

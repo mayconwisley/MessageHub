@@ -43,6 +43,7 @@ export class ValidateApiKeyHandler implements IQueryHandler<ValidateApiKeyQuery>
     if (!application || !application.isActive()) {
       return Result.fail(new InvalidApiKeyError());
     }
+    await this.apiKeyRepository.recordUsage(apiKey.id, query.ipAddress);
 
     return Result.ok({
       apiKeyId: apiKey.id.value,

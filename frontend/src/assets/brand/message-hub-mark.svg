@@ -1,0 +1,8 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Message Hub">
+  <defs><linearGradient id="accent" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse"><stop stop-color="#36E48A"/><stop offset="1" stop-color="#075E54"/></linearGradient></defs>
+  <rect x="2" y="2" width="60" height="60" rx="18" fill="url(#accent)"/>
+  <path d="M17 21.5C17 17.91 19.91 15 23.5 15H40.5C44.09 15 47 17.91 47 21.5V34.5C47 38.09 44.09 41 40.5 41H31.9L25 47V41H23.5C19.91 41 17 38.09 17 34.5V21.5Z" fill="white"/>
+  <path d="M25 27H39M25 33H35" stroke="#0A8F72" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="45.5" cy="44.5" r="8.5" fill="#25D366" stroke="white" stroke-width="3"/>
+  <path d="M42.5 44.5L44.5 46.5L48.8 42.2" stroke="#075E54" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

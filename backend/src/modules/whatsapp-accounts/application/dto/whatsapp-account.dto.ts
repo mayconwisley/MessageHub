@@ -4,5 +4,6 @@ export interface WhatsAppAccountDto {
   wabaId: string;
   credentialSource: string;
   status: string;
+  credentialExpiresAt: Date | null;
   createdAt: Date;
 }

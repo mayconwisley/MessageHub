@@ -32,6 +32,15 @@ export interface RecentMessage {
   createdAt: string;
 }
 
+export interface HealthCheck {
+  status: "ok" | "error";
+  error?: Record<string, unknown>;
+  details: {
+    database?: { status: "up" | "down"; message?: string };
+    rabbitmq?: { status: "up" | "down"; message?: string };
+  };
+}
+
 export const dashboardApi = {
   getResourceSummary: () =>
     request<ResourceSummary>("/v1/dashboard/resource-summary"),
@@ -43,4 +52,5 @@ export const dashboardApi = {
     request<OperationalHealth>("/v1/dashboard/operational-health"),
   getRecentMessages: () =>
     request<RecentMessage[]>("/v1/dashboard/recent-messages"),
+  health: () => request<HealthCheck>("/health"),
 };

@@ -10,6 +10,9 @@ export interface ApiKeyProps {
   type: ApiKeyType;
   createdAt: Date;
   expiresAt: Date | null;
+  scopes: string[];
+  lastUsedAt: Date | null;
+  lastUsedIp: string | null;
 }
 
 export interface CreateApiKeyParams {
@@ -18,6 +21,7 @@ export interface CreateApiKeyParams {
   prefix: string;
   expiresAt?: Date | null;
   type?: ApiKeyType;
+  scopes?: string[];
 }
 
 export class ApiKey extends Entity<ApiKeyProps> {
@@ -35,6 +39,9 @@ export class ApiKey extends Entity<ApiKeyProps> {
         type: params.type ?? ApiKeyType.PLATFORM,
         createdAt: new Date(),
         expiresAt: params.expiresAt ?? null,
+        scopes: params.scopes ?? ['messages:write', 'messages:read'],
+        lastUsedAt: null,
+        lastUsedIp: null,
       },
       id,
     );
@@ -70,6 +77,18 @@ export class ApiKey extends Entity<ApiKeyProps> {
 
   get expiresAt(): Date | null {
     return this.props.expiresAt;
+  }
+
+  get scopes(): string[] {
+    return [...this.props.scopes];
+  }
+
+  get lastUsedAt(): Date | null {
+    return this.props.lastUsedAt;
+  }
+
+  get lastUsedIp(): string | null {
+    return this.props.lastUsedIp;
   }
 
   revoke(): void {

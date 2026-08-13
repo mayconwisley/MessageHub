@@ -25,7 +25,7 @@ export class ApiKeyAuthGuard implements CanActivate {
     }
 
     const plainTextKey = header.slice(API_KEY_AUTH_SCHEME.length + 1);
-    const result = await this.mediator.query(new ValidateApiKeyQuery(plainTextKey));
+    const result = await this.mediator.query(new ValidateApiKeyQuery(plainTextKey, request.ip));
     if (result.isFailure) {
       throw toHttpException(result.error);
     }

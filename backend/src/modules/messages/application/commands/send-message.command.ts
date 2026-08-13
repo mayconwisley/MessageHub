@@ -14,6 +14,7 @@ export class SendMessageCommand extends Command<
     public readonly to: string,
     public readonly content: string,
     public readonly idempotencyKey?: string,
+    public readonly requestId?: string,
     public readonly requestingTenantId?: string,
   ) {
     super();

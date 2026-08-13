@@ -36,6 +36,9 @@ export class MessageOrmEntity {
   @Column({ name: 'idempotency_key', type: 'varchar', length: 255, nullable: true })
   idempotencyKey!: string | null;
 
+  @Column({ name: 'request_id', type: 'varchar', length: 255, nullable: true })
+  requestId!: string | null;
+
   @Column({ name: 'provider_message_id', type: 'varchar', length: 255, nullable: true })
   providerMessageId!: string | null;
 

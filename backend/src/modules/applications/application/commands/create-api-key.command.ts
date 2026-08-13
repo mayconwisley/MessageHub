@@ -11,6 +11,7 @@ export class CreateApiKeyCommand extends Command<
     public readonly applicationId: string,
     public readonly expiresAt?: Date,
     public readonly type: ApiKeyType = ApiKeyType.PLATFORM,
+    public readonly scopes?: string[],
   ) {
     super();
   }

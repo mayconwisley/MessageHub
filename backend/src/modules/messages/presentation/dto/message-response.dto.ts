@@ -41,6 +41,9 @@ export class MessageResponseDto {
   idempotencyKey!: string | null;
 
   @ApiPropertyOptional()
+  requestId!: string | null;
+
+  @ApiPropertyOptional()
   providerMessageId!: string | null;
 
   @ApiProperty()
@@ -67,6 +70,7 @@ export class MessageResponseDto {
     response.template = dto.template;
     response.status = dto.status;
     response.idempotencyKey = dto.idempotencyKey;
+    response.requestId = dto.requestId;
     response.providerMessageId = dto.providerMessageId;
     response.attemptCount = dto.attemptCount;
     response.lastError = dto.lastError;

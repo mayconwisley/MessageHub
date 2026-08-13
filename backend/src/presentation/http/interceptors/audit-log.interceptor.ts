@@ -26,7 +26,9 @@ export class AuditLogInterceptor implements NestInterceptor {
           tenantId: resource?.tenantId ?? request.user?.tenantId ?? null,
           requestId: request.id ? String(request.id) : null,
           httpMethod: request.method,
-          httpPath: request.originalUrl,
+          // Query strings podem conter dados sensíveis enviados por engano;
+          // a trilha é suficiente para fins de auditoria.
+          httpPath: request.path.slice(0, 2048),
           httpStatus: 200,
           metadata: { role: request.user?.role },
         });

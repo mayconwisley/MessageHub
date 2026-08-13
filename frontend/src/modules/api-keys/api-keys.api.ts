@@ -9,6 +9,9 @@ export interface ApiKey {
   type: 'platform' | 'tenant';
   createdAt: string;
   expiresAt: string | null;
+  scopes: string[];
+  lastUsedAt: string | null;
+  lastUsedIp: string | null;
 }
 
 export interface CreatedApiKey extends ApiKey {
@@ -18,7 +21,7 @@ export interface CreatedApiKey extends ApiKey {
 export const apiKeysApi = {
   list: (applicationId: string, params: { page: number; pageSize: number }) =>
     request<PaginatedResult<ApiKey>>(`/v1/applications/${applicationId}/api-keys${toQueryString(params)}`),
-  create: (applicationId: string, data: { type: string; expiresAt?: string }) =>
+  create: (applicationId: string, data: { type: string; expiresAt?: string; scopes?: string[] }) =>
     request<CreatedApiKey>(`/v1/applications/${applicationId}/api-keys`, { method: 'POST', body: data }),
   revoke: (applicationId: string, apiKeyId: string) =>
     request<void>(`/v1/applications/${applicationId}/api-keys/${apiKeyId}`, { method: 'DELETE' }),

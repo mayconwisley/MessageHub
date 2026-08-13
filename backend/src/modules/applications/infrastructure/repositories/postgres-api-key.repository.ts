@@ -39,6 +39,13 @@ export class PostgresApiKeyRepository implements IApiKeyRepository {
     return { items: rows.map((row) => this.toDomain(row)), total, page, pageSize };
   }
 
+  async recordUsage(id: UniqueId, ipAddress?: string): Promise<void> {
+    await this.repository.update(id.value, {
+      lastUsedAt: new Date(),
+      lastUsedIp: ipAddress ?? null,
+    });
+  }
+
   private toOrmEntity(apiKey: ApiKey): ApiKeyOrmEntity {
     const orm = new ApiKeyOrmEntity();
     orm.id = apiKey.id.value;
@@ -49,6 +56,9 @@ export class PostgresApiKeyRepository implements IApiKeyRepository {
     orm.type = apiKey.type;
     orm.createdAt = apiKey.createdAt;
     orm.expiresAt = apiKey.expiresAt;
+    orm.scopes = apiKey.scopes;
+    orm.lastUsedAt = apiKey.lastUsedAt;
+    orm.lastUsedIp = apiKey.lastUsedIp;
     return orm;
   }
 
@@ -61,6 +71,9 @@ export class PostgresApiKeyRepository implements IApiKeyRepository {
       type: row.type as ApiKeyType,
       createdAt: row.createdAt,
       expiresAt: row.expiresAt,
+      scopes: row.scopes ?? [],
+      lastUsedAt: row.lastUsedAt,
+      lastUsedIp: row.lastUsedIp,
     };
     return ApiKey.reconstitute(props, UniqueId.create(row.id));
   }

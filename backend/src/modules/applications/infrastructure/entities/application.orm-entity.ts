@@ -20,6 +20,12 @@ export class ApplicationOrmEntity {
   @Column({ name: 'webhook_secret', type: 'text', nullable: true })
   webhookSecret!: string | null;
 
+  @Column({ name: 'quota_per_minute', type: 'int', default: 60 })
+  quotaPerMinute!: number;
+
+  @Column({ name: 'quota_per_day', type: 'int', default: 10_000 })
+  quotaPerDay!: number;
+
   @Column({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 }

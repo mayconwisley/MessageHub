@@ -44,6 +44,7 @@ export class CreateApiKeyHandler implements ICommandHandler<CreateApiKeyCommand>
         prefix: generated.prefix,
         expiresAt: command.expiresAt ?? null,
         type: command.type,
+        scopes: command.scopes,
       },
       apiKeyId,
     );

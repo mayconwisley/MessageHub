@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsDateString, IsEnum, IsOptional } from 'class-validator';
+import { IsArray, IsDateString, IsEnum, IsOptional, IsString, ArrayMaxSize } from 'class-validator';
 import { ApiKeyType } from '../../domain/enums/api-key-type.enum';
 
 export class CreateApiKeyRequestDto {
@@ -19,4 +19,10 @@ export class CreateApiKeyRequestDto {
   @IsOptional()
   @IsEnum(ApiKeyType)
   type?: ApiKeyType;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsString({ each: true })
+  scopes?: string[];
 }

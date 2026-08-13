@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsDateString, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 import { WhatsAppCredentialSource } from '../../domain/enums/whatsapp-credential-source.enum';
 
 export class RegisterWhatsAppAccountRequestDto {
@@ -38,4 +38,12 @@ export class RegisterWhatsAppAccountRequestDto {
   @IsOptional()
   @IsString()
   appSecret?: string;
+
+  @ApiProperty({
+    required: false,
+    description: 'Expiração conhecida da credencial da Meta (ISO 8601).',
+  })
+  @IsOptional()
+  @IsDateString()
+  credentialExpiresAt?: string;
 }

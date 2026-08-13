@@ -16,7 +16,9 @@ import { TenantMapper } from '../mappers/tenant.mapper';
 export class UpdateTenantStatusHandler implements ICommandHandler<UpdateTenantStatusCommand> {
   constructor(@Inject(TENANT_REPOSITORY) private readonly tenantRepository: ITenantRepository) {}
 
-  async execute(command: UpdateTenantStatusCommand): Promise<Result<TenantDto, TenantNotFoundError>> {
+  async execute(
+    command: UpdateTenantStatusCommand,
+  ): Promise<Result<TenantDto, TenantNotFoundError>> {
     const tenant = await this.tenantRepository.findById(UniqueId.create(command.tenantId));
     if (!tenant) {
       return Result.fail(new TenantNotFoundError(command.tenantId));

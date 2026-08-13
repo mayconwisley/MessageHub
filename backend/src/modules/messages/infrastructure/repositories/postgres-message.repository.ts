@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Brackets, MoreThanOrEqual, Repository } from 'typeorm';
 import { UniqueId } from '@shared/domain';
 import { PaginatedResult } from '@shared/types';
 import { Message, MessageProps } from '../../domain/entities/message.entity';
@@ -45,21 +45,40 @@ export class PostgresMessageRepository implements IMessageRepository {
     return row ? this.toDomain(row) : null;
   }
 
+  countCreatedSince(applicationId: UniqueId, since: Date): Promise<number> {
+    return this.repository.count({
+      where: { applicationId: applicationId.value, createdAt: MoreThanOrEqual(since) },
+    });
+  }
+
   async listByApplicationId(
     applicationId: UniqueId,
     page: number,
     pageSize: number,
     filter?: ListMessagesFilter,
   ): Promise<PaginatedResult<Message>> {
-    const [rows, total] = await this.repository.findAndCount({
-      where: {
-        applicationId: applicationId.value,
-        ...(filter?.status ? { status: filter.status } : {}),
-      },
-      order: { createdAt: 'DESC' },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    });
+    const query = this.repository
+      .createQueryBuilder('message')
+      .where('message.application_id = :applicationId', { applicationId: applicationId.value });
+    if (filter?.status) query.andWhere('message.status = :status', { status: filter.status });
+    if (filter?.search) {
+      const search = `%${filter.search.trim()}%`;
+      query.andWhere(
+        new Brackets((where) =>
+          where
+            .where('message.id::text ILIKE :search', { search })
+            .orWhere('message.provider_message_id ILIKE :search', { search })
+            .orWhere('message.request_id ILIKE :search', { search })
+            .orWhere('message.idempotency_key ILIKE :search', { search })
+            .orWhere('message.to ILIKE :search', { search }),
+        ),
+      );
+    }
+    const [rows, total] = await query
+      .orderBy('message.created_at', 'DESC')
+      .skip((page - 1) * pageSize)
+      .take(pageSize)
+      .getManyAndCount();
     return { items: rows.map((row) => this.toDomain(row)), total, page, pageSize };
   }
 
@@ -82,6 +101,7 @@ export class PostgresMessageRepository implements IMessageRepository {
       : null;
     orm.status = message.status;
     orm.idempotencyKey = message.idempotencyKey;
+    orm.requestId = message.requestId;
     orm.providerMessageId = message.providerMessageId;
     orm.attemptCount = message.attemptCount;
     orm.createdAt = message.createdAt;
@@ -115,6 +135,7 @@ export class PostgresMessageRepository implements IMessageRepository {
       template: templateResult?.value ?? null,
       status: row.status as MessageStatus,
       idempotencyKey: row.idempotencyKey,
+      requestId: row.requestId,
       providerMessageId: row.providerMessageId,
       attemptCount: row.attemptCount,
       createdAt: row.createdAt,

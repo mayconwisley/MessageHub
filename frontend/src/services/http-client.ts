@@ -39,6 +39,10 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   const token = authorization === 'session' ? authStorage.getSessionToken() : null;
   const response = await fetch(`${baseUrl}${path}`, {
     ...init,
+    // A API usa Bearer token; nunca envie cookies ambientais por acidente.
+    credentials: 'omit',
+    cache: 'no-store',
+    referrerPolicy: 'strict-origin-when-cross-origin',
     headers: { ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}), ...(token && authorization !== 'none' ? { Authorization: `Bearer ${token}` } : {}), ...headers },
     body: body === undefined ? undefined : JSON.stringify(body),
   });

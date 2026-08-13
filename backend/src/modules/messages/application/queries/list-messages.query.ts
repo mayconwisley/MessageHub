@@ -11,6 +11,7 @@ export class ListMessagesQuery extends Query<Result<PaginatedResult<MessageDto>,
     public readonly page: number,
     public readonly pageSize: number,
     public readonly status?: MessageStatus,
+    public readonly search?: string,
     public readonly requestingTenantId?: string,
   ) {
     super();

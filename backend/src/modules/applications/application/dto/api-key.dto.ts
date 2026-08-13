@@ -6,6 +6,9 @@ export interface ApiKeyDto {
   type: string;
   createdAt: Date;
   expiresAt: Date | null;
+  scopes: string[];
+  lastUsedAt: Date | null;
+  lastUsedIp: string | null;
 }
 
 export interface CreatedApiKeyDto extends ApiKeyDto {

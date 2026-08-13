@@ -14,6 +14,7 @@ export class RegisterWhatsAppAccountCommand extends Command<
     public readonly credentialSource: WhatsAppCredentialSource,
     public readonly accessToken?: string,
     public readonly appSecret?: string,
+    public readonly credentialExpiresAt?: Date,
   ) {
     super();
   }

@@ -13,7 +13,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiPropertyOptional, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsBooleanString, IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
 import { AuthContextDto } from '@modules/applications/application/dto/api-key.dto';
 import { AuthenticatedUserDto } from '@modules/identity/application/dto/authenticated-user.dto';
 import { CurrentOptionalAuthContext } from '@presentation/http/decorators/current-optional-auth-context.decorator';
@@ -33,6 +33,15 @@ import { WhatsAppAccountReferenceRequestDto } from '../dto/whatsapp-account-refe
 import { TemplateRequestMapper } from '../mappers/template-request.mapper';
 
 class ListTemplatesRequestDto extends PaginationQueryDto {
+  @ApiPropertyOptional({ description: 'Conta WhatsApp à qual os templates pertencem.' })
+  @IsUUID()
+  whatsAppAccountId!: string;
+
+  @ApiPropertyOptional({ description: 'Sincroniza os templates com a Meta antes da consulta.' })
+  @IsOptional()
+  @IsBooleanString()
+  sync?: string;
+
   @ApiPropertyOptional({ enum: TemplateStatus })
   @IsOptional()
   @IsEnum(TemplateStatus)
@@ -100,8 +109,6 @@ export class TemplatesController {
   @Get()
   @ApiResponse({ status: HttpStatus.OK, type: [TemplateResponseDto] })
   async list(
-    @Query('whatsAppAccountId') accountId: string,
-    @Query('sync') sync: string | undefined,
     @Query() query: ListTemplatesRequestDto,
     @CurrentOptionalAuthContext() auth?: AuthContextDto,
     @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
@@ -109,14 +116,17 @@ export class TemplatesController {
     const tenantId = resolveTenantId(auth, user, query.tenantId);
     const result = await this.templates.list(
       tenantId,
-      accountId,
-      sync === 'true',
+      query.whatsAppAccountId,
+      query.sync === 'true',
       query.page,
       query.pageSize,
       { status: query.status, category: query.category },
     );
     if (result.isFailure) throw toHttpException(result.error);
-    return { ...result.value, items: result.value.items.map((template) => TemplateResponseDto.from(template)) };
+    return {
+      ...result.value,
+      items: result.value.items.map((template) => TemplateResponseDto.from(template)),
+    };
   }
 
   @Get(':id')

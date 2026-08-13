@@ -21,9 +21,7 @@ import { WhatsAppAccountMapper } from '../mappers/whatsapp-account.mapper';
 
 /** Resolve (ou cria) a WhatsAppAccount do canal padrão da plataforma para um tenant, evitando digitar o WABA ID do .env na tela. */
 @CommandHandler(EnsureDefaultChannelAccountCommand)
-export class EnsureDefaultChannelAccountHandler
-  implements ICommandHandler<EnsureDefaultChannelAccountCommand>
-{
+export class EnsureDefaultChannelAccountHandler implements ICommandHandler<EnsureDefaultChannelAccountCommand> {
   constructor(
     @Inject(WHATSAPP_ACCOUNT_REPOSITORY)
     private readonly whatsAppAccountRepository: IWhatsAppAccountRepository,
@@ -34,7 +32,10 @@ export class EnsureDefaultChannelAccountHandler
   async execute(
     command: EnsureDefaultChannelAccountCommand,
   ): Promise<
-    Result<WhatsAppAccountDto, DefaultChannelNotConfiguredError | TenantNotFoundError | InvalidWhatsAppAccountError>
+    Result<
+      WhatsAppAccountDto,
+      DefaultChannelNotConfiguredError | TenantNotFoundError | InvalidWhatsAppAccountError
+    >
   > {
     const wabaId = this.metaConfig.defaultWabaId;
     if (!this.metaConfig.defaultChannelEnabled || !wabaId) {

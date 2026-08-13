@@ -11,4 +11,7 @@ export class WebhookEventOrmEntity {
   @Column({ name: 'received_at', type: 'timestamptz' }) receivedAt!: Date;
   @Column({ name: 'processed_at', type: 'timestamptz', nullable: true }) processedAt!: Date | null;
   @Column({ name: 'failure_reason', type: 'text', nullable: true }) failureReason!: string | null;
+  @Column({ name: 'attempt_count', type: 'int', default: 0 }) attemptCount!: number;
+  @Column({ name: 'last_attempt_at', type: 'timestamptz', nullable: true })
+  lastAttemptAt!: Date | null;
 }

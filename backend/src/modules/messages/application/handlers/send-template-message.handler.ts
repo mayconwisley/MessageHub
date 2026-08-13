@@ -31,6 +31,11 @@ import {
   IMessageRepository,
   MESSAGE_REPOSITORY,
 } from '../../domain/repositories/message.repository.interface';
+import {
+  IMessageTimelineRepository,
+  MESSAGE_TIMELINE_REPOSITORY,
+} from '../ports/message-timeline.repository.interface';
+import { ApplicationQuotaService } from '../services/application-quota.service';
 
 @CommandHandler(SendTemplateMessageCommand)
 export class SendTemplateMessageHandler implements ICommandHandler<SendTemplateMessageCommand> {
@@ -42,6 +47,8 @@ export class SendTemplateMessageHandler implements ICommandHandler<SendTemplateM
     private readonly whatsAppAccountRepository: IWhatsAppAccountRepository,
     @Inject(TEMPLATE_REPOSITORY) private readonly templateRepository: ITemplateRepository,
     @Inject(MESSAGE_PUBLISHER) private readonly messagePublisher: IMessagePublisher,
+    @Inject(MESSAGE_TIMELINE_REPOSITORY) private readonly timeline?: IMessageTimelineRepository,
+    private readonly quotaService?: ApplicationQuotaService,
   ) {}
 
   async execute(
@@ -62,6 +69,7 @@ export class SendTemplateMessageHandler implements ICommandHandler<SendTemplateM
       // Nunca revelar que a Application existe em outro tenant (secao 17).
       return Result.fail(new ApplicationNotFoundError(command.applicationId));
     }
+    await this.quotaService?.assertCanAcceptMessage(application);
 
     const phoneNumberId = UniqueId.create(command.phoneNumberId);
     const phoneNumber = await this.phoneNumberRepository.findById(phoneNumberId);
@@ -116,10 +124,18 @@ export class SendTemplateMessageHandler implements ICommandHandler<SendTemplateM
         ? [{ component: 'body', values: command.parameters }]
         : [],
       idempotencyKey: command.idempotencyKey,
+      requestId: command.requestId,
     });
     if (messageResult.isFailure) return Result.fail(messageResult.error);
     const message = messageResult.value;
     await this.messageRepository.save(message);
+    await this.timeline?.record({
+      messageId: message.id.value,
+      eventType: 'TEMPLATE_MESSAGE_ACCEPTED',
+      status: message.status,
+      source: 'API',
+      metadata: { requestId: message.requestId, idempotencyKey: message.idempotencyKey },
+    });
     await this.messagePublisher.publishMessageRequested({ messageId: message.id.value });
     return Result.ok(MessageMapper.toDto(message));
   }

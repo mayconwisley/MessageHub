@@ -22,6 +22,7 @@ import { PaginationQueryDto } from '@presentation/http/dto/pagination-query.dto'
 import { PaginatedResult } from '@shared/types';
 import { CreateApplicationCommand } from '../../application/commands/create-application.command';
 import { ConfigureApplicationWebhookCommand } from '../../application/commands/configure-application-webhook.command';
+import { ConfigureApplicationQuotasCommand } from '../../application/commands/configure-application-quotas.command';
 import { SetApplicationPhoneNumbersCommand } from '../../application/commands/set-application-phone-numbers.command';
 import { ListApplicationsQuery } from '../../application/queries/list-applications.query';
 import { ListApplicationPhoneNumbersQuery } from '../../application/queries/list-application-phone-numbers.query';
@@ -31,6 +32,8 @@ import { ConfigureWebhookRequestDto } from '../dto/configure-webhook-request.dto
 import { WebhookConfigResponseDto } from '../dto/webhook-config-response.dto';
 import { SetApplicationPhoneNumbersRequestDto } from '../dto/set-application-phone-numbers-request.dto';
 import { LinkedPhoneNumberResponseDto } from '../dto/linked-phone-number-response.dto';
+import { ConfigureApplicationQuotasRequestDto } from '../dto/configure-application-quotas-request.dto';
+import { assertSafeWebhookUrl, assertWebhookUrlFormat } from '@shared/security';
 
 class ListApplicationsRequestDto extends PaginationQueryDto {
   @ApiPropertyOptional()
@@ -77,11 +80,34 @@ export class ApplicationsController {
     @Param('applicationId') applicationId: string,
     @Body() dto: ConfigureWebhookRequestDto,
   ): Promise<WebhookConfigResponseDto> {
+    if (dto.webhookUrl) {
+      try {
+        assertWebhookUrlFormat(dto.webhookUrl);
+        await assertSafeWebhookUrl(dto.webhookUrl);
+      } catch {
+        throw new BadRequestException(
+          'webhookUrl deve usar HTTPS e apontar exclusivamente para um host público.',
+        );
+      }
+    }
     const result = await this.mediator.send(
       new ConfigureApplicationWebhookCommand(applicationId, dto.webhookUrl ?? null),
     );
     if (result.isFailure) throw toHttpException(result.error);
     return WebhookConfigResponseDto.fromDto(result.value);
+  }
+
+  @Put(':applicationId/quotas')
+  @ApiResponse({ status: HttpStatus.OK, type: ApplicationResponseDto })
+  async configureQuotas(
+    @Param('applicationId') applicationId: string,
+    @Body() dto: ConfigureApplicationQuotasRequestDto,
+  ): Promise<ApplicationResponseDto> {
+    const result = await this.mediator.send(
+      new ConfigureApplicationQuotasCommand(applicationId, dto.quotaPerMinute, dto.quotaPerDay),
+    );
+    if (result.isFailure) throw toHttpException(result.error);
+    return ApplicationResponseDto.fromDto(result.value);
   }
 
   @Get(':applicationId/phone-numbers')

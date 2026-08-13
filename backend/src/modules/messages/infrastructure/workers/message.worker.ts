@@ -41,6 +41,11 @@ import {
 } from '../../application/ports/message-status-webhook-publisher.interface';
 import { MessageRetryPolicy } from '../../application/services/message-retry-policy';
 import {
+  IMessageTimelineRepository,
+  MESSAGE_TIMELINE_REPOSITORY,
+} from '../../application/ports/message-timeline.repository.interface';
+import { EngineeringAlertService } from '@modules/notifications/application/services/engineering-alert.service';
+import {
   MESSAGE_REQUESTED_DLQ,
   MESSAGE_REQUESTED_QUEUE,
 } from '../messaging/message-queues.constant';
@@ -67,6 +72,8 @@ export class MessageWorker {
     private readonly statusWebhookPublisher: IMessageStatusWebhookPublisher,
     private readonly retryPolicy: MessageRetryPolicy,
     private readonly logger: PinoLogger,
+    @Inject(MESSAGE_TIMELINE_REPOSITORY) private readonly timeline?: IMessageTimelineRepository,
+    private readonly alerts?: EngineeringAlertService,
   ) {
     this.logger.setContext(MessageWorker.name);
     this.channelWrapper = this.connection.createChannel({
@@ -112,6 +119,13 @@ export class MessageWorker {
 
     message.markProcessing();
     await this.messageRepository.save(message);
+    await this.timeline?.record({
+      messageId: message.id.value,
+      eventType: 'DELIVERY_ATTEMPT_STARTED',
+      status: message.status,
+      source: 'WORKER',
+      attemptNumber: message.attemptCount,
+    });
 
     const phoneNumber = await this.phoneNumberRepository.findById(message.phoneNumberId);
     const whatsAppAccount = phoneNumber
@@ -121,7 +135,9 @@ export class MessageWorker {
     if (!phoneNumber || !whatsAppAccount) {
       await this.handleFailure(
         message,
-        new MessageDeliveryRejectedError('Número de telefone ou conta do WhatsApp não encontrados.'),
+        new MessageDeliveryRejectedError(
+          'Número de telefone ou conta do WhatsApp não encontrados.',
+        ),
       );
       return;
     }
@@ -150,6 +166,14 @@ export class MessageWorker {
 
     message.markSent(result.value.providerMessageId);
     await this.messageRepository.save(message);
+    await this.timeline?.record({
+      messageId: message.id.value,
+      eventType: 'PROVIDER_ACCEPTED_MESSAGE',
+      status: message.status,
+      source: 'WORKER',
+      attemptNumber: message.attemptCount,
+      metadata: { providerMessageId: result.value.providerMessageId },
+    });
     await this.notifyStatusChanged(message);
   }
 
@@ -166,12 +190,29 @@ export class MessageWorker {
 
     message.markFailed();
     await this.messageRepository.save(message);
+    await this.timeline?.record({
+      messageId: message.id.value,
+      eventType: 'DELIVERY_ATTEMPT_FAILED',
+      status: message.status,
+      source: 'WORKER',
+      attemptNumber: message.attemptCount,
+      errorCode: error.code,
+      errorMessage: error.message,
+    });
 
     if (error.retryable && this.retryPolicy.shouldRetry(message.attemptCount)) {
       message.scheduleRetry();
       await this.messageRepository.save(message);
-
       const delayMs = this.retryPolicy.nextDelayMs(message.attemptCount);
+      await this.timeline?.record({
+        messageId: message.id.value,
+        eventType: 'RETRY_SCHEDULED',
+        status: message.status,
+        source: 'WORKER',
+        attemptNumber: message.attemptCount,
+        metadata: { delayMs },
+      });
+
       const messageId = message.id.value;
       setTimeout(() => {
         this.messagePublisher
@@ -191,6 +232,26 @@ export class MessageWorker {
       { messageId: message.id.value },
       { persistent: true },
     );
+    await this.timeline?.record({
+      messageId: message.id.value,
+      eventType: 'DELIVERY_SENT_TO_DLQ',
+      status: message.status,
+      source: 'WORKER',
+      attemptNumber: message.attemptCount,
+      errorCode: error.code,
+      errorMessage: error.message,
+    });
+    await this.alerts?.notify({
+      type: 'MESSAGE_DLQ',
+      severity: 'CRITICAL',
+      title: 'Mensagem enviada para DLQ',
+      message: `A mensagem ${message.id.value} esgotou todas as tentativas.`,
+      metadata: {
+        messageId: message.id.value,
+        applicationId: message.applicationId.value,
+        errorCode: error.code,
+      },
+    });
     await this.notifyStatusChanged(message);
   }
 

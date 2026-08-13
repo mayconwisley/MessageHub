@@ -18,30 +18,62 @@ import {
   SettingsOutlined,
   SmartToyOutlined,
   VpnKeyOutlined,
-} from '@mui/icons-material';
-import { AppBar, Avatar, Box, Collapse, CssBaseline, Drawer, IconButton, List, ListItemButton, ListItemIcon, ListItemText, ThemeProvider, Toolbar, Tooltip, Typography, useMediaQuery, type Theme } from '@mui/material';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useMemo, useState, type ReactNode } from 'react';
-import { NavLink, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { BrowserRouter } from 'react-router-dom';
-import { authStorage } from '../services/auth-storage';
-import { LoginPage } from '../modules/auth/LoginPage';
-import { logout as logoutRequest } from '../modules/auth/auth.api';
-import { DashboardPage } from '../modules/dashboard/DashboardPage';
-import { TenantsPage } from '../modules/tenants/TenantsPage';
-import { ApplicationsPage } from '../modules/applications/ApplicationsPage';
-import { WhatsAppAccountsPage } from '../modules/whatsapp-accounts/WhatsAppAccountsPage';
-import { PhoneNumbersPage } from '../modules/phone-numbers/PhoneNumbersPage';
-import { ApiKeysPage } from '../modules/api-keys/ApiKeysPage';
-import { UsersPage } from '../modules/users/UsersPage';
-import { MessagesPage } from '../modules/messages/MessagesPage';
-import { TemplatesPage } from '../modules/templates/TemplatesPage';
-import { ApiDocsPage } from '../modules/api-docs/ApiDocsPage';
-import { HelpPage } from '../modules/help/HelpPage';
-import { ThemeModeProvider, useThemeMode } from './ThemeModeProvider';
-import { buildTheme } from './theme';
+  WebhookOutlined,
+  MonitorHeartOutlined,
+} from "@mui/icons-material";
+import {
+  AppBar,
+  Box,
+  Collapse,
+  CssBaseline,
+  Drawer,
+  IconButton,
+  List,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  ThemeProvider,
+  Toolbar,
+  Tooltip,
+  useMediaQuery,
+  type Theme,
+} from "@mui/material";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useMemo, useState, type ReactNode } from "react";
+import {
+  NavLink,
+  Navigate,
+  Outlet,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
+import { BrowserRouter } from "react-router-dom";
+import { authStorage } from "../services/auth-storage";
+import { LoginPage } from "../modules/auth/LoginPage";
+import { logout as logoutRequest } from "../modules/auth/auth.api";
+import { DashboardPage } from "../modules/dashboard/DashboardPage";
+import { TenantsPage } from "../modules/tenants/TenantsPage";
+import { ApplicationsPage } from "../modules/applications/ApplicationsPage";
+import { WhatsAppAccountsPage } from "../modules/whatsapp-accounts/WhatsAppAccountsPage";
+import { PhoneNumbersPage } from "../modules/phone-numbers/PhoneNumbersPage";
+import { ApiKeysPage } from "../modules/api-keys/ApiKeysPage";
+import { UsersPage } from "../modules/users/UsersPage";
+import { MessagesPage } from "../modules/messages/MessagesPage";
+import { TemplatesPage } from "../modules/templates/TemplatesPage";
+import { ApiDocsPage } from "../modules/api-docs/ApiDocsPage";
+import { WebhooksPage } from "../modules/webhooks/WebhooksPage";
+import { MonitoringPage } from "../modules/monitoring/MonitoringPage";
+import { HelpPage } from "../modules/help/HelpPage";
+import { ThemeModeProvider, useThemeMode } from "./ThemeModeProvider";
+import { buildTheme } from "./theme";
+import brandLogoDark from "../assets/brand/message-hub-logo-dark.svg";
+import brandLogoLight from "../assets/brand/message-hub-logo-light.svg";
 
-const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } });
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
+});
 
 interface NavLeaf {
   to: string;
@@ -55,64 +87,109 @@ interface NavGroupConfig {
   items: NavLeaf[];
 }
 
-const topLinks: NavLeaf[] = [{ to: '/', label: 'Visão geral', icon: <DashboardOutlined /> }];
+const topLinks: NavLeaf[] = [
+  { to: "/", label: "Visão geral", icon: <DashboardOutlined /> },
+];
 
 const navGroups: NavGroupConfig[] = [
   {
-    label: 'Administração',
+    label: "Administração",
     icon: <AdminPanelSettingsOutlined />,
     items: [
-      { to: '/tenants', label: 'Tenants', icon: <AccountTreeOutlined /> },
-      { to: '/applications', label: 'Aplicações', icon: <AppsOutlined /> },
-      { to: '/whatsapp-accounts', label: 'Contas WhatsApp', icon: <SmartToyOutlined /> },
-      { to: '/phone-numbers', label: 'Números', icon: <PhoneOutlined /> },
-      { to: '/api-keys', label: 'Chaves de API', icon: <VpnKeyOutlined /> },
-      { to: '/users', label: 'Usuários', icon: <PeopleOutlined /> },
+      { to: "/tenants", label: "Tenants", icon: <AccountTreeOutlined /> },
+      { to: "/applications", label: "Aplicações", icon: <AppsOutlined /> },
+      {
+        to: "/whatsapp-accounts",
+        label: "Contas WhatsApp",
+        icon: <SmartToyOutlined />,
+      },
+      { to: "/phone-numbers", label: "Números", icon: <PhoneOutlined /> },
+      { to: "/api-keys", label: "Chaves de API", icon: <VpnKeyOutlined /> },
+      { to: "/users", label: "Usuários", icon: <PeopleOutlined /> },
     ],
   },
   {
-    label: 'Mensageria',
+    label: "Mensageria",
     icon: <ForumOutlined />,
     items: [
-      { to: '/messages', label: 'Mensagens', icon: <ChatOutlined /> },
-      { to: '/templates', label: 'Modelos de mensagem', icon: <SettingsOutlined /> },
-      { to: '/api-docs', label: 'Documentação da API', icon: <IntegrationInstructionsOutlined /> },
+      { to: "/messages", label: "Mensagens", icon: <ChatOutlined /> },
+      {
+        to: "/templates",
+        label: "Modelos de mensagem",
+        icon: <SettingsOutlined />,
+      },
+      {
+        to: "/api-docs",
+        label: "Documentação da API",
+        icon: <IntegrationInstructionsOutlined />,
+      },
+      { to: "/webhooks", label: "Webhooks e DLQ", icon: <WebhookOutlined /> },
+      { to: "/monitoring", label: "Monitor de integrações", icon: <MonitorHeartOutlined /> },
     ],
   },
 ];
 
 const bottomLinks: NavLeaf[] = [
-  { to: '/help', label: 'Manual do usuário', icon: <HelpOutlineOutlined /> },
+  { to: "/help", label: "Manual do usuário", icon: <HelpOutlineOutlined /> },
 ];
 
 const drawerWidth = 264;
 
-function NavItem({ to, label, icon, sx, onNavigate }: NavLeaf & { sx?: object; onNavigate?: () => void }) {
+function NavItem({
+  to,
+  label,
+  icon,
+  sx,
+  onNavigate,
+}: NavLeaf & { sx?: object; onNavigate?: () => void }) {
   const location = useLocation();
   return (
-    <ListItemButton component={NavLink} to={to} selected={location.pathname === to} sx={sx} onClick={onNavigate}>
+    <ListItemButton
+      component={NavLink}
+      to={to}
+      selected={location.pathname === to}
+      sx={sx}
+      onClick={onNavigate}
+    >
       <ListItemIcon>{icon}</ListItemIcon>
       <ListItemText primary={label} />
     </ListItemButton>
   );
 }
 
-function NavGroup({ label, icon, items, onNavigate }: NavGroupConfig & { onNavigate?: () => void }) {
+function NavGroup({
+  label,
+  icon,
+  items,
+  onNavigate,
+}: NavGroupConfig & { onNavigate?: () => void }) {
   const location = useLocation();
   const hasActiveChild = items.some((item) => item.to === location.pathname);
   const [open, setOpen] = useState(hasActiveChild);
 
   return (
     <>
-      <ListItemButton onClick={() => setOpen((current) => !current)} selected={hasActiveChild && !open}>
+      <ListItemButton
+        onClick={() => setOpen((current) => !current)}
+        selected={hasActiveChild && !open}
+      >
         <ListItemIcon>{icon}</ListItemIcon>
         <ListItemText primary={label} />
-        {open ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />}
+        {open ? (
+          <ExpandLess fontSize="small" />
+        ) : (
+          <ExpandMore fontSize="small" />
+        )}
       </ListItemButton>
       <Collapse in={open} timeout="auto" unmountOnExit>
         <List component="div" disablePadding>
           {items.map((item) => (
-            <NavItem key={item.to} {...item} sx={{ pl: 4 }} onNavigate={onNavigate} />
+            <NavItem
+              key={item.to}
+              {...item}
+              sx={{ pl: 4 }}
+              onNavigate={onNavigate}
+            />
           ))}
         </List>
       </Collapse>
@@ -123,7 +200,7 @@ function NavGroup({ label, icon, items, onNavigate }: NavGroupConfig & { onNavig
 function Layout() {
   const navigate = useNavigate();
   const { mode, toggleMode } = useThemeMode();
-  const isDesktop = useMediaQuery((theme: Theme) => theme.breakpoints.up('md'));
+  const isDesktop = useMediaQuery((theme: Theme) => theme.breakpoints.up("md"));
   const [mobileOpen, setMobileOpen] = useState(false);
   const closeMobileNav = () => setMobileOpen(false);
   const logout = async () => {
@@ -134,7 +211,7 @@ function Layout() {
     }
     authStorage.removeSessionToken();
     queryClient.clear();
-    navigate('/login');
+    navigate("/login");
   };
 
   const navList = (
@@ -152,21 +229,51 @@ function Layout() {
   );
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
-      <AppBar position="fixed" elevation={0} sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
+    <Box
+      sx={{
+        display: "flex",
+        minHeight: "100vh",
+        bgcolor: "background.default",
+      }}
+    >
+      <AppBar
+        position="fixed"
+        elevation={0}
+        sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}
+      >
         <Toolbar sx={{ gap: 1.5 }}>
           {!isDesktop && (
-            <IconButton aria-label="Abrir menu" color="inherit" edge="start" onClick={() => setMobileOpen(true)}>
+            <IconButton
+              aria-label="Abrir menu"
+              color="inherit"
+              edge="start"
+              onClick={() => setMobileOpen(true)}
+            >
               <MenuOutlined />
             </IconButton>
           )}
-          <Avatar sx={{ bgcolor: 'primary.main', width: 34, height: 34 }}>
-            <ChatOutlined fontSize="small" />
-          </Avatar>
-          <Typography variant="h6" noWrap sx={{ flexGrow: 1 }}>Message Hub Console</Typography>
-          <Tooltip title={mode === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'}>
-            <IconButton aria-label="Alternar tema" color="inherit" onClick={toggleMode}>
-              {mode === 'dark' ? <LightModeOutlined /> : <DarkModeOutlined />}
+          <Box
+            component="img"
+            src={mode === "dark" ? brandLogoDark : brandLogoLight}
+            alt="Message Hub"
+            sx={{
+              width: { xs: 166, sm: 205 },
+              height: "auto",
+              flexGrow: 1,
+              maxHeight: 42,
+              objectFit: "contain",
+              objectPosition: "left",
+            }}
+          />
+          <Tooltip
+            title={mode === "dark" ? "Ativar tema claro" : "Ativar tema escuro"}
+          >
+            <IconButton
+              aria-label="Alternar tema"
+              color="inherit"
+              onClick={toggleMode}
+            >
+              {mode === "dark" ? <LightModeOutlined /> : <DarkModeOutlined />}
             </IconButton>
           </Tooltip>
           <Tooltip title="Sair">
@@ -177,19 +284,32 @@ function Layout() {
         </Toolbar>
       </AppBar>
       <Drawer
-        variant={isDesktop ? 'permanent' : 'temporary'}
+        variant={isDesktop ? "permanent" : "temporary"}
         open={isDesktop ? true : mobileOpen}
         onClose={closeMobileNav}
         ModalProps={{ keepMounted: true }}
         sx={{
           width: isDesktop ? drawerWidth : 0,
           flexShrink: 0,
-          '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box', pt: isDesktop ? 9 : 1 },
+          "& .MuiDrawer-paper": {
+            width: drawerWidth,
+            boxSizing: "border-box",
+            pt: isDesktop ? 9 : 1,
+          },
         }}
       >
         {navList}
       </Drawer>
-      <Box component="main" sx={{ flexGrow: 1, minWidth: 0, p: { xs: 2, md: 4 }, pt: { xs: 10, md: 12 }, maxWidth: 1500 }}>
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          minWidth: 0,
+          p: { xs: 2, md: 4 },
+          pt: { xs: 10, md: 12 },
+          maxWidth: 1500,
+        }}
+      >
         <Outlet />
       </Box>
     </Box>
@@ -197,11 +317,19 @@ function Layout() {
 }
 
 function ProtectedRoute() {
-  return authStorage.getSessionToken() ? <Layout /> : <Navigate to="/login" replace />;
+  return authStorage.getSessionToken() ? (
+    <Layout />
+  ) : (
+    <Navigate to="/login" replace />
+  );
 }
 
 function LoginRoute() {
-  return authStorage.getSessionToken() ? <Navigate to="/" replace /> : <LoginPage />;
+  return authStorage.getSessionToken() ? (
+    <Navigate to="/" replace />
+  ) : (
+    <LoginPage />
+  );
 }
 
 function ThemedApp() {
@@ -219,13 +347,18 @@ function ThemedApp() {
               <Route path="/" element={<DashboardPage />} />
               <Route path="/tenants" element={<TenantsPage />} />
               <Route path="/applications" element={<ApplicationsPage />} />
-              <Route path="/whatsapp-accounts" element={<WhatsAppAccountsPage />} />
+              <Route
+                path="/whatsapp-accounts"
+                element={<WhatsAppAccountsPage />}
+              />
               <Route path="/phone-numbers" element={<PhoneNumbersPage />} />
               <Route path="/api-keys" element={<ApiKeysPage />} />
               <Route path="/users" element={<UsersPage />} />
               <Route path="/messages" element={<MessagesPage />} />
               <Route path="/templates" element={<TemplatesPage />} />
               <Route path="/api-docs" element={<ApiDocsPage />} />
+              <Route path="/webhooks" element={<WebhooksPage />} />
+              <Route path="/monitoring" element={<MonitoringPage />} />
               <Route path="/help" element={<HelpPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

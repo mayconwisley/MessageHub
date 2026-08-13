@@ -10,6 +10,7 @@ export interface IApiKeyRepository {
     page: number,
     pageSize: number,
   ): Promise<PaginatedResult<ApiKey>>;
+  recordUsage(id: UniqueId, ipAddress?: string): Promise<void>;
 }
 
 export const API_KEY_REPOSITORY = Symbol('API_KEY_REPOSITORY');

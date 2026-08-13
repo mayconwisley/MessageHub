@@ -5,6 +5,7 @@ import type { Channel, ConsumeMessage } from 'amqplib';
 import axios from 'axios';
 import { PinoLogger } from 'nestjs-pino';
 import { UniqueId } from '@shared/domain';
+import { assertSafeWebhookUrl, safeWebhookHttpsAgent } from '@shared/security';
 import { RABBITMQ_CONNECTION } from '@infrastructure/messaging/rabbitmq/rabbitmq.constants';
 import {
   APPLICATION_REPOSITORY,
@@ -63,6 +64,7 @@ export class InboundMessageWebhookWorker {
       if (!application?.webhookUrl || !application.webhookSecret) {
         return;
       }
+      await assertSafeWebhookUrl(application.webhookUrl);
 
       const body = JSON.stringify({
         event: 'whatsapp.message_received',
@@ -82,6 +84,8 @@ export class InboundMessageWebhookWorker {
           'X-Hub-Signature-256': `sha256=${signature}`,
         },
         timeout: DELIVERY_TIMEOUT_MS,
+        httpsAgent: safeWebhookHttpsAgent,
+        maxRedirects: 0,
         validateStatus: (status) => status >= 200 && status < 300,
       });
     } catch (error) {

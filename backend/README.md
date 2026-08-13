@@ -1,3 +1,23 @@
+<p align="center">
+  <img src="../frontend/src/assets/brand/message-hub-logo-light.svg" alt="Message Hub" width="312" />
+</p>
+
+<p align="center">
+  Plataforma interna para centralizar integrações de mensageria com a Meta WhatsApp Business Platform.
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Node.js-22%2B-339933?logo=node.js&logoColor=white" alt="Node.js 22+" />
+  <img src="https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white" alt="TypeScript 5.7" />
+  <img src="https://img.shields.io/badge/NestJS-11-E0234E?logo=nestjs&logoColor=white" alt="NestJS 11" />
+  <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=111827" alt="React 19" />
+  <img src="https://img.shields.io/badge/MUI-7-007FFF?logo=mui&logoColor=white" alt="MUI 7" />
+  <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/RabbitMQ-3-FF6600?logo=rabbitmq&logoColor=white" alt="RabbitMQ" />
+  <img src="https://img.shields.io/badge/TypeORM-0.3-FE0803?logo=typeorm&logoColor=white" alt="TypeORM" />
+  <img src="https://img.shields.io/badge/Jest-29-C21325?logo=jest&logoColor=white" alt="Jest" />
+</p>
+
 # Message Hub
 
 WhatsApp/Messaging Hub centralizado — abstrai e centraliza a integração com a **Meta WhatsApp
@@ -73,6 +93,30 @@ API** (`/api-docs`) ou o Swagger em `/docs`.
 8. `GET /webhooks/meta` realiza o handshake da Meta e `POST /webhooks/meta` valida
    `X-Hub-Signature-256` antes de atualizar o status da mensagem (`SENT → DELIVERED → READ`).
 
+## Destinatários, usernames e BSUID
+
+O campo `to` dos endpoints de envio aceita um número E.164 ou um **BSUID** (_Business-Scoped
+User ID_) recebido da Meta. Usuários que adotarem username podem ocultar o telefone; nesse caso,
+não há como enviar para o texto `@username`. Reutilize exatamente o valor `sender.id` recebido no
+webhook para responder ao usuário.
+
+O webhook entregue à URL configurada pela Application inclui a identidade normalizada abaixo:
+
+```json
+{
+  "event": "whatsapp.message_received",
+  "data": {
+    "sender": {
+      "id": "bsuid:customer-123",
+      "displayName": "Maria Silva"
+    }
+  }
+}
+```
+
+`displayName` é somente informativo; `sender.id` é o identificador para novas mensagens. Para
+usuários sem username, esse campo continua contendo o `wa_id`/telefone recebido da Meta.
+
 ## Credenciais da Meta
 
 Cada WABA possui uma origem de credenciais, informada no campo `credentialSource`:
@@ -100,6 +144,13 @@ sequenciais e toda linha de exemplo deve fornecer um valor para cada parâmetro.
   }
 }
 ```
+
+## Gestão de modelos Meta pelo console
+
+O console em `/templates` administra o ciclo completo do modelo sem exigir acesso ao painel da
+Meta: criação, edição, exclusão, sincronização, publicação de rascunhos e visualização. O editor
+suporta `HEADER`, `BODY`, `FOOTER`, variáveis posicionais com exemplos e um botão URL. Modelos
+alterados após a publicação retornam para análise da Meta; nome e idioma permanecem imutáveis.
 
 ## Autenticação administrativa
 

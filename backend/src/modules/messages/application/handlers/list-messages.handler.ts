@@ -24,9 +24,7 @@ export class ListMessagesHandler implements IQueryHandler<ListMessagesQuery> {
     @Inject(APPLICATION_REPOSITORY) private readonly applicationRepository: IApplicationRepository,
   ) {}
 
-  async execute(
-    query: ListMessagesQuery,
-  ): Promise<Result<PaginatedResult<MessageDto>, BaseError>> {
+  async execute(query: ListMessagesQuery): Promise<Result<PaginatedResult<MessageDto>, BaseError>> {
     if (query.requestingTenantId) {
       const application = await this.applicationRepository.findById(
         UniqueId.create(query.applicationId),
@@ -41,8 +39,11 @@ export class ListMessagesHandler implements IQueryHandler<ListMessagesQuery> {
       UniqueId.create(query.applicationId),
       query.page,
       query.pageSize,
-      query.status ? { status: query.status } : undefined,
+      query.status || query.search ? { status: query.status, search: query.search } : undefined,
     );
-    return Result.ok({ ...result, items: result.items.map((message) => MessageMapper.toDto(message)) });
+    return Result.ok({
+      ...result,
+      items: result.items.map((message) => MessageMapper.toDto(message)),
+    });
   }
 }

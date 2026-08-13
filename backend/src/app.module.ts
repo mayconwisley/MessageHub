@@ -22,6 +22,8 @@ import { AuditLogInterceptor } from './presentation/http/interceptors/audit-log.
 import { AppThrottlerGuard } from './presentation/http/guards/app-throttler.guard';
 import { DefaultChannelSeedService } from './modules/whatsapp-accounts/application/services/default-channel-seed.service';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { MonitoringModule } from './modules/monitoring/monitoring.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -44,6 +46,8 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     TemplatesModule,
     WebhooksModule,
     DashboardModule,
+    MonitoringModule,
+    NotificationsModule,
   ],
   controllers: [HealthController],
   providers: [

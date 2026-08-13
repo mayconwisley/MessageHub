@@ -103,6 +103,8 @@ export function ApiKeysPage() {
               { key: 'type', label: 'Tipo', render: (row) => typeLabels[row.type] ?? row.type },
               { key: 'status', label: 'Status', render: (row) => <Chip label={statusLabels[row.status] ?? row.status} size="small" /> },
               { key: 'expiresAt', label: 'Expira em', render: (row) => (row.expiresAt ? new Date(row.expiresAt).toLocaleString('pt-BR') : 'Sem expiração') },
+              { key: 'scopes', label: 'Escopos', render: (row) => row.scopes.join(', ') || '—' },
+              { key: 'lastUsedAt', label: 'Último uso', render: (row) => row.lastUsedAt ? new Date(row.lastUsedAt).toLocaleString('pt-BR') : 'Nunca' },
               { key: 'createdAt', label: 'Criado em', render: (row) => new Date(row.createdAt).toLocaleString('pt-BR') },
             ]}
             rows={list.data?.items ?? []}

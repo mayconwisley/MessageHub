@@ -14,6 +14,7 @@ export interface MessageDto {
   } | null;
   status: string;
   idempotencyKey: string | null;
+  requestId: string | null;
   providerMessageId: string | null;
   attemptCount: number;
   lastError: { code: string; message: string; occurredAt: Date } | null;

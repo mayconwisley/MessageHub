@@ -33,6 +33,28 @@ export class AppConfigService {
     return this.configService.get('app.corsOrigins') as string[];
   }
 
+  get swaggerEnabled(): boolean {
+    return this.configService.get<boolean>('app.swaggerEnabled', { infer: true }) as boolean;
+  }
+
+  get messageProvider(): 'meta' | 'sandbox' {
+    return this.configService.get<'meta' | 'sandbox'>('app.messageProvider', { infer: true }) as
+      'meta' | 'sandbox';
+  }
+
+  get sandboxEnabled(): boolean {
+    return this.configService.get<boolean>('app.sandboxEnabled', { infer: true }) as boolean;
+  }
+  get slackWebhookUrl(): string | undefined {
+    return this.configService.get<string>('app.slackWebhookUrl', { infer: true });
+  }
+  get teamsWebhookUrl(): string | undefined {
+    return this.configService.get<string>('app.teamsWebhookUrl', { infer: true });
+  }
+  get emailWebhookUrl(): string | undefined {
+    return this.configService.get<string>('app.emailWebhookUrl', { infer: true });
+  }
+
   get isProduction(): boolean {
     return this.nodeEnv === 'production';
   }

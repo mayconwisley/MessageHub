@@ -103,6 +103,7 @@ export class WhatsAppAccountsController {
         dto.credentialSource,
         dto.accessToken,
         dto.appSecret,
+        dto.credentialExpiresAt ? new Date(dto.credentialExpiresAt) : undefined,
       ),
     );
     if (result.isFailure) {

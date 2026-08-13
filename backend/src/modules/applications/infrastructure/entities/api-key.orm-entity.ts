@@ -25,4 +25,17 @@ export class ApiKeyOrmEntity {
 
   @Column({ name: 'expires_at', type: 'timestamptz', nullable: true })
   expiresAt!: Date | null;
+
+  @Column({
+    type: 'text',
+    array: true,
+    default: () => "ARRAY['messages:write', 'messages:read']::text[]",
+  })
+  scopes!: string[];
+
+  @Column({ name: 'last_used_at', type: 'timestamptz', nullable: true })
+  lastUsedAt!: Date | null;
+
+  @Column({ name: 'last_used_ip', type: 'inet', nullable: true })
+  lastUsedIp!: string | null;
 }

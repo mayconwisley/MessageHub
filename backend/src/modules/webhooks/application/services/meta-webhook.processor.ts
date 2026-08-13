@@ -20,6 +20,10 @@ import {
   IInboundMessageWebhookPublisher,
   INBOUND_MESSAGE_WEBHOOK_PUBLISHER,
 } from '../ports/inbound-message-webhook-publisher.interface';
+import {
+  IMessageTimelineRepository,
+  MESSAGE_TIMELINE_REPOSITORY,
+} from '@modules/messages/application/ports/message-timeline.repository.interface';
 
 interface MetaStatus {
   id?: string;
@@ -55,6 +59,7 @@ export class MetaWebhookProcessor {
     @Inject(INBOUND_MESSAGE_WEBHOOK_PUBLISHER)
     private readonly inboundMessageWebhookPublisher: IInboundMessageWebhookPublisher,
     private readonly logger: PinoLogger,
+    @Inject(MESSAGE_TIMELINE_REPOSITORY) private readonly timeline?: IMessageTimelineRepository,
   ) {
     this.logger.setContext(MetaWebhookProcessor.name);
   }
@@ -111,6 +116,13 @@ export class MetaWebhookProcessor {
     const message = await this.messages.findByProviderMessageId(status.id);
     if (!message?.applyProviderStatus(status.status)) return;
     await this.messages.save(message);
+    await this.timeline?.record({
+      messageId: message.id.value,
+      eventType: 'PROVIDER_STATUS_RECEIVED',
+      status: message.status,
+      source: 'META_WEBHOOK',
+      metadata: { providerMessageId: status.id, providerStatus: status.status },
+    });
     try {
       await this.statusWebhookPublisher.publishMessageStatusChanged({
         applicationId: message.applicationId.value,

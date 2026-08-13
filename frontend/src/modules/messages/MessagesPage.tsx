@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { History, Visibility } from "@mui/icons-material";
+import { History } from "@mui/icons-material";
 import {
   Alert,
   Button,
@@ -11,14 +11,12 @@ import {
   Snackbar,
   Stack,
   TextField,
-  Typography,
 } from "@mui/material";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { AsyncState } from "../../components/shared/AsyncState";
-import { EntityResult } from "../../components/shared/EntityResult";
 import { FormDialog } from "../../components/shared/FormDialog";
 import { PaginatedTable } from "../../components/shared/PaginatedTable";
 import { TableActionsMenu } from "../../components/shared/TableActionsMenu";
@@ -32,6 +30,7 @@ import { tenantsApi } from "../tenants/tenants.api";
 import { messagesApi, type Message } from "./messages.api";
 import { ApiError } from "../../services/http-client";
 import { toPresentationValue } from "../../lib/presentation";
+import { MessageTimelineDialog } from "./MessageTimelineDialog";
 
 const schema = z.object({
   phoneNumberId: z.string().uuid("Informe um UUID válido."),
@@ -53,20 +52,13 @@ const statusLabels: Record<string, string> = {
   RETRY: "Repetindo",
 };
 
-const attemptStatusLabels: Record<string, string> = {
-  SUCCEEDED: "Sucesso",
-  FAILED: "Falhou",
-};
-
 export function MessagesPage() {
   const { page, pageSize, setPage, setPageSize } = usePagination();
   const [tenantId, setTenantId] = useState("");
   const [applicationId, setApplicationId] = useState("");
   const [status, setStatus] = useState("");
-  const [detailsMessageId, setDetailsMessageId] = useState<string | null>(null);
-  const [attemptsMessageId, setAttemptsMessageId] = useState<string | null>(
-    null,
-  );
+  const [search, setSearch] = useState("");
+  const [timelineMessageId, setTimelineMessageId] = useState<string | null>(null);
   const [sendOpen, setSendOpen] = useState(false);
   const [feedback, setFeedback] = useState<{
     severity: "success" | "error";
@@ -135,26 +127,32 @@ export function MessagesPage() {
   }, [validTenantId, applicationId, applications.data]);
 
   const list = useQuery({
-    queryKey: ["messages", applicationId, page, pageSize, status],
+    queryKey: ["messages", applicationId, page, pageSize, status, search],
     queryFn: () =>
       messagesApi.list({
         applicationId,
         page,
         pageSize,
         status: status || undefined,
+        search: search || undefined,
       }),
     enabled: validApplicationId,
   });
   const details = useQuery({
-    queryKey: ["message", detailsMessageId, applicationId],
-    queryFn: () => messagesApi.get(detailsMessageId as string, applicationId),
-    enabled: !!detailsMessageId && validApplicationId,
+    queryKey: ["message", timelineMessageId, applicationId],
+    queryFn: () => messagesApi.get(timelineMessageId as string, applicationId),
+    enabled: !!timelineMessageId && validApplicationId,
   });
   const attempts = useQuery({
-    queryKey: ["message-attempts", attemptsMessageId, applicationId],
+    queryKey: ["message-attempts", timelineMessageId, applicationId],
     queryFn: () =>
-      messagesApi.listAttempts(attemptsMessageId as string, applicationId),
-    enabled: !!attemptsMessageId && validApplicationId,
+      messagesApi.listAttempts(timelineMessageId as string, applicationId),
+    enabled: !!timelineMessageId && validApplicationId,
+  });
+  const timeline = useQuery({
+    queryKey: ["message-timeline", timelineMessageId, applicationId],
+    queryFn: () => messagesApi.listTimeline(timelineMessageId as string, applicationId),
+    enabled: !!timelineMessageId && validApplicationId,
   });
 
   const openSend = () => {
@@ -209,6 +207,7 @@ export function MessagesPage() {
         </Alert>
       )}
       <Stack spacing={2}>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
         <FormControl size="small" sx={{ width: 220 }}>
           <InputLabel id="message-status-filter">Status</InputLabel>
           <Select
@@ -236,6 +235,18 @@ export function MessagesPage() {
             ))}
           </Select>
         </FormControl>
+        <TextField
+          size="small"
+          label="Rastrear mensagem"
+          placeholder="ID, provider ID, request ID, chave ou destinatário"
+          value={search}
+          onChange={(event) => {
+            setSearch(event.target.value);
+            setPage(1);
+          }}
+          sx={{ minWidth: { sm: 360 }, flexGrow: 1 }}
+        />
+        </Stack>
         <AsyncState
           isLoading={validApplicationId && list.isLoading}
           error={list.error}
@@ -284,14 +295,9 @@ export function MessagesPage() {
               <TableActionsMenu
                 actions={[
                   {
-                    label: "Ver detalhes",
-                    icon: <Visibility fontSize="small" />,
-                    onClick: () => setDetailsMessageId(row.id),
-                  },
-                  {
-                    label: `Ver tentativas (${row.attemptCount})`,
+                    label: "Ver linha do tempo",
                     icon: <History fontSize="small" />,
-                    onClick: () => setAttemptsMessageId(row.id),
+                    onClick: () => setTimelineMessageId(row.id),
                   },
                 ]}
               />
@@ -305,7 +311,6 @@ export function MessagesPage() {
           {send.isSuccess ? (
             <>
               <Alert severity="success">Mensagem enviada com sucesso.</Alert>
-              <EntityResult title="Última mensagem" data={send.data ?? null} />
               <Button variant="contained" onClick={closeSend}>
                 Fechar
               </Button>
@@ -364,73 +369,15 @@ export function MessagesPage() {
         </Stack>
       </FormDialog>
 
-      <FormDialog
-        open={!!detailsMessageId}
-        onClose={() => setDetailsMessageId(null)}
-        title="Detalhes da mensagem"
-      >
-        <Stack sx={{ mt: 1 }}>
-          <AsyncState isLoading={details.isLoading} error={details.error}>
-            <EntityResult title="Mensagem" data={details.data ?? null} />
-          </AsyncState>
-        </Stack>
-      </FormDialog>
-
-      <FormDialog
-        open={!!attemptsMessageId}
-        onClose={() => setAttemptsMessageId(null)}
-        title="Tentativas de entrega"
-      >
-        <Stack sx={{ mt: 1 }}>
-          <AsyncState
-            isLoading={attempts.isLoading}
-            error={attempts.error}
-            emptyMessage={
-              attempts.data?.length === 0
-                ? "Nenhuma tentativa registrada. A mensagem ainda aguarda consumo pela fila RabbitMQ ou o worker ainda não iniciou o processamento."
-                : undefined
-            }
-          >
-            <Stack spacing={1}>
-              {attempts.data?.map((attempt) => (
-                <Stack
-                  key={attempt.id}
-                  direction="row"
-                  justifyContent="space-between"
-                  alignItems="center"
-                  sx={{
-                    py: 1,
-                    borderBottom: "1px solid",
-                    borderColor: "divider",
-                  }}
-                >
-                  <Typography>
-                    #{attempt.attemptNumber} ·{" "}
-                    {new Date(attempt.occurredAt).toLocaleString("pt-BR")}
-                  </Typography>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    {attempt.errorMessage && (
-                      <Alert
-                        severity="error"
-                        variant="outlined"
-                        sx={{ py: 0, px: 1 }}
-                      >
-                        {attempt.errorMessage}
-                      </Alert>
-                    )}
-                    <Chip
-                      label={
-                        attemptStatusLabels[attempt.status] ?? attempt.status
-                      }
-                      size="small"
-                    />
-                  </Stack>
-                </Stack>
-              ))}
-            </Stack>
-          </AsyncState>
-        </Stack>
-      </FormDialog>
+      <MessageTimelineDialog
+        open={!!timelineMessageId}
+        message={details.data ?? null}
+        attempts={attempts.data}
+        timeline={timeline.data}
+        isLoading={details.isLoading || attempts.isLoading || timeline.isLoading}
+        error={(details.error ?? attempts.error ?? timeline.error) as Error | null}
+        onClose={() => setTimelineMessageId(null)}
+      />
 
       <Snackbar
         open={!!feedback}

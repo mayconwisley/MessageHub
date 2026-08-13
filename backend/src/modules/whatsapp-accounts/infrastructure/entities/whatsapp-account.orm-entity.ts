@@ -20,6 +20,9 @@ export class WhatsAppAccountOrmEntity {
   @Column({ name: 'app_secret', type: 'text', nullable: true })
   encryptedAppSecret!: string | null;
 
+  @Column({ name: 'credential_expires_at', type: 'timestamptz', nullable: true })
+  credentialExpiresAt!: Date | null;
+
   @Column({ type: 'varchar', length: 20 })
   status!: string;
 

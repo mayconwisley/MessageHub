@@ -19,6 +19,7 @@ export interface MessageProps {
   template: TemplateMessage | null;
   status: MessageStatus;
   idempotencyKey: string | null;
+  requestId: string | null;
   providerMessageId: string | null;
   attemptCount: number;
   createdAt: Date;
@@ -35,6 +36,7 @@ export interface CreateTemplateMessageParams {
   language: string;
   parameters?: TemplateParameterGroup[];
   idempotencyKey?: string | null;
+  requestId?: string | null;
 }
 
 export interface CreateMessageParams {
@@ -44,6 +46,7 @@ export interface CreateMessageParams {
   to: string;
   content: string;
   idempotencyKey?: string | null;
+  requestId?: string | null;
 }
 
 /** Transicoes de estado (secao 19 do AGENTS.md) controladas exclusivamente pelo dominio. */
@@ -76,6 +79,7 @@ export class Message extends Entity<MessageProps> {
           template: null,
           status: MessageStatus.PENDING,
           idempotencyKey: params.idempotencyKey ?? null,
+          requestId: params.requestId ?? null,
           providerMessageId: null,
           attemptCount: 0,
           createdAt: now,
@@ -116,6 +120,7 @@ export class Message extends Entity<MessageProps> {
           template: templateResult.value,
           status: MessageStatus.PENDING,
           idempotencyKey: params.idempotencyKey ?? null,
+          requestId: params.requestId ?? null,
           providerMessageId: null,
           attemptCount: 0,
           createdAt: now,
@@ -163,6 +168,10 @@ export class Message extends Entity<MessageProps> {
 
   get idempotencyKey(): string | null {
     return this.props.idempotencyKey;
+  }
+
+  get requestId(): string | null {
+    return this.props.requestId;
   }
 
   get providerMessageId(): string | null {

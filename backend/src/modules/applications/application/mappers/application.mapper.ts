@@ -10,6 +10,8 @@ export class ApplicationMapper {
       status: application.status,
       webhookUrl: application.webhookUrl,
       webhookSecret: application.webhookSecret,
+      quotaPerMinute: application.quotaPerMinute,
+      quotaPerDay: application.quotaPerDay,
       createdAt: application.createdAt,
     };
   }

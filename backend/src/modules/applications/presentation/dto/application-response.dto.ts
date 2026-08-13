@@ -17,6 +17,9 @@ export class ApplicationResponseDto {
   @ApiProperty()
   createdAt!: Date;
 
+  @ApiProperty() quotaPerMinute!: number;
+  @ApiProperty() quotaPerDay!: number;
+
   static fromDto(dto: ApplicationDto): ApplicationResponseDto {
     const response = new ApplicationResponseDto();
     response.id = dto.id;
@@ -24,6 +27,8 @@ export class ApplicationResponseDto {
     response.name = dto.name;
     response.status = dto.status;
     response.createdAt = dto.createdAt;
+    response.quotaPerMinute = dto.quotaPerMinute;
+    response.quotaPerDay = dto.quotaPerDay;
     return response;
   }
 }

@@ -19,28 +19,39 @@ async function bootstrap(): Promise<void> {
 
   app.use(helmet());
   app.use(compression());
-  app.enableCors(
-    appConfig.corsOrigins.length > 0 ? { origin: appConfig.corsOrigins, credentials: true } : {},
-  );
+  app.getHttpAdapter().getInstance().disable('x-powered-by');
+  if (appConfig.corsOrigins.length > 0) {
+    app.enableCors({
+      origin: appConfig.corsOrigins,
+      credentials: true,
+      methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Authorization', 'Content-Type', 'Idempotency-Key', 'X-Request-Id'],
+      maxAge: 86_400,
+    });
+  }
 
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
+      forbidNonWhitelisted: true,
+      forbidUnknownValues: true,
       transform: true,
       exceptionFactory: (errors) => new BadRequestException(translateValidationErrors(errors)),
     }),
   );
 
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('Message Hub')
-    .setDescription(
-      'WhatsApp/Messaging Hub - API interna de integracao com a Meta WhatsApp Business Platform',
-    )
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('docs', app, document);
+  if (appConfig.swaggerEnabled) {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('Message Hub')
+      .setDescription(
+        'WhatsApp/Messaging Hub - API interna de integracao com a Meta WhatsApp Business Platform',
+      )
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('docs', app, document);
+  }
 
   await app.listen(appConfig.port);
 
@@ -48,7 +59,7 @@ async function bootstrap(): Promise<void> {
   logger.log(
     {
       apiUrl: baseUrl,
-      swaggerUrl: `${baseUrl}/docs`,
+      ...(appConfig.swaggerEnabled ? { swaggerUrl: `${baseUrl}/docs` } : {}),
       healthUrl: `${baseUrl}/health`,
     },
     'Message Hub iniciado e pronto para receber requisicoes',

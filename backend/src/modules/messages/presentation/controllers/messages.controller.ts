@@ -10,8 +10,10 @@ import {
   Param,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { ApiBearerAuth, ApiPropertyOptional, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { IsEnum, IsOptional, IsUUID } from 'class-validator';
 import { IDEMPOTENCY_KEY_HEADER } from '@shared/constants';
@@ -29,6 +31,7 @@ import { SendMessageCommand } from '../../application/commands/send-message.comm
 import { GetMessageQuery } from '../../application/queries/get-message.query';
 import { ListMessagesQuery } from '../../application/queries/list-messages.query';
 import { ListMessageAttemptsQuery } from '../../application/queries/list-message-attempts.query';
+import { ListMessageTimelineQuery } from '../../application/queries/list-message-timeline.query';
 import { MessageStatus } from '../../domain/enums/message-status.enum';
 import { MessageAttemptResponseDto, MessageResponseDto } from '../dto/message-response.dto';
 import { SendMessageRequestDto } from '../dto/send-message-request.dto';
@@ -40,6 +43,13 @@ class ListMessagesRequestDto extends PaginationQueryDto {
   @IsOptional()
   @IsEnum(MessageStatus)
   status?: MessageStatus;
+
+  @ApiPropertyOptional({
+    description:
+      'Busca por messageId, providerMessageId, requestId, Idempotency-Key ou destinatário.',
+  })
+  @IsOptional()
+  search?: string;
 
   @ApiPropertyOptional({
     description: 'Obrigatório apenas para requisições autenticadas por sessão administrativa.',
@@ -59,7 +69,10 @@ class ApplicationScopedQueryDto {
 }
 
 /** Sessão administrativa exige applicationId explícito; API Key já o resolve pelo próprio token (secao 17/18). */
-function resolveApplicationId(auth: AuthContextDto | undefined, explicit: string | undefined): string {
+function resolveApplicationId(
+  auth: AuthContextDto | undefined,
+  explicit: string | undefined,
+): string {
   const applicationId = auth?.applicationId ?? explicit;
   if (!applicationId) {
     throw new BadRequestException('applicationId é obrigatório para requisições administrativas.');
@@ -67,10 +80,8 @@ function resolveApplicationId(auth: AuthContextDto | undefined, explicit: string
   return applicationId;
 }
 
-function resolveRequestingTenantId(
-  user: AuthenticatedUserDto | undefined,
-): string | undefined {
-  return user?.role === UserRole.TENANT_ADMIN ? user.tenantId ?? undefined : undefined;
+function resolveRequestingTenantId(user: AuthenticatedUserDto | undefined): string | undefined {
+  return user?.role === UserRole.TENANT_ADMIN ? (user.tenantId ?? undefined) : undefined;
 }
 
 @ApiTags('messages')
@@ -88,6 +99,7 @@ export class MessagesController {
     @CurrentOptionalAuthContext() authContext?: AuthContextDto,
     @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
     @Headers(IDEMPOTENCY_KEY_HEADER) idempotencyKey?: string,
+    @Req() request?: Request & { id?: string },
   ): Promise<MessageResponseDto> {
     const applicationId = resolveApplicationId(authContext, dto.applicationId);
     const result = await this.mediator.send(
@@ -97,6 +109,7 @@ export class MessagesController {
         dto.to,
         dto.content,
         idempotencyKey,
+        request?.id,
         resolveRequestingTenantId(user),
       ),
     );
@@ -114,6 +127,7 @@ export class MessagesController {
     @CurrentOptionalAuthContext() authContext?: AuthContextDto,
     @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
     @Headers(IDEMPOTENCY_KEY_HEADER) idempotencyKey?: string,
+    @Req() request?: Request & { id?: string },
   ): Promise<MessageResponseDto> {
     const applicationId = resolveApplicationId(authContext, dto.applicationId);
     const result = await this.mediator.send(
@@ -124,6 +138,7 @@ export class MessagesController {
         { id: dto.templateId, name: dto.templateName },
         dto.parameters ?? [],
         idempotencyKey,
+        request?.id,
         resolveRequestingTenantId(user),
       ),
     );
@@ -144,6 +159,7 @@ export class MessagesController {
         query.page,
         query.pageSize,
         query.status,
+        query.search,
         resolveRequestingTenantId(user),
       ),
     );
@@ -183,5 +199,20 @@ export class MessagesController {
     );
     if (result.isFailure) throw toHttpException(result.error);
     return result.value.map(MessageAttemptResponseDto.fromDto);
+  }
+
+  @Get(':id/timeline')
+  async listTimeline(
+    @Param('id') id: string,
+    @Query() query: ApplicationScopedQueryDto,
+    @CurrentOptionalAuthContext() authContext?: AuthContextDto,
+    @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
+  ) {
+    const applicationId = resolveApplicationId(authContext, query.applicationId);
+    const result = await this.mediator.query(
+      new ListMessageTimelineQuery(id, applicationId, resolveRequestingTenantId(user)),
+    );
+    if (result.isFailure) throw toHttpException(result.error);
+    return result.value;
   }
 }

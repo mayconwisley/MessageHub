@@ -10,6 +10,7 @@ export interface WhatsAppAccountProps {
   credentialSource: WhatsAppCredentialSource;
   accessToken: string | null;
   appSecret: string | null;
+  credentialExpiresAt: Date | null;
   status: WhatsAppAccountStatus;
   createdAt: Date;
 }
@@ -20,6 +21,7 @@ export interface RegisterWhatsAppAccountParams {
   credentialSource?: WhatsAppCredentialSource;
   accessToken?: string;
   appSecret?: string;
+  credentialExpiresAt?: Date | null;
 }
 
 export class WhatsAppAccount extends Entity<WhatsAppAccountProps> {
@@ -67,6 +69,7 @@ export class WhatsAppAccount extends Entity<WhatsAppAccountProps> {
           credentialSource,
           accessToken,
           appSecret,
+          credentialExpiresAt: params.credentialExpiresAt ?? null,
           status: WhatsAppAccountStatus.ACTIVE,
           createdAt: new Date(),
         },
@@ -99,6 +102,9 @@ export class WhatsAppAccount extends Entity<WhatsAppAccountProps> {
   /** Segredo HMAC do webhook, nunca exposto fora da infraestrutura. */
   get appSecret(): string | null {
     return this.props.appSecret;
+  }
+  get credentialExpiresAt(): Date | null {
+    return this.props.credentialExpiresAt;
   }
 
   get status(): WhatsAppAccountStatus {

@@ -10,6 +10,8 @@ export interface ApplicationProps {
   status: ApplicationStatus;
   webhookUrl: string | null;
   webhookSecret: string | null;
+  quotaPerMinute: number;
+  quotaPerDay: number;
   createdAt: Date;
 }
 
@@ -40,6 +42,8 @@ export class Application extends Entity<ApplicationProps> {
           status: ApplicationStatus.ACTIVE,
           webhookUrl: null,
           webhookSecret: null,
+          quotaPerMinute: 60,
+          quotaPerDay: 10_000,
           createdAt: new Date(),
         },
         id,
@@ -73,6 +77,26 @@ export class Application extends Entity<ApplicationProps> {
 
   get webhookSecret(): string | null {
     return this.props.webhookSecret;
+  }
+
+  get quotaPerMinute(): number {
+    return this.props.quotaPerMinute;
+  }
+  get quotaPerDay(): number {
+    return this.props.quotaPerDay;
+  }
+
+  configureQuotas(quotaPerMinute: number, quotaPerDay: number): void {
+    if (
+      !Number.isInteger(quotaPerMinute) ||
+      !Number.isInteger(quotaPerDay) ||
+      quotaPerMinute < 1 ||
+      quotaPerDay < 1
+    ) {
+      throw new Error('As quotas devem ser inteiros positivos.');
+    }
+    this.props.quotaPerMinute = quotaPerMinute;
+    this.props.quotaPerDay = quotaPerDay;
   }
 
   isActive(): boolean {

@@ -94,6 +94,7 @@ export class PostgresWhatsAppAccountRepository implements IWhatsAppAccountReposi
       ? this.accessTokenCipher.encrypt(account.appSecret)
       : null;
     orm.status = account.status;
+    orm.credentialExpiresAt = account.credentialExpiresAt;
     orm.createdAt = account.createdAt;
     return orm;
   }
@@ -109,6 +110,7 @@ export class PostgresWhatsAppAccountRepository implements IWhatsAppAccountReposi
       credentialSource: row.credentialSource as WhatsAppCredentialSource,
       accessToken: accessToken ?? null,
       appSecret: appSecret ?? null,
+      credentialExpiresAt: row.credentialExpiresAt,
       status: row.status as WhatsAppAccountStatus,
       createdAt: row.createdAt,
     };

@@ -1,6 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString, IsUUID, Matches, MaxLength } from 'class-validator';
-import { E164_PHONE_NUMBER_REGEX } from '@shared/constants';
+import { IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 
 export class SendMessageRequestDto {
   @ApiPropertyOptional({
@@ -14,12 +13,14 @@ export class SendMessageRequestDto {
   @IsUUID()
   phoneNumberId!: string;
 
-  @ApiProperty({ example: '+5511999999999' })
+  @ApiProperty({
+    example: '+5511999999999',
+    description:
+      'Telefone E.164 ou BSUID retornado pela Meta. O BSUID deve ser reutilizado exatamente como recebido em um webhook.',
+  })
   @IsString()
   @IsNotEmpty()
-  @Matches(E164_PHONE_NUMBER_REGEX, {
-    message: 'to deve ser um número de telefone E.164 válido (ex: +5511999999999).',
-  })
+  @MaxLength(256)
   to!: string;
 
   @ApiProperty({ example: 'Seu pedido foi confirmado!' })
