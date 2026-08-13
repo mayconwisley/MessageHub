@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { randomUUID } from 'crypto';
+import { v7 as uuidv7 } from 'uuid';
 import { Repository } from 'typeorm';
 import { PaginatedResult } from '@shared/types';
 import {
@@ -18,7 +18,7 @@ export class PostgresEngineeringAlertRepository implements IEngineeringAlertRepo
   ) {}
   async create(input: CreateEngineeringAlertInput): Promise<EngineeringAlertDto> {
     const alert = this.repository.create({
-      id: randomUUID(),
+      id: uuidv7(),
       type: input.type,
       severity: input.severity,
       title: input.title,

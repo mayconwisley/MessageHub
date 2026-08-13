@@ -12,7 +12,8 @@ export interface Tenant {
 export const tenantsApi = {
   list: (params: { page: number; pageSize: number; status?: string; search?: string }) =>
     request<PaginatedResult<Tenant>>(`/v1/tenants${toQueryString(params)}`),
-  create: (data: { name: string }) => request<Tenant>('/v1/tenants', { method: 'POST', body: data }),
+  create: (data: { name: string }) =>
+    request<Tenant>('/v1/tenants', { method: 'POST', body: data }),
   getById: (id: string) => request<Tenant>(`/v1/tenants/${id}`),
   updateStatus: (id: string, status: 'ACTIVE' | 'SUSPENDED') =>
     request<Tenant>(`/v1/tenants/${id}/status`, { method: 'PATCH', body: { status } }),

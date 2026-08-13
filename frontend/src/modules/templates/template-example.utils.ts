@@ -1,4 +1,4 @@
-import type { TemplateComponent } from "./templates.api";
+import type { TemplateComponent } from './templates.api';
 
 type MetaTemplateExample = {
   bodyText?: unknown;
@@ -6,16 +6,16 @@ type MetaTemplateExample = {
 };
 
 function stringValues(value: unknown): string[] {
-  if (Array.isArray(value) && value.every((item) => typeof item === "string")) {
+  if (Array.isArray(value) && value.every((item) => typeof item === 'string')) {
     return value;
   }
 
   if (
     value &&
-    typeof value === "object" &&
-    "values" in value &&
+    typeof value === 'object' &&
+    'values' in value &&
     Array.isArray(value.values) &&
-    value.values.every((item) => typeof item === "string")
+    value.values.every((item) => typeof item === 'string')
   ) {
     return value.values;
   }

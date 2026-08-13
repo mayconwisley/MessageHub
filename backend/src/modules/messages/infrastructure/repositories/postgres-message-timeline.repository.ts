@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { randomUUID } from 'crypto';
+import { v7 as uuidv7 } from 'uuid';
 import { Repository } from 'typeorm';
 import {
   IMessageTimelineRepository,
@@ -18,7 +18,7 @@ export class PostgresMessageTimelineRepository implements IMessageTimelineReposi
 
   async record(input: RecordMessageTimelineEventInput): Promise<void> {
     const event = this.repository.create({
-      id: randomUUID(),
+      id: uuidv7(),
       messageId: input.messageId,
       eventType: input.eventType,
       status: input.status,

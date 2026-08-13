@@ -1,4 +1,5 @@
-import { createHash, randomBytes, randomUUID } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
+import { v7 as uuidv7 } from 'uuid';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
@@ -45,7 +46,7 @@ export class IdentityService implements OnModuleInit {
     tenantId?: string;
   }): Promise<AuthenticatedUserDto> {
     const user = new UserOrmEntity();
-    user.id = randomUUID();
+    user.id = uuidv7();
     user.name = params.name.trim();
     user.email = params.email.trim().toLowerCase();
     user.passwordHash = await bcrypt.hash(params.password, PASSWORD_COST);
@@ -75,7 +76,7 @@ export class IdentityService implements OnModuleInit {
 
     const token = `${SESSION_PREFIX}${randomBytes(32).toString('base64url')}`;
     const session = new UserSessionOrmEntity();
-    session.id = randomUUID();
+    session.id = uuidv7();
     session.userId = user.id;
     session.tokenHash = this.hashToken(token);
     session.expiresAt = new Date(Date.now() + SESSION_TTL_MS);

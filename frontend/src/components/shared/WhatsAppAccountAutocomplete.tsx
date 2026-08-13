@@ -1,7 +1,10 @@
 import { Autocomplete, CircularProgress, TextField } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
-import { whatsAppAccountsApi, type WhatsAppAccount } from '../../modules/whatsapp-accounts/whatsapp-accounts.api';
+import {
+  whatsAppAccountsApi,
+  type WhatsAppAccount,
+} from '../../modules/whatsapp-accounts/whatsapp-accounts.api';
 
 export function WhatsAppAccountAutocomplete({
   tenantId,

@@ -44,14 +44,25 @@ export interface MessageTimelineEvent {
 
 export const messagesApi = {
   send: (data: { applicationId: string; phoneNumberId: string; to: string; content: string }) =>
-    request<Message>('/v1/messages', { method: 'POST', body: data, headers: { 'Idempotency-Key': crypto.randomUUID() } }),
+    request<Message>('/v1/messages', {
+      method: 'POST',
+      body: data,
+      headers: { 'Idempotency-Key': crypto.randomUUID() },
+    }),
   get: (id: string, applicationId: string) =>
     request<Message>(`/v1/messages/${id}${toQueryString({ applicationId })}`),
-  list: (params: { applicationId: string; page: number; pageSize: number; status?: string; search?: string }) =>
-    request<PaginatedResult<Message>>(`/v1/messages${toQueryString(params)}`),
+  list: (params: {
+    applicationId: string;
+    page: number;
+    pageSize: number;
+    status?: string;
+    search?: string;
+  }) => request<PaginatedResult<Message>>(`/v1/messages${toQueryString(params)}`),
   listAttempts: (id: string, applicationId: string) =>
     request<MessageAttempt[]>(`/v1/messages/${id}/attempts${toQueryString({ applicationId })}`),
   listTimeline: (id: string, applicationId: string) =>
-    request<MessageTimelineEvent[]>(`/v1/messages/${id}/timeline${toQueryString({ applicationId })}`),
+    request<MessageTimelineEvent[]>(
+      `/v1/messages/${id}/timeline${toQueryString({ applicationId })}`,
+    ),
   health: () => request<HealthCheck>('/health'),
 };

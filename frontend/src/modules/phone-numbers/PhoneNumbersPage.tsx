@@ -1,6 +1,16 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Visibility } from '@mui/icons-material';
-import { Alert, Button, Chip, FormControl, InputLabel, MenuItem, Select, Stack, TextField } from '@mui/material';
+import {
+  Alert,
+  Button,
+  Chip,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  Stack,
+  TextField,
+} from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -54,12 +64,23 @@ export function PhoneNumbersPage() {
   const validTenantFilter = z.string().uuid().safeParse(tenantIdFilter).success;
   const list = useQuery({
     queryKey: ['phone-numbers', tenantIdFilter, status, page, pageSize],
-    queryFn: () => phoneNumbersApi.list({ tenantId: tenantIdFilter, page, pageSize, status: status || undefined }),
+    queryFn: () =>
+      phoneNumbersApi.list({
+        tenantId: tenantIdFilter,
+        page,
+        pageSize,
+        status: status || undefined,
+      }),
     enabled: validTenantFilter,
   });
 
   const openCreate = () => {
-    form.reset({ tenantId: undefined, whatsAppAccountId: undefined, phoneNumberId: '', displayNumber: '' });
+    form.reset({
+      tenantId: undefined,
+      whatsAppAccountId: undefined,
+      phoneNumberId: '',
+      displayNumber: '',
+    });
     create.reset();
     setCreateOpen(true);
   };
@@ -105,13 +126,29 @@ export function PhoneNumbersPage() {
             </Select>
           </FormControl>
         </Stack>
-        <AsyncState isLoading={validTenantFilter && list.isLoading} error={list.error} emptyMessage={validTenantFilter ? undefined : 'Selecione um tenant para listar os números.'}>
+        <AsyncState
+          isLoading={validTenantFilter && list.isLoading}
+          error={list.error}
+          emptyMessage={
+            validTenantFilter ? undefined : 'Selecione um tenant para listar os números.'
+          }
+        >
           <PaginatedTable<PhoneNumber>
             columns={[
               { key: 'displayNumber', label: 'Número' },
               { key: 'phoneNumberId', label: 'ID do número de telefone' },
-              { key: 'status', label: 'Status', render: (row) => <Chip label={statusLabels[row.status] ?? row.status} size="small" /> },
-              { key: 'createdAt', label: 'Criado em', render: (row) => new Date(row.createdAt).toLocaleString('pt-BR') },
+              {
+                key: 'status',
+                label: 'Status',
+                render: (row) => (
+                  <Chip label={statusLabels[row.status] ?? row.status} size="small" />
+                ),
+              },
+              {
+                key: 'createdAt',
+                label: 'Criado em',
+                render: (row) => new Date(row.createdAt).toLocaleString('pt-BR'),
+              },
             ]}
             rows={list.data?.items ?? []}
             total={list.data?.total ?? 0}
@@ -124,7 +161,13 @@ export function PhoneNumbersPage() {
             }}
             rowActions={(row) => (
               <TableActionsMenu
-                actions={[{ label: 'Ver detalhes', icon: <Visibility fontSize="small" />, onClick: () => setSelectedId(row.id) }]}
+                actions={[
+                  {
+                    label: 'Ver detalhes',
+                    icon: <Visibility fontSize="small" />,
+                    onClick: () => setSelectedId(row.id),
+                  },
+                ]}
               />
             )}
           />
@@ -142,7 +185,11 @@ export function PhoneNumbersPage() {
               </Button>
             </>
           ) : (
-            <Stack component="form" spacing={2} onSubmit={form.handleSubmit((data) => create.mutate(data))}>
+            <Stack
+              component="form"
+              spacing={2}
+              onSubmit={form.handleSubmit((data) => create.mutate(data))}
+            >
               {create.error && <Alert severity="error">{create.error.message}</Alert>}
               <Controller
                 name="tenantId"
@@ -173,8 +220,21 @@ export function PhoneNumbersPage() {
                   />
                 )}
               />
-              <TextField label="ID do número de telefone (Meta)" {...form.register('phoneNumberId')} error={!!form.formState.errors.phoneNumberId} helperText={form.formState.errors.phoneNumberId?.message} fullWidth />
-              <TextField label="Número de exibição" placeholder="+5511999999999" {...form.register('displayNumber')} error={!!form.formState.errors.displayNumber} helperText={form.formState.errors.displayNumber?.message} fullWidth />
+              <TextField
+                label="ID do número de telefone (Meta)"
+                {...form.register('phoneNumberId')}
+                error={!!form.formState.errors.phoneNumberId}
+                helperText={form.formState.errors.phoneNumberId?.message}
+                fullWidth
+              />
+              <TextField
+                label="Número de exibição"
+                placeholder="+5511999999999"
+                {...form.register('displayNumber')}
+                error={!!form.formState.errors.displayNumber}
+                helperText={form.formState.errors.displayNumber?.message}
+                fullWidth
+              />
               <Button type="submit" variant="contained" disabled={create.isPending}>
                 {create.isPending ? 'Salvando...' : 'Registrar número'}
               </Button>
@@ -183,7 +243,11 @@ export function PhoneNumbersPage() {
         </Stack>
       </FormDialog>
 
-      <FormDialog open={!!selectedId} onClose={() => setSelectedId(null)} title="Detalhes do número">
+      <FormDialog
+        open={!!selectedId}
+        onClose={() => setSelectedId(null)}
+        title="Detalhes do número"
+      >
         <Stack spacing={2} sx={{ mt: 1 }}>
           <AsyncState isLoading={details.isLoading} error={details.error}>
             <EntityResult title="Detalhes" data={details.data ?? null} />

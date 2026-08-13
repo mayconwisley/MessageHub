@@ -1,4 +1,14 @@
-import { Paper, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, Typography } from '@mui/material';
+import {
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TablePagination,
+  TableRow,
+  Typography,
+} from '@mui/material';
 import type { ReactNode } from 'react';
 
 export interface PaginatedTableColumn<T> {
@@ -57,7 +67,9 @@ export function PaginatedTable<T extends { id: string }>({
               <TableRow key={row.id} hover>
                 {columns.map((column) => (
                   <TableCell key={column.key}>
-                    {column.render ? column.render(row) : String((row as Record<string, unknown>)[column.key] ?? '—')}
+                    {column.render
+                      ? column.render(row)
+                      : String((row as Record<string, unknown>)[column.key] ?? '—')}
                   </TableCell>
                 ))}
                 {rowActions && <TableCell align="right">{rowActions(row)}</TableCell>}
@@ -75,9 +87,16 @@ export function PaginatedTable<T extends { id: string }>({
         onPageChange={(_, newPage) => onPageChange(newPage + 1)}
         onRowsPerPageChange={(event) => onPageSizeChange(Number(event.target.value))}
         labelRowsPerPage="Linhas por página:"
-        labelDisplayedRows={({ from, to, count }) => `${from}–${to} de ${count !== -1 ? count : `mais de ${to}`}`}
+        labelDisplayedRows={({ from, to, count }) =>
+          `${from}–${to} de ${count !== -1 ? count : `mais de ${to}`}`
+        }
         getItemAriaLabel={(type) =>
-          ({ first: 'Primeira página', last: 'Última página', next: 'Próxima página', previous: 'Página anterior' })[type]
+          ({
+            first: 'Primeira página',
+            last: 'Última página',
+            next: 'Próxima página',
+            previous: 'Página anterior',
+          })[type]
         }
       />
     </Paper>

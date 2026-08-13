@@ -15,10 +15,16 @@ import { PageHeader } from '../../components/ui/PageHeader';
 import { usePagination } from '../../hooks/usePagination';
 import { applicationsApi, type Application } from './applications.api';
 
-const createSchema = z.object({ tenantId: z.string().uuid('Informe um UUID válido.'), name: z.string().min(2, 'Informe ao menos 2 caracteres.') });
+const createSchema = z.object({
+  tenantId: z.string().uuid('Informe um UUID válido.'),
+  name: z.string().min(2, 'Informe ao menos 2 caracteres.'),
+});
 type CreateFormData = z.infer<typeof createSchema>;
 
-const webhookSchema = z.object({ applicationId: z.string().uuid('Selecione uma aplicação.'), webhookUrl: z.string().url('Informe uma URL https válida.').or(z.literal('')) });
+const webhookSchema = z.object({
+  applicationId: z.string().uuid('Selecione uma aplicação.'),
+  webhookUrl: z.string().url('Informe uma URL https válida.').or(z.literal('')),
+});
 type WebhookFormData = z.infer<typeof webhookSchema>;
 
 const statusLabels: Record<string, string> = { ACTIVE: 'Ativo', SUSPENDED: 'Suspenso' };
@@ -42,7 +48,8 @@ export function ApplicationsPage() {
     },
   });
   const configureWebhook = useMutation({
-    mutationFn: ({ applicationId, webhookUrl }: WebhookFormData) => applicationsApi.configureWebhook(applicationId, webhookUrl || null),
+    mutationFn: ({ applicationId, webhookUrl }: WebhookFormData) =>
+      applicationsApi.configureWebhook(applicationId, webhookUrl || null),
   });
 
   const validLinkApplicationId = z.string().uuid().safeParse(linkApplicationId).success;
@@ -121,12 +128,28 @@ export function ApplicationsPage() {
           }}
           sx={{ maxWidth: 400 }}
         />
-        <AsyncState isLoading={validTenantFilter && list.isLoading} error={list.error} emptyMessage={validTenantFilter ? undefined : 'Selecione um tenant para listar as aplicações.'}>
+        <AsyncState
+          isLoading={validTenantFilter && list.isLoading}
+          error={list.error}
+          emptyMessage={
+            validTenantFilter ? undefined : 'Selecione um tenant para listar as aplicações.'
+          }
+        >
           <PaginatedTable<Application>
             columns={[
               { key: 'name', label: 'Nome' },
-              { key: 'status', label: 'Status', render: (row) => <Chip label={statusLabels[row.status] ?? row.status} size="small" /> },
-              { key: 'createdAt', label: 'Criado em', render: (row) => new Date(row.createdAt).toLocaleString('pt-BR') },
+              {
+                key: 'status',
+                label: 'Status',
+                render: (row) => (
+                  <Chip label={statusLabels[row.status] ?? row.status} size="small" />
+                ),
+              },
+              {
+                key: 'createdAt',
+                label: 'Criado em',
+                render: (row) => new Date(row.createdAt).toLocaleString('pt-BR'),
+              },
             ]}
             rows={list.data?.items ?? []}
             total={list.data?.total ?? 0}
@@ -152,7 +175,11 @@ export function ApplicationsPage() {
               </Button>
             </>
           ) : (
-            <Stack component="form" spacing={2} onSubmit={createForm.handleSubmit((data) => create.mutate(data))}>
+            <Stack
+              component="form"
+              spacing={2}
+              onSubmit={createForm.handleSubmit((data) => create.mutate(data))}
+            >
               {create.error && <Alert severity="error">{create.error.message}</Alert>}
               <Controller
                 name="tenantId"
@@ -167,7 +194,13 @@ export function ApplicationsPage() {
                   />
                 )}
               />
-              <TextField label="Nome da aplicação" {...createForm.register('name')} error={!!createForm.formState.errors.name} helperText={createForm.formState.errors.name?.message} fullWidth />
+              <TextField
+                label="Nome da aplicação"
+                {...createForm.register('name')}
+                error={!!createForm.formState.errors.name}
+                helperText={createForm.formState.errors.name?.message}
+                fullWidth
+              />
               <Button type="submit" variant="contained" disabled={create.isPending}>
                 {create.isPending ? 'Salvando...' : 'Criar aplicação'}
               </Button>
@@ -178,8 +211,14 @@ export function ApplicationsPage() {
 
       <FormDialog open={webhookOpen} onClose={closeWebhook} title="Configurar webhook">
         <Stack spacing={2} sx={{ mt: 1 }}>
-          <Stack component="form" spacing={2} onSubmit={webhookForm.handleSubmit((data) => configureWebhook.mutate(data))}>
-            {configureWebhook.error && <Alert severity="error">{configureWebhook.error.message}</Alert>}
+          <Stack
+            component="form"
+            spacing={2}
+            onSubmit={webhookForm.handleSubmit((data) => configureWebhook.mutate(data))}
+          >
+            {configureWebhook.error && (
+              <Alert severity="error">{configureWebhook.error.message}</Alert>
+            )}
             <Controller
               name="applicationId"
               control={webhookForm.control}
@@ -193,13 +232,21 @@ export function ApplicationsPage() {
                 />
               )}
             />
-            <TextField label="URL do webhook (https, vazio para remover)" {...webhookForm.register('webhookUrl')} error={!!webhookForm.formState.errors.webhookUrl} helperText={webhookForm.formState.errors.webhookUrl?.message} fullWidth />
+            <TextField
+              label="URL do webhook (https, vazio para remover)"
+              {...webhookForm.register('webhookUrl')}
+              error={!!webhookForm.formState.errors.webhookUrl}
+              helperText={webhookForm.formState.errors.webhookUrl?.message}
+              fullWidth
+            />
             <Button type="submit" variant="contained" disabled={configureWebhook.isPending}>
               {configureWebhook.isPending ? 'Salvando...' : 'Salvar webhook'}
             </Button>
           </Stack>
           {configureWebhook.data && (
-            <Alert severity="success">Webhook atual: {configureWebhook.data.webhookUrl ?? 'nenhum configurado'}</Alert>
+            <Alert severity="success">
+              Webhook atual: {configureWebhook.data.webhookUrl ?? 'nenhum configurado'}
+            </Alert>
           )}
         </Stack>
       </FormDialog>
@@ -227,7 +274,9 @@ export function ApplicationsPage() {
           >
             {setPhoneNumbers.isPending ? 'Salvando...' : 'Salvar vínculos'}
           </Button>
-          {setPhoneNumbers.isSuccess && <Alert severity="success">Vínculos atualizados com sucesso.</Alert>}
+          {setPhoneNumbers.isSuccess && (
+            <Alert severity="success">Vínculos atualizados com sucesso.</Alert>
+          )}
         </Stack>
       </FormDialog>
     </Stack>

@@ -63,7 +63,10 @@ export function buildTheme(mode: PaletteMode) {
       MuiFormControl: { defaultProps: { size: 'small' } },
       MuiTableCell: {
         styleOverrides: {
-          head: { fontWeight: 700, backgroundColor: isDark ? alpha('#2fd977', 0.06) : alpha('#075e54', 0.04) },
+          head: {
+            fontWeight: 700,
+            backgroundColor: isDark ? alpha('#2fd977', 0.06) : alpha('#075e54', 0.04),
+          },
           root: { borderColor: divider },
         },
       },

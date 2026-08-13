@@ -1,6 +1,5 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-
-export type ThemeMode = 'light' | 'dark';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { ThemeModeContext, type ThemeMode } from './theme-mode.context';
 
 const STORAGE_KEY = 'message-hub.theme-mode';
 
@@ -10,8 +9,6 @@ function getInitialMode(): ThemeMode {
   return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
-const ThemeModeContext = createContext<{ mode: ThemeMode; toggleMode: () => void } | null>(null);
-
 export function ThemeModeProvider({ children }: { children: ReactNode }) {
   const [mode, setMode] = useState<ThemeMode>(getInitialMode);
 
@@ -20,15 +17,12 @@ export function ThemeModeProvider({ children }: { children: ReactNode }) {
   }, [mode]);
 
   const value = useMemo(
-    () => ({ mode, toggleMode: () => setMode((current) => (current === 'light' ? 'dark' : 'light')) }),
+    () => ({
+      mode,
+      toggleMode: () => setMode((current) => (current === 'light' ? 'dark' : 'light')),
+    }),
     [mode],
   );
 
   return <ThemeModeContext.Provider value={value}>{children}</ThemeModeContext.Provider>;
-}
-
-export function useThemeMode() {
-  const context = useContext(ThemeModeContext);
-  if (!context) throw new Error('useThemeMode deve ser usado dentro de ThemeModeProvider.');
-  return context;
 }

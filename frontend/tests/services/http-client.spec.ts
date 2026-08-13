@@ -18,12 +18,14 @@ describe('request', () => {
 
   it('envia token de sessão e corpo JSON sem credenciais do navegador', async () => {
     authStorage.setSessionToken('token-seguro');
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ id: 'message-1' }), { status: 201 }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ id: 'message-1' }), { status: 201 }));
     vi.stubGlobal('fetch', fetchMock);
 
-    await expect(request<{ id: string }>('/v1/messages', { method: 'POST', body: { to: '5511999999999' } })).resolves.toEqual({
+    await expect(
+      request<{ id: string }>('/v1/messages', { method: 'POST', body: { to: '5511999999999' } }),
+    ).resolves.toEqual({
       id: 'message-1',
     });
 
@@ -55,9 +57,16 @@ describe('request', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ message: ['Campo inválido', 'Tente novamente'], code: 'VALIDATION_ERROR', requestId: 'req-1' }), {
-          status: 400,
-        }),
+        new Response(
+          JSON.stringify({
+            message: ['Campo inválido', 'Tente novamente'],
+            code: 'VALIDATION_ERROR',
+            requestId: 'req-1',
+          }),
+          {
+            status: 400,
+          },
+        ),
       ),
     );
 
@@ -72,6 +81,8 @@ describe('request', () => {
   it('retorna undefined para respostas sem conteúdo', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 204 })));
 
-    await expect(request<void>('/v1/messages/message-1', { method: 'DELETE' })).resolves.toBeUndefined();
+    await expect(
+      request<void>('/v1/messages/message-1', { method: 'DELETE' }),
+    ).resolves.toBeUndefined();
   });
 });

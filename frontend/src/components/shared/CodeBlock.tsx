@@ -18,7 +18,8 @@ export function CodeBlock({ code }: { code: string }) {
           p: 2,
           pr: 5,
           borderRadius: 2,
-          bgcolor: (theme) => (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'),
+          bgcolor: (theme) =>
+            theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
           border: '1px solid',
           borderColor: 'divider',
           overflowX: 'auto',
@@ -31,7 +32,11 @@ export function CodeBlock({ code }: { code: string }) {
       </Box>
       <Tooltip title={copied ? 'Copiado!' : 'Copiar'}>
         <IconButton size="small" onClick={copy} sx={{ position: 'absolute', top: 8, right: 8 }}>
-          {copied ? <CheckOutlined fontSize="small" color="success" /> : <ContentCopyOutlined fontSize="small" />}
+          {copied ? (
+            <CheckOutlined fontSize="small" color="success" />
+          ) : (
+            <ContentCopyOutlined fontSize="small" />
+          )}
         </IconButton>
       </Tooltip>
     </Box>

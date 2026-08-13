@@ -1,4 +1,4 @@
-import { ExpandMoreOutlined } from "@mui/icons-material";
+import { ExpandMoreOutlined } from '@mui/icons-material';
 import {
   AccountTreeOutlined,
   AdminPanelSettingsOutlined,
@@ -12,7 +12,7 @@ import {
   SettingsOutlined,
   SmartToyOutlined,
   VpnKeyOutlined,
-} from "@mui/icons-material";
+} from '@mui/icons-material';
 import {
   Accordion,
   AccordionDetails,
@@ -28,24 +28,24 @@ import {
   ListItemText,
   Stack,
   Typography,
-} from "@mui/material";
-import type { ReactNode } from "react";
-import { PageHeader } from "../../components/ui/PageHeader";
+} from '@mui/material';
+import type { ReactNode } from 'react';
+import { PageHeader } from '../../components/ui/PageHeader';
 
 interface Section {
   icon: ReactNode;
   title: string;
   purpose: string;
   steps: string[];
-  notes?: { severity: "info" | "warning"; text: string }[];
+  notes?: { severity: 'info' | 'warning'; text: string }[];
 }
 
 const sections: Section[] = [
   {
     icon: <AdminPanelSettingsOutlined />,
-    title: "Acesso ao console",
+    title: 'Acesso ao console',
     purpose:
-      "O console exige uma sessão administrativa. As chaves de API das aplicações não são usadas para entrar na interface web.",
+      'O console exige uma sessão administrativa. As chaves de API das aplicações não são usadas para entrar na interface web.',
     steps: [
       'Na tela de login, informe o e-mail e a senha do usuário cadastrado.',
       'Após autenticar, use a Visão geral para acompanhar a operação ou abra uma opção do menu lateral para executar uma tarefa.',
@@ -54,9 +54,9 @@ const sections: Section[] = [
   },
   {
     icon: <ForumOutlined />,
-    title: "Navegação e sessão",
+    title: 'Navegação e sessão',
     purpose:
-      "O menu lateral organiza o console em Visão geral, Administração, Mensageria e Manual do usuário. A barra superior mantém os controles da sessão.",
+      'O menu lateral organiza o console em Visão geral, Administração, Mensageria e Manual do usuário. A barra superior mantém os controles da sessão.',
     steps: [
       'Use os grupos "Administração" e "Mensageria" no menu lateral para expandir ou recolher as opções disponíveis.',
       'Em telas menores, abra o menu pelo ícone no canto superior esquerdo; ele é fechado automaticamente ao navegar para uma tela.',
@@ -66,9 +66,9 @@ const sections: Section[] = [
   },
   {
     icon: <DashboardOutlined />,
-    title: "Visão geral",
+    title: 'Visão geral',
     purpose:
-      "É o dashboard operacional do Message Hub. Reúne os indicadores de estrutura, volume, entrega, saúde da operação e as mensagens mais recentes.",
+      'É o dashboard operacional do Message Hub. Reúne os indicadores de estrutura, volume, entrega, saúde da operação e as mensagens mais recentes.',
     steps: [
       'Consulte "Recursos cadastrados" para ver as quantidades de tenants, aplicações, contas WhatsApp e números disponíveis para operação.',
       'Use "Volume de mensagens" para acompanhar os envios registrados nos últimos 14 dias.',
@@ -79,16 +79,16 @@ const sections: Section[] = [
     ],
     notes: [
       {
-        severity: "info",
-        text: "A Visão geral é somente para acompanhamento. Cadastros, configuração e envio são feitos pelas telas específicas do menu.",
+        severity: 'info',
+        text: 'A Visão geral é somente para acompanhamento. Cadastros, configuração e envio são feitos pelas telas específicas do menu.',
       },
     ],
   },
   {
     icon: <AccountTreeOutlined />,
-    title: "Tenants",
+    title: 'Tenants',
     purpose:
-      "Cadastra os tenants (os clientes/organizações que usam o Hub). É o primeiro cadastro do fluxo — tudo o mais depende de um tenant existir.",
+      'Cadastra os tenants (os clientes/organizações que usam o Hub). É o primeiro cadastro do fluxo — tudo o mais depende de um tenant existir.',
     steps: [
       'Use "Buscar por nome" e o filtro "Status" (Todos, Ativo, Suspenso) para localizar um tenant na lista.',
       'Clique em "Criar tenant", informe o "Nome do tenant" (mínimo 2 caracteres) e confirme em "Criar tenant".',
@@ -98,9 +98,9 @@ const sections: Section[] = [
   },
   {
     icon: <AppsOutlined />,
-    title: "Aplicações",
+    title: 'Aplicações',
     purpose:
-      "Cadastra aplicações consumidoras, configura o callback de status de mensagens e define quais números cada aplicação pode usar.",
+      'Cadastra aplicações consumidoras, configura o callback de status de mensagens e define quais números cada aplicação pode usar.',
     steps: [
       'Selecione um tenant em "Filtrar por tenant" para exibir a lista de aplicações — sem isso a lista não aparece.',
       'Clique em "Criar aplicação", escolha o "Tenant" e informe o "Nome da aplicação" (mínimo 2 caracteres).',
@@ -109,16 +109,16 @@ const sections: Section[] = [
     ],
     notes: [
       {
-        severity: "info",
-        text: "A lista, o seletor do webhook e o seletor de números respeitam o tenant escolhido. Se nenhum tenant estiver selecionado, não haverá aplicações ou números para escolher.",
+        severity: 'info',
+        text: 'A lista, o seletor do webhook e o seletor de números respeitam o tenant escolhido. Se nenhum tenant estiver selecionado, não haverá aplicações ou números para escolher.',
       },
     ],
   },
   {
     icon: <SmartToyOutlined />,
-    title: "Contas WhatsApp",
+    title: 'Contas WhatsApp',
     purpose:
-      "Registra a WhatsApp Business Account (WABA) de um tenant e as credenciais que o Hub utilizará ao comunicar-se com a Meta.",
+      'Registra a WhatsApp Business Account (WABA) de um tenant e as credenciais que o Hub utilizará ao comunicar-se com a Meta.',
     steps: [
       'Selecione um tenant em "Filtrar por tenant" (e, opcionalmente, um "Status") para ver as contas cadastradas.',
       'Clique em "Registrar conta", escolha o "Tenant" e informe o "ID da conta WhatsApp (WABA)".',
@@ -127,16 +127,15 @@ const sections: Section[] = [
     ],
     notes: [
       {
-        severity: "info",
+        severity: 'info',
         text: 'A coluna "Origem" indica como a credencial foi registrada. O formulário atual registra novas contas com credenciais do próprio tenant.',
       },
     ],
   },
   {
     icon: <PhoneOutlined />,
-    title: "Números",
-    purpose:
-      "Registra um número de telefone da Meta vinculado a uma conta WhatsApp já cadastrada.",
+    title: 'Números',
+    purpose: 'Registra um número de telefone da Meta vinculado a uma conta WhatsApp já cadastrada.',
     steps: [
       'Selecione um tenant em "Filtrar por tenant" (e, opcionalmente, um "Status") para ver os números cadastrados.',
       'Clique em "Registrar número" e escolha o "Tenant" — isso habilita o campo "Conta WhatsApp".',
@@ -144,34 +143,34 @@ const sections: Section[] = [
     ],
     notes: [
       {
-        severity: "warning",
+        severity: 'warning',
         text: 'É preciso ter uma conta WhatsApp cadastrada para esse tenant antes de registrar um número — sem isso, o campo "Conta WhatsApp" mostra "Nenhuma conta encontrada".',
       },
     ],
   },
   {
     icon: <VpnKeyOutlined />,
-    title: "Chaves de API",
+    title: 'Chaves de API',
     purpose:
-      "Gera e revoga as chaves usadas por outras aplicações (integrações externas) para consumir a API de mensagens e modelos de mensagem. O próprio console não usa essas chaves — as telas de Mensagens e Modelos de mensagem operam com a sua sessão administrativa.",
+      'Gera e revoga as chaves usadas por outras aplicações (integrações externas) para consumir a API de mensagens e modelos de mensagem. O próprio console não usa essas chaves — as telas de Mensagens e Modelos de mensagem operam com a sua sessão administrativa.',
     steps: [
       'Selecione "Filtrar por tenant" e depois "Filtrar por aplicação" para ver as chaves de uma aplicação.',
       'Clique em "Gerar chave de API", escolha "Tenant" e "Aplicação", o "Tipo" (Plataforma ou Tenant) e, se quiser, uma data em "Expira em (opcional)".',
-      "Copie o valor completo da chave exibido no alerta imediatamente após a criação.",
+      'Copie o valor completo da chave exibido no alerta imediatamente após a criação.',
       'Para desativar uma chave, clique em "Revogar" na linha correspondente — chaves já revogadas não podem ser revogadas de novo.',
     ],
     notes: [
       {
-        severity: "warning",
+        severity: 'warning',
         text: 'A chave completa (wh_live_...) só aparece uma única vez, no momento em que é criada. Depois disso, a listagem mostra apenas o "Prefixo" — a chave não pode ser recuperada.',
       },
     ],
   },
   {
     icon: <PeopleOutlined />,
-    title: "Usuários",
+    title: 'Usuários',
     purpose:
-      "Cria usuários administrativos que poderão fazer login no console, opcionalmente vinculados a um tenant.",
+      'Cria usuários administrativos que poderão fazer login no console, opcionalmente vinculados a um tenant.',
     steps: [
       'Clique em "Criar usuário" e informe "Nome", "E-mail" e "Senha" (mínimo 12 caracteres).',
       'Escolha o "Papel": Administrador da plataforma, Administrador do tenant ou Operador.',
@@ -179,16 +178,16 @@ const sections: Section[] = [
     ],
     notes: [
       {
-        severity: "info",
-        text: "Esta tela ainda não lista os usuários já criados — apenas permite criar novos.",
+        severity: 'info',
+        text: 'Esta tela ainda não lista os usuários já criados — apenas permite criar novos.',
       },
     ],
   },
   {
     icon: <ChatOutlined />,
-    title: "Mensagens",
+    title: 'Mensagens',
     purpose:
-      "Envia mensagens de texto avulsas a partir de um número cadastrado e acompanha, em uma linha do tempo, o processamento, as tentativas, erros, entrega e leitura.",
+      'Envia mensagens de texto avulsas a partir de um número cadastrado e acompanha, em uma linha do tempo, o processamento, as tentativas, erros, entrega e leitura.',
     steps: [
       'Selecione "Tenant" e "Aplicação" no topo da tela — esses filtros definem de onde as mensagens são listadas e em nome de qual aplicação uma nova mensagem é enviada. Quando só existe uma opção, ela é selecionada automaticamente.',
       'Use o filtro "Status" para navegar pela lista (Pendente, Processando, Enviada, Entregue, Lida, Falhou, Repetindo).',
@@ -200,20 +199,20 @@ const sections: Section[] = [
     ],
     notes: [
       {
-        severity: "info",
-        text: "Quando o usuário usar username e ocultar o telefone, o webhook traz sender.id como BSUID e sender.displayName como nome informativo. Responda usando exatamente o sender.id; não use o texto do @username.",
+        severity: 'info',
+        text: 'Quando o usuário usar username e ocultar o telefone, o webhook traz sender.id como BSUID e sender.displayName como nome informativo. Responda usando exatamente o sender.id; não use o texto do @username.',
       },
       {
-        severity: "info",
-        text: "O status muda automaticamente conforme o processamento avança (Pendente → Processando → Enviada → Entregue → Lida, ou Falhou → Repetindo). A linha do tempo preserva as tentativas de envio; o horário de entrega pode não estar disponível quando o provedor só retornar a confirmação de leitura.",
+        severity: 'info',
+        text: 'O status muda automaticamente conforme o processamento avança (Pendente → Processando → Enviada → Entregue → Lida, ou Falhou → Repetindo). A linha do tempo preserva as tentativas de envio; o horário de entrega pode não estar disponível quando o provedor só retornar a confirmação de leitura.',
       },
     ],
   },
   {
     icon: <SettingsOutlined />,
-    title: "Modelos de mensagem",
+    title: 'Modelos de mensagem',
     purpose:
-      "Cria, visualiza, edita, exclui, sincroniza e publica os modelos de mensagem da Meta em uma conta WhatsApp.",
+      'Cria, visualiza, edita, exclui, sincroniza e publica os modelos de mensagem da Meta em uma conta WhatsApp.',
     steps: [
       'Selecione "Tenant" e depois a conta WhatsApp para ver os modelos dessa conta. Refine com os filtros "Status" e "Categoria" se necessário.',
       'Use "Sincronizar Meta" para atualizar o status dos modelos a partir da Meta, ou "Publicar pendentes" para enviar os rascunhos para aprovação.',
@@ -224,16 +223,16 @@ const sections: Section[] = [
     ],
     notes: [
       {
-        severity: "warning",
-        text: "O status de aprovação (Rascunho, Pendente, Aprovado, Rejeitado, Pausado, Desativado) é definido pela Meta e pode mudar sem ação do usuário — sincronize periodicamente para manter o console atualizado.",
+        severity: 'warning',
+        text: 'O status de aprovação (Rascunho, Pendente, Aprovado, Rejeitado, Pausado, Desativado) é definido pela Meta e pode mudar sem ação do usuário — sincronize periodicamente para manter o console atualizado.',
       },
     ],
   },
   {
     icon: <IntegrationInstructionsOutlined />,
-    title: "Documentação da API",
+    title: 'Documentação da API',
     purpose:
-      "Referência de endpoints para times que vão integrar sistemas externos ao Hub via API (envio de mensagens e gestão de templates), com exemplos de requisição prontos para copiar.",
+      'Referência de endpoints para times que vão integrar sistemas externos ao Hub via API (envio de mensagens e gestão de templates), com exemplos de requisição prontos para copiar.',
     steps: [
       'Gere ou copie uma chave de API na tela "Chaves de API" antes de testar os exemplos.',
       'Use o botão "Copiar" em cada bloco de código para copiar o comando de exemplo.',
@@ -261,7 +260,7 @@ function SectionAccordion({ section }: { section: Section }) {
             <List dense disablePadding>
               {section.steps.map((step, index) => (
                 <ListItem key={step} disableGutters alignItems="flex-start">
-                  <ListItemIcon sx={{ minWidth: 32, mt: "2px" }}>
+                  <ListItemIcon sx={{ minWidth: 32, mt: '2px' }}>
                     <Chip
                       label={index + 1}
                       size="small"
@@ -295,26 +294,24 @@ export function HelpPage() {
       <Card variant="outlined">
         <CardContent>
           <Stack spacing={1.5}>
-            <Typography variant="h6">
-              Ordem recomendada de configuração
-            </Typography>
+            <Typography variant="h6">Ordem recomendada de configuração</Typography>
             <Typography color="text.secondary">
-              Cada cadastro depende do anterior. Siga esta ordem na primeira
-              configuração de um tenant:
+              Cada cadastro depende do anterior. Siga esta ordem na primeira configuração de um
+              tenant:
             </Typography>
             <List dense disablePadding>
               {[
-                "Tenants — crie o tenant que vai usar o Hub.",
-                "Aplicações — vincule a aplicação consumidora ao tenant.",
-                "Contas WhatsApp — registre a WABA da Meta para o tenant.",
-                "Números — registre os números de telefone dessa conta.",
-                "Aplicações — vincule os números que cada aplicação poderá usar.",
-                "Modelos de mensagem — cadastre e publique os modelos que serão enviados.",
-                "Mensagens — envie mensagens e acompanhe a linha do tempo de entrega.",
-                "Chaves de API — gere uma chave apenas se outra aplicação for integrar com o Hub via API.",
+                'Tenants — crie o tenant que vai usar o Hub.',
+                'Aplicações — vincule a aplicação consumidora ao tenant.',
+                'Contas WhatsApp — registre a WABA da Meta para o tenant.',
+                'Números — registre os números de telefone dessa conta.',
+                'Aplicações — vincule os números que cada aplicação poderá usar.',
+                'Modelos de mensagem — cadastre e publique os modelos que serão enviados.',
+                'Mensagens — envie mensagens e acompanhe a linha do tempo de entrega.',
+                'Chaves de API — gere uma chave apenas se outra aplicação for integrar com o Hub via API.',
               ].map((step, index) => (
                 <ListItem key={step} disableGutters alignItems="flex-start">
-                  <ListItemIcon sx={{ minWidth: 32, mt: "2px" }}>
+                  <ListItemIcon sx={{ minWidth: 32, mt: '2px' }}>
                     <Chip
                       label={index + 1}
                       size="small"
@@ -327,15 +324,11 @@ export function HelpPage() {
               ))}
             </List>
             <Divider />
-            <Alert
-              severity="info"
-              icon={<AdminPanelSettingsOutlined fontSize="small" />}
-            >
-              Todas as telas de administração exigem login com um usuário que
-              tenha papel administrativo, inclusive Mensagens e modelos de
-              mensagem. A chave de API de aplicação (wh_live_...) só é
-              necessária para integrações externas que chamam a API diretamente
-              — veja "Documentação da API".
+            <Alert severity="info" icon={<AdminPanelSettingsOutlined fontSize="small" />}>
+              Todas as telas de administração exigem login com um usuário que tenha papel
+              administrativo, inclusive Mensagens e modelos de mensagem. A chave de API de aplicação
+              (wh_live_...) só é necessária para integrações externas que chamam a API diretamente —
+              veja "Documentação da API".
             </Alert>
           </Stack>
         </CardContent>
@@ -343,12 +336,7 @@ export function HelpPage() {
 
       <Stack spacing={1.5}>
         <Typography variant="h6">
-          <Stack
-            direction="row"
-            spacing={1}
-            alignItems="center"
-            component="span"
-          >
+          <Stack direction="row" spacing={1} alignItems="center" component="span">
             <ForumOutlined fontSize="small" />
             <span>Telas do console</span>
           </Stack>

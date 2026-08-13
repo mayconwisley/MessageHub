@@ -41,7 +41,9 @@ export function ApplicationAutocomplete({
       getOptionLabel={(application) => application.name}
       isOptionEqualToValue={(option, val) => option.id === val.id}
       disabled={!validTenantId}
-      noOptionsText={validTenantId ? 'Nenhuma aplicação encontrada' : 'Selecione um tenant primeiro'}
+      noOptionsText={
+        validTenantId ? 'Nenhuma aplicação encontrada' : 'Selecione um tenant primeiro'
+      }
       size={size}
       sx={sx}
       renderInput={(params) => (

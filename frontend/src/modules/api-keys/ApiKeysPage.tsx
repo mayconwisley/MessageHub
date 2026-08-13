@@ -23,7 +23,12 @@ const schema = z.object({
 });
 type FormData = z.infer<typeof schema>;
 
-const statusLabels: Record<string, string> = { ACTIVE: 'Ativa', active: 'Ativa', REVOKED: 'Revogada', revoked: 'Revogada' };
+const statusLabels: Record<string, string> = {
+  ACTIVE: 'Ativa',
+  active: 'Ativa',
+  REVOKED: 'Revogada',
+  revoked: 'Revogada',
+};
 const typeLabels: Record<string, string> = { platform: 'Plataforma', tenant: 'Tenant' };
 
 export function ApiKeysPage() {
@@ -32,7 +37,10 @@ export function ApiKeysPage() {
   const [applicationIdFilter, setApplicationIdFilter] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const client = useQueryClient();
-  const form = useForm<FormData>({ resolver: zodResolver(schema), defaultValues: { type: 'platform' } });
+  const form = useForm<FormData>({
+    resolver: zodResolver(schema),
+    defaultValues: { type: 'platform' },
+  });
   const create = useMutation({
     mutationFn: ({ applicationId, type, expiresAt }: FormData) =>
       apiKeysApi.create(applicationId, { type, ...(expiresAt ? { expiresAt } : {}) }),
@@ -43,8 +51,10 @@ export function ApiKeysPage() {
     },
   });
   const revoke = useMutation({
-    mutationFn: ({ applicationId, apiKeyId }: { applicationId: string; apiKeyId: string }) => apiKeysApi.revoke(applicationId, apiKeyId),
-    onSuccess: (_, variables) => client.invalidateQueries({ queryKey: ['api-keys', variables.applicationId] }),
+    mutationFn: ({ applicationId, apiKeyId }: { applicationId: string; apiKeyId: string }) =>
+      apiKeysApi.revoke(applicationId, apiKeyId),
+    onSuccess: (_, variables) =>
+      client.invalidateQueries({ queryKey: ['api-keys', variables.applicationId] }),
   });
 
   const validApplicationFilter = z.string().uuid().safeParse(applicationIdFilter).success;
@@ -96,16 +106,42 @@ export function ApiKeysPage() {
             sx={{ maxWidth: 320, flexGrow: 1 }}
           />
         </Stack>
-        <AsyncState isLoading={validApplicationFilter && list.isLoading} error={list.error} emptyMessage={validApplicationFilter ? undefined : 'Selecione uma aplicação para listar suas chaves.'}>
+        <AsyncState
+          isLoading={validApplicationFilter && list.isLoading}
+          error={list.error}
+          emptyMessage={
+            validApplicationFilter ? undefined : 'Selecione uma aplicação para listar suas chaves.'
+          }
+        >
           <PaginatedTable<ApiKey>
             columns={[
               { key: 'prefix', label: 'Prefixo' },
               { key: 'type', label: 'Tipo', render: (row) => typeLabels[row.type] ?? row.type },
-              { key: 'status', label: 'Status', render: (row) => <Chip label={statusLabels[row.status] ?? row.status} size="small" /> },
-              { key: 'expiresAt', label: 'Expira em', render: (row) => (row.expiresAt ? new Date(row.expiresAt).toLocaleString('pt-BR') : 'Sem expiração') },
+              {
+                key: 'status',
+                label: 'Status',
+                render: (row) => (
+                  <Chip label={statusLabels[row.status] ?? row.status} size="small" />
+                ),
+              },
+              {
+                key: 'expiresAt',
+                label: 'Expira em',
+                render: (row) =>
+                  row.expiresAt ? new Date(row.expiresAt).toLocaleString('pt-BR') : 'Sem expiração',
+              },
               { key: 'scopes', label: 'Escopos', render: (row) => row.scopes.join(', ') || '—' },
-              { key: 'lastUsedAt', label: 'Último uso', render: (row) => row.lastUsedAt ? new Date(row.lastUsedAt).toLocaleString('pt-BR') : 'Nunca' },
-              { key: 'createdAt', label: 'Criado em', render: (row) => new Date(row.createdAt).toLocaleString('pt-BR') },
+              {
+                key: 'lastUsedAt',
+                label: 'Último uso',
+                render: (row) =>
+                  row.lastUsedAt ? new Date(row.lastUsedAt).toLocaleString('pt-BR') : 'Nunca',
+              },
+              {
+                key: 'createdAt',
+                label: 'Criado em',
+                render: (row) => new Date(row.createdAt).toLocaleString('pt-BR'),
+              },
             ]}
             rows={list.data?.items ?? []}
             total={list.data?.total ?? 0}
@@ -124,7 +160,8 @@ export function ApiKeysPage() {
                     icon: <Block fontSize="small" />,
                     color: 'error',
                     disabled: row.status !== 'active' && row.status !== 'ACTIVE',
-                    onClick: () => revoke.mutate({ applicationId: applicationIdFilter, apiKeyId: row.id }),
+                    onClick: () =>
+                      revoke.mutate({ applicationId: applicationIdFilter, apiKeyId: row.id }),
                   },
                 ]}
               />
@@ -138,14 +175,19 @@ export function ApiKeysPage() {
           {create.isSuccess ? (
             <>
               <Alert severity="warning">
-                Copie a chave agora, ela não poderá ser recuperada depois: <strong>{create.data?.plainTextKey}</strong>
+                Copie a chave agora, ela não poderá ser recuperada depois:{' '}
+                <strong>{create.data?.plainTextKey}</strong>
               </Alert>
               <Button variant="contained" onClick={closeCreate}>
                 Fechar
               </Button>
             </>
           ) : (
-            <Stack component="form" spacing={2} onSubmit={form.handleSubmit((data) => create.mutate(data))}>
+            <Stack
+              component="form"
+              spacing={2}
+              onSubmit={form.handleSubmit((data) => create.mutate(data))}
+            >
               {create.error && <Alert severity="error">{create.error.message}</Alert>}
               <Controller
                 name="tenantId"
@@ -180,7 +222,13 @@ export function ApiKeysPage() {
                 <MenuItem value="platform">{typeLabels.platform}</MenuItem>
                 <MenuItem value="tenant">{typeLabels.tenant}</MenuItem>
               </TextField>
-              <TextField label="Expira em (opcional)" type="datetime-local" InputLabelProps={{ shrink: true }} {...form.register('expiresAt')} fullWidth />
+              <TextField
+                label="Expira em (opcional)"
+                type="datetime-local"
+                InputLabelProps={{ shrink: true }}
+                {...form.register('expiresAt')}
+                fullWidth
+              />
               <Button type="submit" variant="contained" disabled={create.isPending}>
                 {create.isPending ? 'Gerando...' : 'Gerar chave de API'}
               </Button>

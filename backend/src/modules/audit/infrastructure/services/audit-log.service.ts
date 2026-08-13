@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto';
+import { v7 as uuidv7 } from 'uuid';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -11,6 +11,6 @@ export class AuditLogService {
   ) {}
 
   async record(entry: Omit<AuditLogOrmEntity, 'id' | 'occurredAt'>): Promise<void> {
-    await this.repository.save({ id: randomUUID(), occurredAt: new Date(), ...entry });
+    await this.repository.save({ id: uuidv7(), occurredAt: new Date(), ...entry });
   }
 }

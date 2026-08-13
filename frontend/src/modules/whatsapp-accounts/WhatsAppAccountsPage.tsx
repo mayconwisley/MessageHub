@@ -1,6 +1,16 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Visibility } from '@mui/icons-material';
-import { Alert, Button, Chip, FormControl, InputLabel, MenuItem, Select, Stack, TextField } from '@mui/material';
+import {
+  Alert,
+  Button,
+  Chip,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  Stack,
+  TextField,
+} from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -114,7 +124,9 @@ export function WhatsAppAccountsPage() {
         <AsyncState
           isLoading={validTenantFilter && list.isLoading}
           error={list.error}
-          emptyMessage={validTenantFilter ? undefined : 'Selecione um tenant para listar as contas.'}
+          emptyMessage={
+            validTenantFilter ? undefined : 'Selecione um tenant para listar as contas.'
+          }
         >
           <PaginatedTable<WhatsAppAccount>
             columns={[
@@ -122,12 +134,15 @@ export function WhatsAppAccountsPage() {
               {
                 key: 'credentialSource',
                 label: 'Origem',
-                render: (row) => credentialSourceLabels[row.credentialSource] ?? row.credentialSource,
+                render: (row) =>
+                  credentialSourceLabels[row.credentialSource] ?? row.credentialSource,
               },
               {
                 key: 'status',
                 label: 'Status',
-                render: (row) => <Chip label={statusLabels[row.status] ?? row.status} size="small" />,
+                render: (row) => (
+                  <Chip label={statusLabels[row.status] ?? row.status} size="small" />
+                ),
               },
               {
                 key: 'createdAt',
@@ -146,7 +161,13 @@ export function WhatsAppAccountsPage() {
             }}
             rowActions={(row) => (
               <TableActionsMenu
-                actions={[{ label: 'Ver detalhes', icon: <Visibility fontSize="small" />, onClick: () => setSelectedId(row.id) }]}
+                actions={[
+                  {
+                    label: 'Ver detalhes',
+                    icon: <Visibility fontSize="small" />,
+                    onClick: () => setSelectedId(row.id),
+                  },
+                ]}
               />
             )}
           />
@@ -167,7 +188,9 @@ export function WhatsAppAccountsPage() {
             <Stack
               component="form"
               spacing={2}
-              onSubmit={form.handleSubmit((data) => create.mutate({ ...data, credentialSource: 'tenant' }))}
+              onSubmit={form.handleSubmit((data) =>
+                create.mutate({ ...data, credentialSource: 'tenant' }),
+              )}
             >
               {create.error && <Alert severity="error">{create.error.message}</Alert>}
               <Controller
@@ -190,8 +213,20 @@ export function WhatsAppAccountsPage() {
                 helperText={form.formState.errors.wabaId?.message}
                 fullWidth
               />
-              <TextField label="Token de acesso" type="password" autoComplete="off" {...form.register('accessToken')} fullWidth />
-              <TextField label="Segredo do aplicativo (opcional)" type="password" autoComplete="off" {...form.register('appSecret')} fullWidth />
+              <TextField
+                label="Token de acesso"
+                type="password"
+                autoComplete="off"
+                {...form.register('accessToken')}
+                fullWidth
+              />
+              <TextField
+                label="Segredo do aplicativo (opcional)"
+                type="password"
+                autoComplete="off"
+                {...form.register('appSecret')}
+                fullWidth
+              />
               <Button type="submit" variant="contained" disabled={create.isPending}>
                 {create.isPending ? 'Salvando...' : 'Registrar conta'}
               </Button>

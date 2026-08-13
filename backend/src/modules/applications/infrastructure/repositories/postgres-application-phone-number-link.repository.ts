@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto';
+import { v7 as uuidv7 } from 'uuid';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -21,7 +21,7 @@ export class PostgresApplicationPhoneNumberLinkRepository implements IApplicatio
       if (phoneNumberIds.length === 0) return;
       const rows = phoneNumberIds.map((phoneNumberId) => {
         const row = new ApplicationPhoneNumberLinkOrmEntity();
-        row.id = randomUUID();
+        row.id = uuidv7();
         row.applicationId = applicationId.value;
         row.phoneNumberId = phoneNumberId.value;
         row.createdAt = new Date();

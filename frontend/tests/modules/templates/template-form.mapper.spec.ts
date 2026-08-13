@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { toMutationData, toTemplateComponents } from '../../../src/modules/templates/template-form.mapper';
+import {
+  toMutationData,
+  toTemplateComponents,
+} from '../../../src/modules/templates/template-form.mapper';
 import type { TemplateFormData } from '../../../src/modules/templates/template-form.schema';
 
 const formData: TemplateFormData = {
@@ -22,7 +25,11 @@ describe('toTemplateComponents', () => {
   it('transforma o formulário no contrato explícito da API', () => {
     expect(toTemplateComponents(formData)).toEqual([
       { type: 'HEADER', format: 'TEXT', text: 'Aviso importante' },
-      { type: 'BODY', text: 'Olá, {{1}}', example: { bodyText: [{ values: ['Maycon', 'Maria'] }] } },
+      {
+        type: 'BODY',
+        text: 'Olá, {{1}}',
+        example: { bodyText: [{ values: ['Maycon', 'Maria'] }] },
+      },
       { type: 'FOOTER', text: 'Não responda esta mensagem' },
       {
         type: 'BUTTONS',

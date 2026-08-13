@@ -22,7 +22,7 @@ import {
   MonitorHeartOutlined,
   NotificationsActiveOutlined,
   ScienceOutlined,
-} from "@mui/icons-material";
+} from '@mui/icons-material';
 import {
   AppBar,
   Box,
@@ -39,9 +39,9 @@ import {
   Tooltip,
   useMediaQuery,
   type Theme,
-} from "@mui/material";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { lazy, Suspense, useMemo, useState, type ReactNode } from "react";
+} from '@mui/material';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { lazy, Suspense, useMemo, useState, type ReactNode } from 'react';
 import {
   NavLink,
   Navigate,
@@ -50,77 +50,78 @@ import {
   Routes,
   useLocation,
   useNavigate,
-} from "react-router-dom";
-import { BrowserRouter } from "react-router-dom";
-import { authStorage } from "../services/auth-storage";
-import { logout as logoutRequest } from "../modules/auth/auth.api";
-import { ThemeModeProvider, useThemeMode } from "./ThemeModeProvider";
-import { buildTheme } from "./theme";
-import brandLogoDark from "../assets/brand/message-hub-logo-dark.svg";
-import brandLogoLight from "../assets/brand/message-hub-logo-light.svg";
+} from 'react-router-dom';
+import { BrowserRouter } from 'react-router-dom';
+import { authStorage } from '../services/auth-storage';
+import { logout as logoutRequest } from '../modules/auth/auth.api';
+import { ThemeModeProvider } from './ThemeModeProvider';
+import { useThemeMode } from './useThemeMode';
+import { buildTheme } from './theme';
+import brandLogoDark from '../assets/brand/message-hub-logo-dark.svg';
+import brandLogoLight from '../assets/brand/message-hub-logo-light.svg';
 
 const LoginPage = lazy(async () => {
-  const module = await import("../modules/auth/LoginPage");
+  const module = await import('../modules/auth/LoginPage');
   return { default: module.LoginPage };
 });
 const DashboardPage = lazy(async () => {
-  const module = await import("../modules/dashboard/DashboardPage");
+  const module = await import('../modules/dashboard/DashboardPage');
   return { default: module.DashboardPage };
 });
 const TenantsPage = lazy(async () => {
-  const module = await import("../modules/tenants/TenantsPage");
+  const module = await import('../modules/tenants/TenantsPage');
   return { default: module.TenantsPage };
 });
 const ApplicationsPage = lazy(async () => {
-  const module = await import("../modules/applications/ApplicationsPage");
+  const module = await import('../modules/applications/ApplicationsPage');
   return { default: module.ApplicationsPage };
 });
 const WhatsAppAccountsPage = lazy(async () => {
-  const module = await import("../modules/whatsapp-accounts/WhatsAppAccountsPage");
+  const module = await import('../modules/whatsapp-accounts/WhatsAppAccountsPage');
   return { default: module.WhatsAppAccountsPage };
 });
 const PhoneNumbersPage = lazy(async () => {
-  const module = await import("../modules/phone-numbers/PhoneNumbersPage");
+  const module = await import('../modules/phone-numbers/PhoneNumbersPage');
   return { default: module.PhoneNumbersPage };
 });
 const ApiKeysPage = lazy(async () => {
-  const module = await import("../modules/api-keys/ApiKeysPage");
+  const module = await import('../modules/api-keys/ApiKeysPage');
   return { default: module.ApiKeysPage };
 });
 const UsersPage = lazy(async () => {
-  const module = await import("../modules/users/UsersPage");
+  const module = await import('../modules/users/UsersPage');
   return { default: module.UsersPage };
 });
 const MessagesPage = lazy(async () => {
-  const module = await import("../modules/messages/MessagesPage");
+  const module = await import('../modules/messages/MessagesPage');
   return { default: module.MessagesPage };
 });
 const TemplatesPage = lazy(async () => {
-  const module = await import("../modules/templates/TemplatesPage");
+  const module = await import('../modules/templates/TemplatesPage');
   return { default: module.TemplatesPage };
 });
 const ApiDocsPage = lazy(async () => {
-  const module = await import("../modules/api-docs/ApiDocsPage");
+  const module = await import('../modules/api-docs/ApiDocsPage');
   return { default: module.ApiDocsPage };
 });
 const WebhooksPage = lazy(async () => {
-  const module = await import("../modules/webhooks/WebhooksPage");
+  const module = await import('../modules/webhooks/WebhooksPage');
   return { default: module.WebhooksPage };
 });
 const MonitoringPage = lazy(async () => {
-  const module = await import("../modules/monitoring/MonitoringPage");
+  const module = await import('../modules/monitoring/MonitoringPage');
   return { default: module.MonitoringPage };
 });
 const EngineeringAlertsPage = lazy(async () => {
-  const module = await import("../modules/engineering-alerts/EngineeringAlertsPage");
+  const module = await import('../modules/engineering-alerts/EngineeringAlertsPage');
   return { default: module.EngineeringAlertsPage };
 });
 const SandboxPage = lazy(async () => {
-  const module = await import("../modules/sandbox/SandboxPage");
+  const module = await import('../modules/sandbox/SandboxPage');
   return { default: module.SandboxPage };
 });
 const HelpPage = lazy(async () => {
-  const module = await import("../modules/help/HelpPage");
+  const module = await import('../modules/help/HelpPage');
   return { default: module.HelpPage };
 });
 
@@ -140,52 +141,54 @@ interface NavGroupConfig {
   items: NavLeaf[];
 }
 
-const topLinks: NavLeaf[] = [
-  { to: "/", label: "Visão geral", icon: <DashboardOutlined /> },
-];
+const topLinks: NavLeaf[] = [{ to: '/', label: 'Visão geral', icon: <DashboardOutlined /> }];
 
 const navGroups: NavGroupConfig[] = [
   {
-    label: "Administração",
+    label: 'Administração',
     icon: <AdminPanelSettingsOutlined />,
     items: [
-      { to: "/tenants", label: "Tenants", icon: <AccountTreeOutlined /> },
-      { to: "/applications", label: "Aplicações", icon: <AppsOutlined /> },
+      { to: '/tenants', label: 'Tenants', icon: <AccountTreeOutlined /> },
+      { to: '/applications', label: 'Aplicações', icon: <AppsOutlined /> },
       {
-        to: "/whatsapp-accounts",
-        label: "Contas WhatsApp",
+        to: '/whatsapp-accounts',
+        label: 'Contas WhatsApp',
         icon: <SmartToyOutlined />,
       },
-      { to: "/phone-numbers", label: "Números", icon: <PhoneOutlined /> },
-      { to: "/api-keys", label: "Chaves de API", icon: <VpnKeyOutlined /> },
-      { to: "/users", label: "Usuários", icon: <PeopleOutlined /> },
+      { to: '/phone-numbers', label: 'Números', icon: <PhoneOutlined /> },
+      { to: '/api-keys', label: 'Chaves de API', icon: <VpnKeyOutlined /> },
+      { to: '/users', label: 'Usuários', icon: <PeopleOutlined /> },
     ],
   },
   {
-    label: "Mensageria",
+    label: 'Mensageria',
     icon: <ForumOutlined />,
     items: [
-      { to: "/messages", label: "Mensagens", icon: <ChatOutlined /> },
+      { to: '/messages', label: 'Mensagens', icon: <ChatOutlined /> },
       {
-        to: "/templates",
-        label: "Modelos de mensagem",
+        to: '/templates',
+        label: 'Modelos de mensagem',
         icon: <SettingsOutlined />,
       },
       {
-        to: "/api-docs",
-        label: "Documentação da API",
+        to: '/api-docs',
+        label: 'Documentação da API',
         icon: <IntegrationInstructionsOutlined />,
       },
-      { to: "/webhooks", label: "Webhooks e DLQ", icon: <WebhookOutlined /> },
-      { to: "/monitoring", label: "Monitor de integrações", icon: <MonitorHeartOutlined /> },
-      { to: "/engineering-alerts", label: "Alertas de engenharia", icon: <NotificationsActiveOutlined /> },
-      { to: "/sandbox", label: "Ambiente sandbox", icon: <ScienceOutlined /> },
+      { to: '/webhooks', label: 'Webhooks e DLQ', icon: <WebhookOutlined /> },
+      { to: '/monitoring', label: 'Monitor de integrações', icon: <MonitorHeartOutlined /> },
+      {
+        to: '/engineering-alerts',
+        label: 'Alertas de engenharia',
+        icon: <NotificationsActiveOutlined />,
+      },
+      { to: '/sandbox', label: 'Ambiente sandbox', icon: <ScienceOutlined /> },
     ],
   },
 ];
 
 const bottomLinks: NavLeaf[] = [
-  { to: "/help", label: "Manual do usuário", icon: <HelpOutlineOutlined /> },
+  { to: '/help', label: 'Manual do usuário', icon: <HelpOutlineOutlined /> },
 ];
 
 const drawerWidth = 264;
@@ -230,21 +233,12 @@ function NavGroup({
       >
         <ListItemIcon>{icon}</ListItemIcon>
         <ListItemText primary={label} />
-        {open ? (
-          <ExpandLess fontSize="small" />
-        ) : (
-          <ExpandMore fontSize="small" />
-        )}
+        {open ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />}
       </ListItemButton>
       <Collapse in={open} timeout="auto" unmountOnExit>
         <List component="div" disablePadding>
           {items.map((item) => (
-            <NavItem
-              key={item.to}
-              {...item}
-              sx={{ pl: 4 }}
-              onNavigate={onNavigate}
-            />
+            <NavItem key={item.to} {...item} sx={{ pl: 4 }} onNavigate={onNavigate} />
           ))}
         </List>
       </Collapse>
@@ -255,7 +249,7 @@ function NavGroup({
 function Layout() {
   const navigate = useNavigate();
   const { mode, toggleMode } = useThemeMode();
-  const isDesktop = useMediaQuery((theme: Theme) => theme.breakpoints.up("md"));
+  const isDesktop = useMediaQuery((theme: Theme) => theme.breakpoints.up('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
   const closeMobileNav = () => setMobileOpen(false);
   const logout = async () => {
@@ -266,7 +260,7 @@ function Layout() {
     }
     authStorage.removeSessionToken();
     queryClient.clear();
-    navigate("/login");
+    navigate('/login');
   };
 
   const navList = (
@@ -286,16 +280,12 @@ function Layout() {
   return (
     <Box
       sx={{
-        display: "flex",
-        minHeight: "100vh",
-        bgcolor: "background.default",
+        display: 'flex',
+        minHeight: '100vh',
+        bgcolor: 'background.default',
       }}
     >
-      <AppBar
-        position="fixed"
-        elevation={0}
-        sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}
-      >
+      <AppBar position="fixed" elevation={0} sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
         <Toolbar sx={{ gap: 1.5 }}>
           {!isDesktop && (
             <IconButton
@@ -309,26 +299,20 @@ function Layout() {
           )}
           <Box
             component="img"
-            src={mode === "dark" ? brandLogoDark : brandLogoLight}
+            src={mode === 'dark' ? brandLogoDark : brandLogoLight}
             alt="Message Hub"
             sx={{
               width: { xs: 166, sm: 205 },
-              height: "auto",
+              height: 'auto',
               flexGrow: 1,
               maxHeight: 42,
-              objectFit: "contain",
-              objectPosition: "left",
+              objectFit: 'contain',
+              objectPosition: 'left',
             }}
           />
-          <Tooltip
-            title={mode === "dark" ? "Ativar tema claro" : "Ativar tema escuro"}
-          >
-            <IconButton
-              aria-label="Alternar tema"
-              color="inherit"
-              onClick={toggleMode}
-            >
-              {mode === "dark" ? <LightModeOutlined /> : <DarkModeOutlined />}
+          <Tooltip title={mode === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'}>
+            <IconButton aria-label="Alternar tema" color="inherit" onClick={toggleMode}>
+              {mode === 'dark' ? <LightModeOutlined /> : <DarkModeOutlined />}
             </IconButton>
           </Tooltip>
           <Tooltip title="Sair">
@@ -339,16 +323,16 @@ function Layout() {
         </Toolbar>
       </AppBar>
       <Drawer
-        variant={isDesktop ? "permanent" : "temporary"}
+        variant={isDesktop ? 'permanent' : 'temporary'}
         open={isDesktop ? true : mobileOpen}
         onClose={closeMobileNav}
         ModalProps={{ keepMounted: true }}
         sx={{
           width: isDesktop ? drawerWidth : 0,
           flexShrink: 0,
-          "& .MuiDrawer-paper": {
+          '& .MuiDrawer-paper': {
             width: drawerWidth,
-            boxSizing: "border-box",
+            boxSizing: 'border-box',
             pt: isDesktop ? 9 : 1,
           },
         }}
@@ -372,19 +356,11 @@ function Layout() {
 }
 
 function ProtectedRoute() {
-  return authStorage.getSessionToken() ? (
-    <Layout />
-  ) : (
-    <Navigate to="/login" replace />
-  );
+  return authStorage.getSessionToken() ? <Layout /> : <Navigate to="/login" replace />;
 }
 
 function LoginRoute() {
-  return authStorage.getSessionToken() ? (
-    <Navigate to="/" replace />
-  ) : (
-    <LoginPage />
-  );
+  return authStorage.getSessionToken() ? <Navigate to="/" replace /> : <LoginPage />;
 }
 
 function ThemedApp() {
@@ -396,17 +372,14 @@ function ThemedApp() {
       <CssBaseline />
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
-          <Suspense fallback={<Box sx={{ minHeight: "100vh" }} />}>
+          <Suspense fallback={<Box sx={{ minHeight: '100vh' }} />}>
             <Routes>
               <Route path="/login" element={<LoginRoute />} />
               <Route element={<ProtectedRoute />}>
                 <Route path="/" element={<DashboardPage />} />
                 <Route path="/tenants" element={<TenantsPage />} />
                 <Route path="/applications" element={<ApplicationsPage />} />
-                <Route
-                  path="/whatsapp-accounts"
-                  element={<WhatsAppAccountsPage />}
-                />
+                <Route path="/whatsapp-accounts" element={<WhatsAppAccountsPage />} />
                 <Route path="/phone-numbers" element={<PhoneNumbersPage />} />
                 <Route path="/api-keys" element={<ApiKeysPage />} />
                 <Route path="/users" element={<UsersPage />} />
@@ -415,10 +388,7 @@ function ThemedApp() {
                 <Route path="/api-docs" element={<ApiDocsPage />} />
                 <Route path="/webhooks" element={<WebhooksPage />} />
                 <Route path="/monitoring" element={<MonitoringPage />} />
-                <Route
-                  path="/engineering-alerts"
-                  element={<EngineeringAlertsPage />}
-                />
+                <Route path="/engineering-alerts" element={<EngineeringAlertsPage />} />
                 <Route path="/sandbox" element={<SandboxPage />} />
                 <Route path="/help" element={<HelpPage />} />
               </Route>

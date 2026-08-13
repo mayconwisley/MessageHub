@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto';
+import { v7 as uuidv7 } from 'uuid';
 
 export class UniqueId {
   private readonly _value: string;
@@ -20,6 +20,6 @@ export class UniqueId {
   }
 
   static create(value?: string): UniqueId {
-    return new UniqueId(value ?? randomUUID());
+    return new UniqueId(value ?? uuidv7());
   }
 }

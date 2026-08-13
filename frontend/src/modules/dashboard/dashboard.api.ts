@@ -1,4 +1,4 @@
-import { request } from "../../services/http-client";
+import { request } from '../../services/http-client';
 
 export interface ResourceSummary {
   tenants: number;
@@ -33,24 +33,19 @@ export interface RecentMessage {
 }
 
 export interface HealthCheck {
-  status: "ok" | "error";
+  status: 'ok' | 'error';
   error?: Record<string, unknown>;
   details: {
-    database?: { status: "up" | "down"; message?: string };
-    rabbitmq?: { status: "up" | "down"; message?: string };
+    database?: { status: 'up' | 'down'; message?: string };
+    rabbitmq?: { status: 'up' | 'down'; message?: string };
   };
 }
 
 export const dashboardApi = {
-  getResourceSummary: () =>
-    request<ResourceSummary>("/v1/dashboard/resource-summary"),
-  getMessageVolume: () =>
-    request<MessageVolumePoint[]>("/v1/dashboard/message-volume"),
-  getDeliveryStatus: () =>
-    request<DeliveryStatus>("/v1/dashboard/delivery-status"),
-  getOperationalHealth: () =>
-    request<OperationalHealth>("/v1/dashboard/operational-health"),
-  getRecentMessages: () =>
-    request<RecentMessage[]>("/v1/dashboard/recent-messages"),
-  health: () => request<HealthCheck>("/health"),
+  getResourceSummary: () => request<ResourceSummary>('/v1/dashboard/resource-summary'),
+  getMessageVolume: () => request<MessageVolumePoint[]>('/v1/dashboard/message-volume'),
+  getDeliveryStatus: () => request<DeliveryStatus>('/v1/dashboard/delivery-status'),
+  getOperationalHealth: () => request<OperationalHealth>('/v1/dashboard/operational-health'),
+  getRecentMessages: () => request<RecentMessage[]>('/v1/dashboard/recent-messages'),
+  health: () => request<HealthCheck>('/health'),
 };

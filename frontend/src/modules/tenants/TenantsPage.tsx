@@ -53,7 +53,8 @@ export function TenantsPage() {
 
   const list = useQuery({
     queryKey: ['tenants', page, pageSize, status, search],
-    queryFn: () => tenantsApi.list({ page, pageSize, status: status || undefined, search: search || undefined }),
+    queryFn: () =>
+      tenantsApi.list({ page, pageSize, status: status || undefined, search: search || undefined }),
   });
   const create = useMutation({
     mutationFn: tenantsApi.create,
@@ -67,7 +68,8 @@ export function TenantsPage() {
     enabled: !!selectedId,
   });
   const updateStatus = useMutation({
-    mutationFn: (status: 'ACTIVE' | 'SUSPENDED') => tenantsApi.updateStatus(selectedId as string, status),
+    mutationFn: (status: 'ACTIVE' | 'SUSPENDED') =>
+      tenantsApi.updateStatus(selectedId as string, status),
     onSuccess: () => {
       client.invalidateQueries({ queryKey: ['tenant', selectedId] });
       client.invalidateQueries({ queryKey: ['tenants'] });
@@ -127,8 +129,18 @@ export function TenantsPage() {
           <PaginatedTable<Tenant>
             columns={[
               { key: 'name', label: 'Nome' },
-              { key: 'status', label: 'Status', render: (row) => <Chip label={statusLabels[row.status] ?? row.status} size="small" /> },
-              { key: 'createdAt', label: 'Criado em', render: (row) => new Date(row.createdAt).toLocaleString('pt-BR') },
+              {
+                key: 'status',
+                label: 'Status',
+                render: (row) => (
+                  <Chip label={statusLabels[row.status] ?? row.status} size="small" />
+                ),
+              },
+              {
+                key: 'createdAt',
+                label: 'Criado em',
+                render: (row) => new Date(row.createdAt).toLocaleString('pt-BR'),
+              },
             ]}
             rows={list.data?.items ?? []}
             total={list.data?.total ?? 0}
@@ -141,7 +153,13 @@ export function TenantsPage() {
             }}
             rowActions={(row) => (
               <TableActionsMenu
-                actions={[{ label: 'Ver detalhes', icon: <Visibility fontSize="small" />, onClick: () => setSelectedId(row.id) }]}
+                actions={[
+                  {
+                    label: 'Ver detalhes',
+                    icon: <Visibility fontSize="small" />,
+                    onClick: () => setSelectedId(row.id),
+                  },
+                ]}
               />
             )}
           />
@@ -159,7 +177,11 @@ export function TenantsPage() {
               </Button>
             </>
           ) : (
-            <Stack component="form" spacing={2} onSubmit={form.handleSubmit((data) => create.mutate(data))}>
+            <Stack
+              component="form"
+              spacing={2}
+              onSubmit={form.handleSubmit((data) => create.mutate(data))}
+            >
               {create.error && <Alert severity="error">{create.error.message}</Alert>}
               <TextField
                 label="Nome do tenant"

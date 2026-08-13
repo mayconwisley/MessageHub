@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { templateFormSchema, type TemplateFormData } from '../../../src/modules/templates/template-form.schema';
+import {
+  templateFormSchema,
+  type TemplateFormData,
+} from '../../../src/modules/templates/template-form.schema';
 
 const validData: TemplateFormData = {
   tenantId: '8fca53f1-05be-4dd9-bce7-a5e7aa0fc215',
@@ -23,7 +26,11 @@ describe('templateFormSchema', () => {
   });
 
   it('exige todos os dados do botão quando ele está habilitado', () => {
-    const result = templateFormSchema.safeParse({ ...validData, hasUrlButton: true, buttonText: 'Ver pagamento' });
+    const result = templateFormSchema.safeParse({
+      ...validData,
+      hasUrlButton: true,
+      buttonText: 'Ver pagamento',
+    });
 
     expect(result.success).toBe(false);
     if (!result.success) {

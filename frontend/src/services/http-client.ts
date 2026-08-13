@@ -43,14 +43,18 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     credentials: 'omit',
     cache: 'no-store',
     referrerPolicy: 'strict-origin-when-cross-origin',
-    headers: { ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}), ...(token && authorization !== 'none' ? { Authorization: `Bearer ${token}` } : {}), ...headers },
+    headers: {
+      ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+      ...(token && authorization !== 'none' ? { Authorization: `Bearer ${token}` } : {}),
+      ...headers,
+    },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (!response.ok) {
     const payload = (await response.json().catch(() => null)) as ApiErrorPayload | null;
     const message = Array.isArray(payload?.message)
       ? payload.message.join(' ')
-      : payload?.message ?? `A requisição falhou (${response.status}).`;
+      : (payload?.message ?? `A requisição falhou (${response.status}).`);
     throw new ApiError(message, response.status, payload?.code, payload?.requestId);
   }
   if (response.status === 204) return undefined as T;

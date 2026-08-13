@@ -1,41 +1,31 @@
-import type { TemplateComponent, TemplateMutationData } from "./templates.api";
-import type { TemplateFormData } from "./template-form.schema";
+import type { TemplateComponent, TemplateMutationData } from './templates.api';
+import type { TemplateFormData } from './template-form.schema';
 
-export function toTemplateComponents(
-  data: TemplateFormData,
-): TemplateComponent[] {
+export function toTemplateComponents(data: TemplateFormData): TemplateComponent[] {
   const components: TemplateComponent[] = [];
   if (data.headerText?.trim())
     components.push({
-      type: "HEADER",
-      format: "TEXT",
+      type: 'HEADER',
+      format: 'TEXT',
       text: data.headerText.trim(),
     });
   const examples =
     data.bodyExamples
-      ?.split(",")
+      ?.split(',')
       .map((value) => value.trim())
       .filter(Boolean) ?? [];
   components.push({
-    type: "BODY",
+    type: 'BODY',
     text: data.bodyText.trim(),
-    ...(examples.length
-      ? { example: { bodyText: [{ values: examples }] } }
-      : {}),
+    ...(examples.length ? { example: { bodyText: [{ values: examples }] } } : {}),
   });
-  if (data.footerText?.trim())
-    components.push({ type: "FOOTER", text: data.footerText.trim() });
-  if (
-    data.hasUrlButton &&
-    data.buttonText &&
-    data.buttonUrl &&
-    data.buttonUrlExample
-  )
+  if (data.footerText?.trim()) components.push({ type: 'FOOTER', text: data.footerText.trim() });
+  if (data.hasUrlButton && data.buttonText && data.buttonUrl && data.buttonUrlExample)
     components.push({
-      type: "BUTTONS",
+      type: 'BUTTONS',
       buttons: [
         {
-          type: "URL",
+          type: 'URL',
           text: data.buttonText.trim(),
           url: data.buttonUrl.trim(),
           example: data.buttonUrlExample.trim(),

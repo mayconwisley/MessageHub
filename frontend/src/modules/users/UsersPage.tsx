@@ -27,9 +27,13 @@ const roleLabels: Record<string, string> = {
 
 export function UsersPage() {
   const [createOpen, setCreateOpen] = useState(false);
-  const form = useForm<FormData>({ resolver: zodResolver(schema), defaultValues: { role: 'tenant_admin' } });
+  const form = useForm<FormData>({
+    resolver: zodResolver(schema),
+    defaultValues: { role: 'tenant_admin' },
+  });
   const create = useMutation({
-    mutationFn: (data: FormData) => usersApi.create({ ...data, tenantId: data.tenantId || undefined }),
+    mutationFn: (data: FormData) =>
+      usersApi.create({ ...data, tenantId: data.tenantId || undefined }),
   });
   const role = form.watch('role');
 
@@ -51,7 +55,9 @@ export function UsersPage() {
           </Button>
         }
       />
-      <Typography color="text.secondary">A listagem de usuários ainda não está disponível na API.</Typography>
+      <Typography color="text.secondary">
+        A listagem de usuários ainda não está disponível na API.
+      </Typography>
 
       <FormDialog open={createOpen} onClose={closeCreate} title="Criar usuário">
         <Stack spacing={2} sx={{ mt: 1 }}>
@@ -64,11 +70,38 @@ export function UsersPage() {
               </Button>
             </>
           ) : (
-            <Stack component="form" spacing={2} onSubmit={form.handleSubmit((data) => create.mutate(data))}>
+            <Stack
+              component="form"
+              spacing={2}
+              onSubmit={form.handleSubmit((data) => create.mutate(data))}
+            >
               {create.error && <Alert severity="error">{create.error.message}</Alert>}
-              <TextField label="Nome" {...form.register('name')} error={!!form.formState.errors.name} helperText={form.formState.errors.name?.message} fullWidth autoFocus />
-              <TextField label="E-mail" type="email" autoComplete="off" {...form.register('email')} error={!!form.formState.errors.email} helperText={form.formState.errors.email?.message} fullWidth />
-              <TextField label="Senha" type="password" autoComplete="new-password" {...form.register('password')} error={!!form.formState.errors.password} helperText={form.formState.errors.password?.message} fullWidth />
+              <TextField
+                label="Nome"
+                {...form.register('name')}
+                error={!!form.formState.errors.name}
+                helperText={form.formState.errors.name?.message}
+                fullWidth
+                autoFocus
+              />
+              <TextField
+                label="E-mail"
+                type="email"
+                autoComplete="off"
+                {...form.register('email')}
+                error={!!form.formState.errors.email}
+                helperText={form.formState.errors.email?.message}
+                fullWidth
+              />
+              <TextField
+                label="Senha"
+                type="password"
+                autoComplete="new-password"
+                {...form.register('password')}
+                error={!!form.formState.errors.password}
+                helperText={form.formState.errors.password?.message}
+                fullWidth
+              />
               <TextField label="Papel" select {...form.register('role')} fullWidth>
                 <MenuItem value="platform_admin">{roleLabels.platform_admin}</MenuItem>
                 <MenuItem value="tenant_admin">{roleLabels.tenant_admin}</MenuItem>
@@ -84,7 +117,10 @@ export function UsersPage() {
                       value={field.value ?? ''}
                       onChange={field.onChange}
                       error={!!form.formState.errors.tenantId}
-                      helperText={form.formState.errors.tenantId?.message ?? 'Obrigatório para usuários não globais.'}
+                      helperText={
+                        form.formState.errors.tenantId?.message ??
+                        'Obrigatório para usuários não globais.'
+                      }
                     />
                   )}
                 />

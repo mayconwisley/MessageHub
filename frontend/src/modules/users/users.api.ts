@@ -10,6 +10,11 @@ export interface User {
 }
 
 export const usersApi = {
-  create: (data: { name: string; email: string; password: string; role: string; tenantId?: string }) =>
-    request<User>('/v1/users', { method: 'POST', body: data }),
+  create: (data: {
+    name: string;
+    email: string;
+    password: string;
+    role: string;
+    tenantId?: string;
+  }) => request<User>('/v1/users', { method: 'POST', body: data }),
 };
