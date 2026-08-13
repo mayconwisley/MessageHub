@@ -1,23 +1,25 @@
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Alert, Button, MenuItem, Stack, TextField, Typography } from '@mui/material';
-import { useMutation } from '@tanstack/react-query';
-import { useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
-import { z } from 'zod';
-import { EntityResult } from '../../components/shared/EntityResult';
-import { FormDialog } from '../../components/shared/FormDialog';
-import { TenantAutocomplete } from '../../components/shared/TenantAutocomplete';
+import { Block, CheckCircle, Edit } from '@mui/icons-material';
+import {
+  Alert,
+  Button,
+  Chip,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  Stack,
+  TextField,
+} from '@mui/material';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { AsyncState } from '../../components/shared/AsyncState';
+import { PaginatedTable } from '../../components/shared/PaginatedTable';
+import { TableActionsMenu } from '../../components/shared/TableActionsMenu';
 import { PageHeader } from '../../components/ui/PageHeader';
-import { usersApi } from './users.api';
-
-const schema = z.object({
-  name: z.string().min(2, 'Informe ao menos 2 caracteres.'),
-  email: z.string().email('Informe um e-mail válido.'),
-  password: z.string().min(12, 'A senha deve ter ao menos 12 caracteres.'),
-  role: z.enum(['platform_admin', 'tenant_admin', 'operator']),
-  tenantId: z.string().uuid('Informe um UUID válido.').optional().or(z.literal('')),
-});
-type FormData = z.infer<typeof schema>;
+import { usePagination } from '../../hooks/usePagination';
+import { tenantsApi } from '../tenants/tenants.api';
+import { UserFormDialog, type UserFormData } from './UserFormDialog';
+import { usersApi, type User } from './users.api';
 
 const roleLabels: Record<string, string> = {
   platform_admin: 'Administrador da plataforma',
@@ -25,24 +27,77 @@ const roleLabels: Record<string, string> = {
   operator: 'Operador',
 };
 
+const statusLabels: Record<string, string> = { active: 'Ativo', suspended: 'Suspenso' };
+
 export function UsersPage() {
-  const [createOpen, setCreateOpen] = useState(false);
-  const form = useForm<FormData>({
-    resolver: zodResolver(schema),
-    defaultValues: { role: 'tenant_admin' },
+  const { page, pageSize, setPage, setPageSize } = usePagination();
+  const [role, setRole] = useState('');
+  const [status, setStatus] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<User | null>(null);
+  const client = useQueryClient();
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [searchInput, setPage]);
+
+  const list = useQuery({
+    queryKey: ['users', page, pageSize, role, status, search],
+    queryFn: () =>
+      usersApi.list({
+        page,
+        pageSize,
+        role: role || undefined,
+        status: status || undefined,
+        search: search || undefined,
+      }),
   });
+  const tenants = useQuery({
+    queryKey: ['tenants-select'],
+    queryFn: () => tenantsApi.list({ page: 1, pageSize: 100 }),
+    staleTime: 60_000,
+  });
+  const tenantNames = new Map((tenants.data?.items ?? []).map((tenant) => [tenant.id, tenant.name]));
+
+  const invalidate = () => client.invalidateQueries({ queryKey: ['users'] });
+
   const create = useMutation({
-    mutationFn: (data: FormData) =>
-      usersApi.create({ ...data, tenantId: data.tenantId || undefined }),
+    mutationFn: (data: UserFormData) =>
+      usersApi.create({ ...data, password: data.password ?? '', tenantId: data.tenantId || undefined }),
+    onSuccess: () => {
+      setCreating(false);
+      invalidate();
+    },
   });
-  const role = form.watch('role');
+  const update = useMutation({
+    mutationFn: (data: UserFormData) =>
+      usersApi.update(editing!.id, {
+        name: data.name,
+        email: data.email,
+        role: data.role,
+        tenantId: data.tenantId || undefined,
+      }),
+    onSuccess: () => {
+      setEditing(null);
+      invalidate();
+    },
+  });
+  const updateStatus = useMutation({
+    mutationFn: (params: { id: string; status: 'active' | 'suspended' }) =>
+      usersApi.updateStatus(params.id, params.status),
+    onSuccess: invalidate,
+  });
 
   const openCreate = () => {
-    form.reset({ role: 'tenant_admin' });
     create.reset();
-    setCreateOpen(true);
+    setCreating(true);
   };
-  const closeCreate = () => setCreateOpen(false);
 
   return (
     <Stack spacing={3}>
@@ -55,83 +110,133 @@ export function UsersPage() {
           </Button>
         }
       />
-      <Typography color="text.secondary">
-        A listagem de usuários ainda não está disponível na API.
-      </Typography>
-
-      <FormDialog open={createOpen} onClose={closeCreate} title="Criar usuário">
-        <Stack spacing={2} sx={{ mt: 1 }}>
-          {create.isSuccess ? (
-            <>
-              <Alert severity="success">Usuário criado com sucesso.</Alert>
-              <EntityResult title="Usuário criado" data={create.data ?? null} />
-              <Button variant="contained" onClick={closeCreate}>
-                Fechar
-              </Button>
-            </>
-          ) : (
-            <Stack
-              component="form"
-              spacing={2}
-              onSubmit={form.handleSubmit((data) => create.mutate(data))}
+      <Stack spacing={2}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+          <TextField
+            label="Buscar por nome ou e-mail"
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+            sx={{ maxWidth: 320, flexGrow: 1 }}
+          />
+          <FormControl size="small" sx={{ width: 220 }}>
+            <InputLabel id="user-role-filter">Papel</InputLabel>
+            <Select
+              labelId="user-role-filter"
+              label="Papel"
+              value={role}
+              onChange={(event) => {
+                setRole(event.target.value);
+                setPage(1);
+              }}
             >
-              {create.error && <Alert severity="error">{create.error.message}</Alert>}
-              <TextField
-                label="Nome"
-                {...form.register('name')}
-                error={!!form.formState.errors.name}
-                helperText={form.formState.errors.name?.message}
-                fullWidth
-                autoFocus
-              />
-              <TextField
-                label="E-mail"
-                type="email"
-                autoComplete="off"
-                {...form.register('email')}
-                error={!!form.formState.errors.email}
-                helperText={form.formState.errors.email?.message}
-                fullWidth
-              />
-              <TextField
-                label="Senha"
-                type="password"
-                autoComplete="new-password"
-                {...form.register('password')}
-                error={!!form.formState.errors.password}
-                helperText={form.formState.errors.password?.message}
-                fullWidth
-              />
-              <TextField label="Papel" select {...form.register('role')} fullWidth>
-                <MenuItem value="platform_admin">{roleLabels.platform_admin}</MenuItem>
-                <MenuItem value="tenant_admin">{roleLabels.tenant_admin}</MenuItem>
-                <MenuItem value="operator">{roleLabels.operator}</MenuItem>
-              </TextField>
-              {role !== 'platform_admin' && (
-                <Controller
-                  name="tenantId"
-                  control={form.control}
-                  render={({ field }) => (
-                    <TenantAutocomplete
-                      label="Tenant"
-                      value={field.value ?? ''}
-                      onChange={field.onChange}
-                      error={!!form.formState.errors.tenantId}
-                      helperText={
-                        form.formState.errors.tenantId?.message ??
-                        'Obrigatório para usuários não globais.'
-                      }
-                    />
-                  )}
-                />
-              )}
-              <Button type="submit" variant="contained" disabled={create.isPending}>
-                {create.isPending ? 'Criando...' : 'Criar usuário'}
-              </Button>
-            </Stack>
-          )}
+              <MenuItem value="">Todos</MenuItem>
+              {Object.entries(roleLabels).map(([value, label]) => (
+                <MenuItem key={value} value={value}>
+                  {label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ width: 180 }}>
+            <InputLabel id="user-status-filter">Status</InputLabel>
+            <Select
+              labelId="user-status-filter"
+              label="Status"
+              value={status}
+              onChange={(event) => {
+                setStatus(event.target.value);
+                setPage(1);
+              }}
+            >
+              <MenuItem value="">Todos</MenuItem>
+              <MenuItem value="active">Ativo</MenuItem>
+              <MenuItem value="suspended">Suspenso</MenuItem>
+            </Select>
+          </FormControl>
         </Stack>
-      </FormDialog>
+        {updateStatus.error && <Alert severity="error">{updateStatus.error.message}</Alert>}
+        <AsyncState isLoading={list.isLoading} error={list.error}>
+          <PaginatedTable<User>
+            columns={[
+              { key: 'name', label: 'Nome' },
+              { key: 'email', label: 'E-mail' },
+              {
+                key: 'role',
+                label: 'Papel',
+                render: (row) => roleLabels[row.role] ?? row.role,
+              },
+              {
+                key: 'tenantId',
+                label: 'Tenant',
+                render: (row) => (row.tenantId ? (tenantNames.get(row.tenantId) ?? row.tenantId) : '—'),
+              },
+              {
+                key: 'status',
+                label: 'Status',
+                render: (row) => (
+                  <Chip
+                    label={statusLabels[row.status] ?? row.status}
+                    color={row.status === 'active' ? 'success' : 'default'}
+                    size="small"
+                  />
+                ),
+              },
+              {
+                key: 'lastLoginAt',
+                label: 'Último login',
+                render: (row) =>
+                  row.lastLoginAt ? new Date(row.lastLoginAt).toLocaleString('pt-BR') : '—',
+              },
+            ]}
+            rows={list.data?.items ?? []}
+            total={list.data?.total ?? 0}
+            page={list.data?.page ?? page}
+            pageSize={list.data?.pageSize ?? pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              setPage(1);
+            }}
+            rowActions={(row) => (
+              <TableActionsMenu
+                actions={[
+                  {
+                    label: 'Editar',
+                    icon: <Edit fontSize="small" />,
+                    onClick: () => setEditing(row),
+                  },
+                  row.status === 'active'
+                    ? {
+                        label: 'Desativar',
+                        icon: <Block fontSize="small" />,
+                        color: 'error' as const,
+                        disabled: updateStatus.isPending,
+                        onClick: () => updateStatus.mutate({ id: row.id, status: 'suspended' }),
+                      }
+                    : {
+                        label: 'Ativar',
+                        icon: <CheckCircle fontSize="small" />,
+                        disabled: updateStatus.isPending,
+                        onClick: () => updateStatus.mutate({ id: row.id, status: 'active' }),
+                      },
+                ]}
+              />
+            )}
+          />
+        </AsyncState>
+      </Stack>
+
+      <UserFormDialog
+        open={creating || Boolean(editing)}
+        user={editing}
+        isSubmitting={create.isPending || update.isPending}
+        error={creating ? create.error : update.error}
+        onClose={() => {
+          setCreating(false);
+          setEditing(null);
+        }}
+        onSubmit={(data) => (creating ? create.mutate(data) : update.mutate(data))}
+      />
     </Stack>
   );
 }
