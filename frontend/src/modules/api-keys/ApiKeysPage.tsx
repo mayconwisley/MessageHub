@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Block } from '@mui/icons-material';
 import { Alert, Button, Chip, MenuItem, Stack, TextField } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -8,6 +9,7 @@ import { ApplicationAutocomplete } from '../../components/shared/ApplicationAuto
 import { AsyncState } from '../../components/shared/AsyncState';
 import { FormDialog } from '../../components/shared/FormDialog';
 import { PaginatedTable } from '../../components/shared/PaginatedTable';
+import { TableActionsMenu } from '../../components/shared/TableActionsMenu';
 import { TenantAutocomplete } from '../../components/shared/TenantAutocomplete';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { usePagination } from '../../hooks/usePagination';
@@ -63,11 +65,11 @@ export function ApiKeysPage() {
   return (
     <Stack spacing={3}>
       <PageHeader
-        title="API keys"
+        title="Chaves de API"
         description="Gere ou revogue chaves para uma aplicação. O valor completo é exibido apenas uma vez."
         action={
           <Button variant="contained" onClick={openCreate} sx={{ mt: 2 }}>
-            Gerar API key
+            Gerar chave de API
           </Button>
         }
       />
@@ -113,20 +115,23 @@ export function ApiKeysPage() {
               setPage(1);
             }}
             rowActions={(row) => (
-              <Button
-                size="small"
-                color="error"
-                disabled={row.status !== 'active' && row.status !== 'ACTIVE'}
-                onClick={() => revoke.mutate({ applicationId: applicationIdFilter, apiKeyId: row.id })}
-              >
-                Revogar
-              </Button>
+              <TableActionsMenu
+                actions={[
+                  {
+                    label: 'Revogar chave',
+                    icon: <Block fontSize="small" />,
+                    color: 'error',
+                    disabled: row.status !== 'active' && row.status !== 'ACTIVE',
+                    onClick: () => revoke.mutate({ applicationId: applicationIdFilter, apiKeyId: row.id }),
+                  },
+                ]}
+              />
             )}
           />
         </AsyncState>
       </Stack>
 
-      <FormDialog open={createOpen} onClose={closeCreate} title="Gerar API key">
+      <FormDialog open={createOpen} onClose={closeCreate} title="Gerar chave de API">
         <Stack spacing={2} sx={{ mt: 1 }}>
           {create.isSuccess ? (
             <>
@@ -175,7 +180,7 @@ export function ApiKeysPage() {
               </TextField>
               <TextField label="Expira em (opcional)" type="datetime-local" InputLabelProps={{ shrink: true }} {...form.register('expiresAt')} fullWidth />
               <Button type="submit" variant="contained" disabled={create.isPending}>
-                {create.isPending ? 'Gerando...' : 'Gerar API key'}
+                {create.isPending ? 'Gerando...' : 'Gerar chave de API'}
               </Button>
             </Stack>
           )}

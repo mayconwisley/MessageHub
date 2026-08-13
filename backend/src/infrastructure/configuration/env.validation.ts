@@ -6,6 +6,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  IsUUID,
   MinLength,
   Max,
   Min,
@@ -44,6 +45,18 @@ class EnvironmentVariables {
   @IsOptional()
   @IsIn(['true', 'false'])
   META_DEFAULT_CHANNEL_ENABLED?: string;
+
+  @IsOptional()
+  @IsUUID()
+  META_DEFAULT_CHANNEL_TENANT_ID?: string;
+
+  @IsOptional()
+  @IsString()
+  META_DEFAULT_CHANNEL_TENANT_NAME?: string;
+
+  @IsOptional()
+  @IsString()
+  META_DEFAULT_CHANNEL_APPLICATION_NAME?: string;
 
   @IsOptional()
   @IsString()
@@ -88,10 +101,14 @@ export function validateEnv(config: Record<string, unknown>): EnvironmentVariabl
 
   if (
     validatedConfig.META_DEFAULT_CHANNEL_ENABLED === 'true' &&
-    (!validatedConfig.META_GRAPH_API_URL_BASE || !validatedConfig.META_DEFAULT_CHANNEL_BEARER)
+    (!validatedConfig.META_GRAPH_API_URL_BASE ||
+      !validatedConfig.META_DEFAULT_CHANNEL_BEARER ||
+      !validatedConfig.META_DEFAULT_CHANNEL_TENANT_ID ||
+      !validatedConfig.META_DEFAULT_CHANNEL_TENANT_NAME ||
+      !validatedConfig.META_DEFAULT_CHANNEL_WABA_ID)
   ) {
     throw new Error(
-      'META_GRAPH_API_URL_BASE e META_DEFAULT_CHANNEL_BEARER sao obrigatorios quando o canal Meta padrao estiver habilitado.',
+      'META_GRAPH_API_URL_BASE, META_DEFAULT_CHANNEL_BEARER, META_DEFAULT_CHANNEL_TENANT_ID, META_DEFAULT_CHANNEL_TENANT_NAME e META_DEFAULT_CHANNEL_WABA_ID sao obrigatorios quando o canal Meta padrao estiver habilitado.',
     );
   }
 

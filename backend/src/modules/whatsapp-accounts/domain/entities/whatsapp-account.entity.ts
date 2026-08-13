@@ -45,7 +45,9 @@ export class WhatsAppAccount extends Entity<WhatsAppAccountProps> {
     const appSecret = params.appSecret?.trim() ?? null;
     if (credentialSource === WhatsAppCredentialSource.TENANT && !accessToken) {
       return Result.fail(
-        new InvalidWhatsAppAccountError('accessToken não deve estar vazio para credenciais de tenant.'),
+        new InvalidWhatsAppAccountError(
+          'accessToken não deve estar vazio para credenciais de tenant.',
+        ),
       );
     }
 
@@ -113,5 +115,23 @@ export class WhatsAppAccount extends Entity<WhatsAppAccountProps> {
 
   suspend(): void {
     this.props.status = WhatsAppAccountStatus.SUSPENDED;
+  }
+
+  synchronizeFromDefaultChannel(wabaId: string): Result<void, InvalidWhatsAppAccountError> {
+    const normalizedWabaId = wabaId?.trim();
+    if (!normalizedWabaId) {
+      return Result.fail(new InvalidWhatsAppAccountError('wabaId não deve estar vazio.'));
+    }
+    if (this.props.credentialSource !== WhatsAppCredentialSource.DEFAULT) {
+      return Result.fail(
+        new InvalidWhatsAppAccountError('A conta do canal padrão deve usar credenciais padrão.'),
+      );
+    }
+
+    this.props.wabaId = normalizedWabaId;
+    this.props.accessToken = null;
+    this.props.appSecret = null;
+    this.props.status = WhatsAppAccountStatus.ACTIVE;
+    return Result.ok(undefined);
   }
 }

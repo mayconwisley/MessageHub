@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Alert, Button, Card, CardContent, Chip, FormControl, InputLabel, MenuItem, Select, Stack, TextField, Typography } from '@mui/material';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { History, Visibility } from '@mui/icons-material';
+import { Alert, Button, Chip, FormControl, InputLabel, MenuItem, Select, Snackbar, Stack, TextField, Typography } from '@mui/material';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -8,6 +9,7 @@ import { AsyncState } from '../../components/shared/AsyncState';
 import { EntityResult } from '../../components/shared/EntityResult';
 import { FormDialog } from '../../components/shared/FormDialog';
 import { PaginatedTable } from '../../components/shared/PaginatedTable';
+import { TableActionsMenu } from '../../components/shared/TableActionsMenu';
 import { ApplicationAutocomplete } from '../../components/shared/ApplicationAutocomplete';
 import { PhoneNumberAutocomplete } from '../../components/shared/PhoneNumberAutocomplete';
 import { TenantAutocomplete } from '../../components/shared/TenantAutocomplete';
@@ -16,6 +18,8 @@ import { usePagination } from '../../hooks/usePagination';
 import { applicationsApi } from '../applications/applications.api';
 import { tenantsApi } from '../tenants/tenants.api';
 import { messagesApi, type Message } from './messages.api';
+import { ApiError } from '../../services/http-client';
+import { toPresentationValue } from '../../lib/presentation';
 
 const schema = z.object({
   phoneNumberId: z.string().uuid('Informe um UUID válido.'),
@@ -44,11 +48,26 @@ export function MessagesPage() {
   const [tenantId, setTenantId] = useState('');
   const [applicationId, setApplicationId] = useState('');
   const [status, setStatus] = useState('');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [detailsMessageId, setDetailsMessageId] = useState<string | null>(null);
+  const [attemptsMessageId, setAttemptsMessageId] = useState<string | null>(null);
   const [sendOpen, setSendOpen] = useState(false);
+  const [feedback, setFeedback] = useState<{ severity: 'success' | 'error'; message: string } | null>(null);
+  const client = useQueryClient();
   const form = useForm<FormData>({ resolver: zodResolver(schema) });
-  const send = useMutation({ mutationFn: (data: FormData) => messagesApi.send({ ...data, applicationId }) });
-  const get = useMutation({ mutationFn: (id: string) => messagesApi.get(id, applicationId) });
+  const send = useMutation({
+    mutationFn: (data: FormData) => messagesApi.send({ ...data, applicationId }),
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ['messages', applicationId] });
+      setFeedback({
+        severity: 'success',
+        message: 'Mensagem enfileirada para envio. Acompanhe o status na lista abaixo.',
+      });
+    },
+    onError: (error) => {
+      const requestId = error instanceof ApiError && error.requestId ? ` Protocolo: ${error.requestId}.` : '';
+      setFeedback({ severity: 'error', message: `Não foi possível enviar a mensagem. ${error.message}${requestId}` });
+    },
+  });
 
   const validTenantId = z.string().uuid().safeParse(tenantId).success;
   const validApplicationId = z.string().uuid().safeParse(applicationId).success;
@@ -63,6 +82,12 @@ export function MessagesPage() {
     queryFn: () => applicationsApi.list({ tenantId, page: 1, pageSize: 100 }),
     enabled: validTenantId,
     staleTime: 60_000,
+  });
+  const health = useQuery({
+    queryKey: ['message-hub-health'],
+    queryFn: messagesApi.health,
+    refetchInterval: 15_000,
+    retry: false,
   });
 
   // Reduz cliques: seleciona automaticamente quando só existe uma opção disponível.
@@ -82,10 +107,15 @@ export function MessagesPage() {
     queryFn: () => messagesApi.list({ applicationId, page, pageSize, status: status || undefined }),
     enabled: validApplicationId,
   });
+  const details = useQuery({
+    queryKey: ['message', detailsMessageId, applicationId],
+    queryFn: () => messagesApi.get(detailsMessageId as string, applicationId),
+    enabled: !!detailsMessageId && validApplicationId,
+  });
   const attempts = useQuery({
-    queryKey: ['message-attempts', selectedId, applicationId],
-    queryFn: () => messagesApi.listAttempts(selectedId as string, applicationId),
-    enabled: !!selectedId && validApplicationId,
+    queryKey: ['message-attempts', attemptsMessageId, applicationId],
+    queryFn: () => messagesApi.listAttempts(attemptsMessageId as string, applicationId),
+    enabled: !!attemptsMessageId && validApplicationId,
   });
 
   const openSend = () => {
@@ -127,20 +157,11 @@ export function MessagesPage() {
           sx={{ maxWidth: 320, flexGrow: 1 }}
         />
       </Stack>
-      <Card variant="outlined">
-        <CardContent>
-          <Stack direction={{ xs: 'column', sm: 'row' }} component="form" spacing={2} onSubmit={(event) => { event.preventDefault(); const id = new FormData(event.currentTarget).get('id'); if (typeof id === 'string' && id) get.mutate(id); }}>
-            <TextField name="id" label="ID da mensagem" fullWidth />
-            <Button type="submit" variant="outlined" disabled={!validApplicationId} sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}>Consultar status</Button>
-          </Stack>
-          {get.error && <Alert severity="error" sx={{ mt: 2 }}>{get.error.message}</Alert>}
-          {get.data && (
-            <Stack sx={{ mt: 2 }}>
-              <EntityResult title="Resultado da consulta" data={get.data} />
-            </Stack>
-          )}
-        </CardContent>
-      </Card>
+      {health.error && (
+        <Alert severity="warning">
+          A fila RabbitMQ está indisponível. As mensagens continuarão como pendentes até a conexão ser restabelecida. Consulte <code>/health</code> para o diagnóstico técnico.
+        </Alert>
+      )}
       <Stack spacing={2}>
         <FormControl size="small" sx={{ width: 220 }}>
           <InputLabel id="message-status-filter">Status</InputLabel>
@@ -163,8 +184,8 @@ export function MessagesPage() {
           <PaginatedTable<Message>
             columns={[
               { key: 'to', label: 'Destinatário' },
-              { key: 'type', label: 'Tipo' },
-              { key: 'status', label: 'Status', render: (row) => <Chip label={statusLabels[row.status] ?? row.status} size="small" /> },
+              { key: 'type', label: 'Tipo', render: (row) => toPresentationValue('type', row.type) },
+              { key: 'status', label: 'Status', render: (row) => <Chip label={toPresentationValue('status', row.status)} size="small" /> },
               { key: 'attemptCount', label: 'Tentativas' },
               { key: 'createdAt', label: 'Criado em', render: (row) => new Date(row.createdAt).toLocaleString('pt-BR') },
             ]}
@@ -178,7 +199,12 @@ export function MessagesPage() {
               setPage(1);
             }}
             rowActions={(row) => (
-              <Button size="small" onClick={() => setSelectedId(row.id)}>Tentativas</Button>
+              <TableActionsMenu
+                actions={[
+                  { label: 'Ver detalhes', icon: <Visibility fontSize="small" />, onClick: () => setDetailsMessageId(row.id) },
+                  { label: `Ver tentativas (${row.attemptCount})`, icon: <History fontSize="small" />, onClick: () => setAttemptsMessageId(row.id) },
+                ]}
+              />
             )}
           />
         </AsyncState>
@@ -218,9 +244,25 @@ export function MessagesPage() {
         </Stack>
       </FormDialog>
 
-      <FormDialog open={!!selectedId} onClose={() => setSelectedId(null)} title="Tentativas de entrega">
+      <FormDialog open={!!detailsMessageId} onClose={() => setDetailsMessageId(null)} title="Detalhes da mensagem">
         <Stack sx={{ mt: 1 }}>
-          <AsyncState isLoading={attempts.isLoading} error={attempts.error} emptyMessage={attempts.data?.length === 0 ? 'Nenhuma tentativa registrada.' : undefined}>
+          <AsyncState isLoading={details.isLoading} error={details.error}>
+            <EntityResult title="Mensagem" data={details.data ?? null} />
+          </AsyncState>
+        </Stack>
+      </FormDialog>
+
+      <FormDialog open={!!attemptsMessageId} onClose={() => setAttemptsMessageId(null)} title="Tentativas de entrega">
+        <Stack sx={{ mt: 1 }}>
+          <AsyncState
+            isLoading={attempts.isLoading}
+            error={attempts.error}
+            emptyMessage={
+              attempts.data?.length === 0
+                ? 'Nenhuma tentativa registrada. A mensagem ainda aguarda consumo pela fila RabbitMQ ou o worker ainda não iniciou o processamento.'
+                : undefined
+            }
+          >
             <Stack spacing={1}>
               {attempts.data?.map((attempt) => (
                 <Stack key={attempt.id} direction="row" justifyContent="space-between" alignItems="center" sx={{ py: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
@@ -239,6 +281,19 @@ export function MessagesPage() {
           </AsyncState>
         </Stack>
       </FormDialog>
+
+      <Snackbar
+        open={!!feedback}
+        autoHideDuration={8000}
+        onClose={(_, reason) => {
+          if (reason !== 'clickaway') setFeedback(null);
+        }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert severity={feedback?.severity ?? 'success'} variant="filled" onClose={() => setFeedback(null)}>
+          {feedback?.message}
+        </Alert>
+      </Snackbar>
     </Stack>
   );
 }

@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Visibility } from '@mui/icons-material';
 import {
   Alert,
   Button,
@@ -22,6 +23,7 @@ import { AsyncState } from '../../components/shared/AsyncState';
 import { EntityResult } from '../../components/shared/EntityResult';
 import { FormDialog } from '../../components/shared/FormDialog';
 import { PaginatedTable } from '../../components/shared/PaginatedTable';
+import { TableActionsMenu } from '../../components/shared/TableActionsMenu';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { usePagination } from '../../hooks/usePagination';
 import { tenantsApi, type Tenant } from './tenants.api';
@@ -138,9 +140,9 @@ export function TenantsPage() {
               setPage(1);
             }}
             rowActions={(row) => (
-              <Button size="small" onClick={() => setSelectedId(row.id)}>
-                Detalhes
-              </Button>
+              <TableActionsMenu
+                actions={[{ label: 'Ver detalhes', icon: <Visibility fontSize="small" />, onClick: () => setSelectedId(row.id) }]}
+              />
             )}
           />
         </AsyncState>

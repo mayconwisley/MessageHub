@@ -7,6 +7,7 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { AppConfigService } from './infrastructure/configuration/app-config.service';
 import { translateValidationErrors } from './presentation/http/validation-message.translator';
+import { DefaultChannelSeedService } from './modules/whatsapp-accounts/application/services/default-channel-seed.service';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { rawBody: true });
@@ -14,6 +15,7 @@ async function bootstrap(): Promise<void> {
   app.useLogger(logger);
 
   const appConfig = app.get(AppConfigService);
+  await app.get(DefaultChannelSeedService).synchronize();
 
   app.use(helmet());
   app.use(compression());

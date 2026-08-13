@@ -13,6 +13,13 @@ export interface Message {
   [key: string]: unknown;
 }
 
+export interface HealthCheck {
+  status: 'ok' | 'error';
+  details: {
+    rabbitmq?: { status: 'up' | 'down'; message?: string };
+  };
+}
+
 export interface MessageAttempt {
   id: string;
   attemptNumber: number;
@@ -31,4 +38,5 @@ export const messagesApi = {
     request<PaginatedResult<Message>>(`/v1/messages${toQueryString(params)}`),
   listAttempts: (id: string, applicationId: string) =>
     request<MessageAttempt[]>(`/v1/messages/${id}/attempts${toQueryString({ applicationId })}`),
+  health: () => request<HealthCheck>('/health'),
 };

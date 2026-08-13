@@ -87,6 +87,11 @@ export class Application extends Entity<ApplicationProps> {
     this.props.status = ApplicationStatus.ACTIVE;
   }
 
+  synchronizeFromDefaultChannel(name: string): void {
+    this.props.name = name.trim();
+    this.activate();
+  }
+
   /** Configura (ou remove, quando url e null) o callback de status de mensagens. Gera um novo segredo apenas quando a URL passa de nao-configurada para configurada. */
   configureWebhook(url: string | null): void {
     if (!url) {

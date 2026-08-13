@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Visibility } from '@mui/icons-material';
 import { Alert, Button, Chip, FormControl, InputLabel, MenuItem, Select, Stack, TextField } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -8,6 +9,7 @@ import { AsyncState } from '../../components/shared/AsyncState';
 import { EntityResult } from '../../components/shared/EntityResult';
 import { FormDialog } from '../../components/shared/FormDialog';
 import { PaginatedTable } from '../../components/shared/PaginatedTable';
+import { TableActionsMenu } from '../../components/shared/TableActionsMenu';
 import { TenantAutocomplete } from '../../components/shared/TenantAutocomplete';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { usePagination } from '../../hooks/usePagination';
@@ -15,15 +17,20 @@ import { whatsAppAccountsApi, type WhatsAppAccount } from './whatsapp-accounts.a
 
 const schema = z.object({
   tenantId: z.string().uuid('Informe um UUID válido.'),
-  wabaId: z.string().min(1, 'Informe o WABA ID.'),
-  credentialSource: z.enum(['default', 'tenant']),
+  wabaId: z.string().min(1, 'Informe o ID da conta WhatsApp (WABA).'),
   accessToken: z.string().optional(),
   appSecret: z.string().optional(),
 });
 type FormData = z.infer<typeof schema>;
 
-const statusLabels: Record<string, string> = { ACTIVE: 'Ativo', SUSPENDED: 'Suspenso' };
-const credentialSourceLabels: Record<string, string> = { default: 'Padrão', tenant: 'Tenant' };
+const statusLabels: Record<string, string> = {
+  ACTIVE: 'Ativo',
+  SUSPENDED: 'Suspenso',
+};
+const credentialSourceLabels: Record<string, string> = {
+  default: 'Padrão',
+  tenant: 'Tenant',
+};
 
 export function WhatsAppAccountsPage() {
   const { page, pageSize, setPage, setPageSize } = usePagination();
@@ -32,7 +39,7 @@ export function WhatsAppAccountsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const client = useQueryClient();
-  const form = useForm<FormData>({ resolver: zodResolver(schema), defaultValues: { credentialSource: 'default' } });
+  const form = useForm<FormData>({ resolver: zodResolver(schema) });
   const create = useMutation({
     mutationFn: whatsAppAccountsApi.create,
     onSuccess: () => {
@@ -48,12 +55,18 @@ export function WhatsAppAccountsPage() {
   const validTenantFilter = z.string().uuid().safeParse(tenantIdFilter).success;
   const list = useQuery({
     queryKey: ['whatsapp-accounts', tenantIdFilter, status, page, pageSize],
-    queryFn: () => whatsAppAccountsApi.list({ tenantId: tenantIdFilter, page, pageSize, status: status || undefined }),
+    queryFn: () =>
+      whatsAppAccountsApi.list({
+        tenantId: tenantIdFilter,
+        page,
+        pageSize,
+        status: status || undefined,
+      }),
     enabled: validTenantFilter,
   });
 
   const openCreate = () => {
-    form.reset({ credentialSource: 'default' });
+    form.reset();
     create.reset();
     setCreateOpen(true);
   };
@@ -63,7 +76,7 @@ export function WhatsAppAccountsPage() {
     <Stack spacing={3}>
       <PageHeader
         title="Contas WhatsApp"
-        description="Registre a WABA e a origem segura das credenciais de cada tenant."
+        description="Registre a conta WhatsApp (WABA) e a origem segura das credenciais de cada tenant."
         action={
           <Button variant="contained" onClick={openCreate} sx={{ mt: 2 }}>
             Registrar conta
@@ -98,13 +111,29 @@ export function WhatsAppAccountsPage() {
             </Select>
           </FormControl>
         </Stack>
-        <AsyncState isLoading={validTenantFilter && list.isLoading} error={list.error} emptyMessage={validTenantFilter ? undefined : 'Selecione um tenant para listar as contas.'}>
+        <AsyncState
+          isLoading={validTenantFilter && list.isLoading}
+          error={list.error}
+          emptyMessage={validTenantFilter ? undefined : 'Selecione um tenant para listar as contas.'}
+        >
           <PaginatedTable<WhatsAppAccount>
             columns={[
-              { key: 'wabaId', label: 'WABA ID' },
-              { key: 'credentialSource', label: 'Origem', render: (row) => credentialSourceLabels[row.credentialSource] ?? row.credentialSource },
-              { key: 'status', label: 'Status', render: (row) => <Chip label={statusLabels[row.status] ?? row.status} size="small" /> },
-              { key: 'createdAt', label: 'Criado em', render: (row) => new Date(row.createdAt).toLocaleString('pt-BR') },
+              { key: 'wabaId', label: 'ID da conta WhatsApp (WABA)' },
+              {
+                key: 'credentialSource',
+                label: 'Origem',
+                render: (row) => credentialSourceLabels[row.credentialSource] ?? row.credentialSource,
+              },
+              {
+                key: 'status',
+                label: 'Status',
+                render: (row) => <Chip label={statusLabels[row.status] ?? row.status} size="small" />,
+              },
+              {
+                key: 'createdAt',
+                label: 'Criado em',
+                render: (row) => new Date(row.createdAt).toLocaleString('pt-BR'),
+              },
             ]}
             rows={list.data?.items ?? []}
             total={list.data?.total ?? 0}
@@ -116,9 +145,9 @@ export function WhatsAppAccountsPage() {
               setPage(1);
             }}
             rowActions={(row) => (
-              <Button size="small" onClick={() => setSelectedId(row.id)}>
-                Detalhes
-              </Button>
+              <TableActionsMenu
+                actions={[{ label: 'Ver detalhes', icon: <Visibility fontSize="small" />, onClick: () => setSelectedId(row.id) }]}
+              />
             )}
           />
         </AsyncState>
@@ -135,7 +164,11 @@ export function WhatsAppAccountsPage() {
               </Button>
             </>
           ) : (
-            <Stack component="form" spacing={2} onSubmit={form.handleSubmit((data) => create.mutate(data))}>
+            <Stack
+              component="form"
+              spacing={2}
+              onSubmit={form.handleSubmit((data) => create.mutate({ ...data, credentialSource: 'tenant' }))}
+            >
               {create.error && <Alert severity="error">{create.error.message}</Alert>}
               <Controller
                 name="tenantId"
@@ -150,13 +183,15 @@ export function WhatsAppAccountsPage() {
                   />
                 )}
               />
-              <TextField label="WABA ID" {...form.register('wabaId')} error={!!form.formState.errors.wabaId} helperText={form.formState.errors.wabaId?.message} fullWidth />
-              <TextField label="Origem da credencial" select {...form.register('credentialSource')} fullWidth>
-                <MenuItem value="default">{credentialSourceLabels.default}</MenuItem>
-                <MenuItem value="tenant">{credentialSourceLabels.tenant}</MenuItem>
-              </TextField>
-              <TextField label="Access token (somente origem tenant)" type="password" autoComplete="off" {...form.register('accessToken')} fullWidth />
-              <TextField label="App secret (opcional)" type="password" autoComplete="off" {...form.register('appSecret')} fullWidth />
+              <TextField
+                label="ID da conta WhatsApp (WABA)"
+                {...form.register('wabaId')}
+                error={!!form.formState.errors.wabaId}
+                helperText={form.formState.errors.wabaId?.message}
+                fullWidth
+              />
+              <TextField label="Token de acesso" type="password" autoComplete="off" {...form.register('accessToken')} fullWidth />
+              <TextField label="Segredo do aplicativo (opcional)" type="password" autoComplete="off" {...form.register('appSecret')} fullWidth />
               <Button type="submit" variant="contained" disabled={create.isPending}>
                 {create.isPending ? 'Salvando...' : 'Registrar conta'}
               </Button>

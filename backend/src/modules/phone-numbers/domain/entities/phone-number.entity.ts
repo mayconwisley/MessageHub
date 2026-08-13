@@ -81,4 +81,21 @@ export class PhoneNumber extends Entity<PhoneNumberProps> {
   suspend(): void {
     this.props.status = PhoneNumberStatus.SUSPENDED;
   }
+
+  synchronizeFromDefaultChannel(
+    phoneNumberId: string,
+    displayNumber: string,
+  ): Result<void, InvalidPhoneNumberError> {
+    const normalizedPhoneNumberId = phoneNumberId?.trim();
+    const normalizedDisplayNumber = displayNumber?.trim();
+    if (!normalizedPhoneNumberId || !normalizedDisplayNumber) {
+      return Result.fail(
+        new InvalidPhoneNumberError('phoneNumberId e displayNumber não devem estar vazios.'),
+      );
+    }
+    this.props.phoneNumberId = normalizedPhoneNumberId;
+    this.props.displayNumber = normalizedDisplayNumber;
+    this.props.status = PhoneNumberStatus.ACTIVE;
+    return Result.ok(undefined);
+  }
 }

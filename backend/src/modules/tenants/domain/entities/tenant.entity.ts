@@ -63,4 +63,9 @@ export class Tenant extends Entity<TenantProps> {
   activate(): void {
     this.props.status = TenantStatus.ACTIVE;
   }
+
+  synchronizeFromDefaultChannel(name: string): void {
+    this.props.name = name.trim();
+    this.activate();
+  }
 }

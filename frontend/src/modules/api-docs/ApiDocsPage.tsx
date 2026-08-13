@@ -117,8 +117,8 @@ const templateEndpoints: Endpoint[] = [
   {
     method: 'GET',
     path: '/v1/templates',
-    title: 'Listar templates',
-    description: 'Lista paginada dos templates de uma conta WhatsApp. Use sync=true para forçar a sincronização com a Meta antes de listar.',
+    title: 'Listar modelos de mensagem',
+    description: 'Lista paginada dos modelos de mensagem de uma conta WhatsApp. Use sync=true para forçar a sincronização com a Meta antes de listar.',
     curl: buildCurl('GET', '/v1/templates?whatsAppAccountId=22222222-2222-2222-2222-222222222222&page=1&pageSize=20'),
   },
   {
@@ -148,14 +148,14 @@ const templateEndpoints: Endpoint[] = [
   {
     method: 'POST',
     path: '/v1/templates/sync',
-    title: 'Sincronizar templates com a Meta',
-    description: 'Busca na Meta o status atual de todos os templates da conta e atualiza os registros locais.',
+    title: 'Sincronizar modelos de mensagem com a Meta',
+    description: 'Busca na Meta o status atual de todos os modelos de mensagem da conta e atualiza os registros locais.',
     curl: buildCurl('POST', '/v1/templates/sync', { whatsAppAccountId: '22222222-2222-2222-2222-222222222222' }),
   },
   {
     method: 'POST',
     path: '/v1/templates/publish-pending',
-    title: 'Publicar templates pendentes',
+    title: 'Publicar modelos de mensagem pendentes',
     description: 'Reenvia para aprovação da Meta os templates que ainda estão pendentes de publicação.',
     curl: buildCurl('POST', '/v1/templates/publish-pending', { whatsAppAccountId: '22222222-2222-2222-2222-222222222222' }),
   },
@@ -191,7 +191,7 @@ export function ApiDocsPage() {
     <Stack spacing={3}>
       <PageHeader
         title="Documentação da API"
-        description="Endpoints públicos para enviar mensagens e gerenciar templates a partir de outras aplicações."
+        description="Endpoints públicos para enviar mensagens e gerenciar modelos de mensagem a partir de outras aplicações."
       />
 
       <Card variant="outlined">
@@ -200,7 +200,7 @@ export function ApiDocsPage() {
             <Typography variant="h6">Como autenticar</Typography>
             <Typography color="text.secondary">
               Todas as chamadas abaixo usam uma API key de aplicação (não a sessão administrativa). Gere ou copie
-              a chave em <Link href="/api-keys">API keys</Link> e informe-a no header{' '}
+              a chave em <Link href="/api-keys">Chaves de API</Link> e informe-a no cabeçalho{' '}
               <Typography component="code" sx={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace' }}>
                 Authorization: Bearer wh_live_...
               </Typography>{' '}
@@ -238,7 +238,7 @@ export function ApiDocsPage() {
       </Stack>
 
       <Stack spacing={1.5}>
-        <Typography variant="h6">Templates</Typography>
+        <Typography variant="h6">Modelos de mensagem</Typography>
         <Stack spacing={1}>
           {templateEndpoints.map((endpoint) => (
             <EndpointAccordion key={`${endpoint.method}-${endpoint.path}`} endpoint={endpoint} />

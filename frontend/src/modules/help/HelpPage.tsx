@@ -78,7 +78,7 @@ const sections: Section[] = [
     steps: [
       'Selecione um tenant em "Filtrar por tenant" (e, opcionalmente, um "Status") para ver as contas cadastradas.',
       'Clique em "Registrar conta", escolha o "Tenant", informe o "WABA ID" e a "Origem da credencial" (Padrão ou Tenant).',
-      'Se a origem for "Tenant", preencha também "Access token (somente origem tenant)" e, se aplicável, "App secret (opcional)".',
+      'Se a origem for "Tenant", preencha também "Token de acesso" e, se aplicável, "Segredo do aplicativo (opcional)".',
       'Clique em "Detalhes" em qualquer linha para consultar os dados da conta.',
     ],
     notes: [
@@ -92,7 +92,7 @@ const sections: Section[] = [
     steps: [
       'Selecione um tenant em "Filtrar por tenant" (e, opcionalmente, um "Status") para ver os números cadastrados.',
       'Clique em "Registrar número" e escolha o "Tenant" — isso habilita o campo "Conta WhatsApp".',
-      'Escolha a "Conta WhatsApp" e informe o "Phone Number ID (Meta)" e o "Número de exibição" (ex.: +5511999999999).',
+      'Escolha a "Conta WhatsApp" e informe o "ID do número de telefone (Meta)" e o "Número de exibição" (ex.: +5511999999999).',
     ],
     notes: [
       { severity: 'warning', text: 'É preciso ter uma conta WhatsApp cadastrada para esse tenant antes de registrar um número — sem isso, o campo "Conta WhatsApp" mostra "Nenhuma conta encontrada".' },
@@ -100,11 +100,11 @@ const sections: Section[] = [
   },
   {
     icon: <VpnKeyOutlined />,
-    title: 'API keys',
-    purpose: 'Gera e revoga as chaves usadas por outras aplicações (integrações externas) para consumir a API de mensagens e templates. O próprio console não usa essas chaves — as telas de Mensagens e Templates operam com a sua sessão administrativa.',
+    title: 'Chaves de API',
+    purpose: 'Gera e revoga as chaves usadas por outras aplicações (integrações externas) para consumir a API de mensagens e modelos de mensagem. O próprio console não usa essas chaves — as telas de Mensagens e Modelos de mensagem operam com a sua sessão administrativa.',
     steps: [
       'Selecione "Filtrar por tenant" e depois "Filtrar por aplicação" para ver as chaves de uma aplicação.',
-      'Clique em "Gerar API key", escolha "Tenant" e "Aplicação", o "Tipo" (Plataforma ou Tenant) e, se quiser, uma data em "Expira em (opcional)".',
+      'Clique em "Gerar chave de API", escolha "Tenant" e "Aplicação", o "Tipo" (Plataforma ou Tenant) e, se quiser, uma data em "Expira em (opcional)".',
       'Copie o valor completo da chave exibido no alerta imediatamente após a criação.',
       'Para desativar uma chave, clique em "Revogar" na linha correspondente — chaves já revogadas não podem ser revogadas de novo.',
     ],
@@ -131,24 +131,24 @@ const sections: Section[] = [
     purpose: 'Envia mensagens de texto avulsas a partir de um número cadastrado e acompanha o status do processamento e da entrega.',
     steps: [
       'Selecione "Tenant" e "Aplicação" no topo da tela — esses filtros definem de onde as mensagens são listadas e em nome de qual aplicação uma nova mensagem é enviada. Quando só existe uma opção, ela é selecionada automaticamente.',
-      'Para consultar uma mensagem específica, informe o "ID da mensagem" e clique em "Consultar status".',
+      'Para consultar uma mensagem específica, use a ação "Ver detalhes" da respectiva linha.',
       'Use o filtro "Status" para navegar pela lista (Pendente, Processando, Enviada, Entregue, Lida, Falhou, Repetindo).',
       'Clique em "Enviar mensagem", escolha o número de origem, informe o "Destinatário" (ex.: +5511999999999) e o texto em "Mensagem" (até 4096 caracteres).',
       'Clique em "Tentativas" em qualquer linha para ver o histórico de tentativas de entrega daquela mensagem.',
     ],
     notes: [
-      { severity: 'info', text: 'O status muda automaticamente conforme o processamento avança (Pendente → Processando → Enviada/Entregue/Lida, ou Falhou/Repetindo em caso de erro). Use "Consultar status" para acompanhar a evolução.' },
+      { severity: 'info', text: 'O status muda automaticamente conforme o processamento avança (Pendente → Processando → Enviada/Entregue/Lida, ou Falhou/Repetindo em caso de erro). Use as ações da linha para ver detalhes e tentativas.' },
     ],
   },
   {
     icon: <SettingsOutlined />,
-    title: 'Templates',
-    purpose: 'Cadastra, edita, sincroniza e publica os templates de mensagem (modelos pré-aprovados pela Meta) de uma conta WhatsApp.',
+    title: 'Modelos de mensagem',
+    purpose: 'Cadastra, edita, sincroniza e publica os modelos de mensagem pré-aprovados pela Meta em uma conta WhatsApp.',
     steps: [
-      'Selecione "Filtrar por tenant" e depois "Filtrar por conta WhatsApp" para ver os templates dessa conta. Refine com os filtros "Status" e "Categoria" se necessário.',
-      'Use "Sincronizar com Meta" para atualizar o status dos templates a partir da Meta, ou "Publicar pendentes" para reenviar os que ainda estão como rascunho.',
-      'Clique em "Criar template" e informe Tenant, Conta WhatsApp, Nome, Idioma, Categoria e o "Texto do corpo".',
-      'Use "Editar" em uma linha para alterar Categoria e Texto do corpo (nome, idioma e conta não podem mais ser alterados), ou "Excluir" para remover o template.',
+      'Selecione "Filtrar por tenant" e depois "Filtrar por conta WhatsApp" para ver os modelos dessa conta. Refine com os filtros "Status" e "Categoria" se necessário.',
+      'Use "Sincronizar com a Meta" para atualizar o status dos modelos a partir da Meta, ou "Publicar pendentes" para reenviar os que ainda estão como rascunho.',
+      'Clique em "Criar modelo" e informe Tenant, Conta WhatsApp, Nome, Idioma, Categoria e o "Texto do corpo".',
+      'Use "Editar modelo" em uma linha para alterar Categoria e Texto do corpo (nome, idioma e conta não podem mais ser alterados), ou "Excluir modelo" para remover o registro.',
     ],
     notes: [
       { severity: 'warning', text: 'O status de aprovação (Rascunho, Pendente, Aprovado, Rejeitado, Pausado, Desativado) é definido pela Meta e pode mudar sem ação do usuário — sincronize periodicamente para manter o console atualizado.' },
@@ -159,7 +159,7 @@ const sections: Section[] = [
     title: 'Documentação da API',
     purpose: 'Referência de endpoints para times que vão integrar sistemas externos ao Hub via API (envio de mensagens e gestão de templates), com exemplos de requisição prontos para copiar.',
     steps: [
-      'Gere ou copie uma API key na tela "API keys" antes de testar os exemplos.',
+      'Gere ou copie uma chave de API na tela "Chaves de API" antes de testar os exemplos.',
       'Use o botão "Copiar" em cada bloco de código para copiar o comando de exemplo.',
       'Para o contrato completo de todos os endpoints, use o botão "Referência completa (Swagger)".',
     ],
@@ -220,9 +220,9 @@ export function HelpPage() {
                 'Aplicações — vincule a aplicação consumidora ao tenant.',
                 'Contas WhatsApp — registre a WABA da Meta para o tenant.',
                 'Números — registre os números de telefone dessa conta.',
-                'Templates — cadastre e publique os modelos de mensagem, se for enviar templates.',
+                'Modelos de mensagem — cadastre e publique os modelos que serão enviados.',
                 'Mensagens — envie mensagens e acompanhe o status de entrega.',
-                'API keys — gere uma chave apenas se outra aplicação for integrar com o Hub via API.',
+                'Chaves de API — gere uma chave apenas se outra aplicação for integrar com o Hub via API.',
               ].map((step, index) => (
                 <ListItem key={step} disableGutters alignItems="flex-start">
                   <ListItemIcon sx={{ minWidth: 32, mt: '2px' }}>
@@ -235,7 +235,7 @@ export function HelpPage() {
             <Divider />
             <Alert severity="info" icon={<AdminPanelSettingsOutlined fontSize="small" />}>
               Todas as telas de administração exigem login com um usuário que tenha papel administrativo, inclusive
-              Mensagens e Templates. A API key de aplicação (wh_live_...) só é necessária para integrações externas
+              Mensagens e modelos de mensagem. A chave de API de aplicação (wh_live_...) só é necessária para integrações externas
               que chamam a API diretamente — veja "Documentação da API".
             </Alert>
           </Stack>

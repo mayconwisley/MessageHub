@@ -20,6 +20,8 @@ import { AdministrationSecurityModule } from './presentation/http/administration
 import { GlobalExceptionFilter } from './presentation/http/filters/global-exception.filter';
 import { AuditLogInterceptor } from './presentation/http/interceptors/audit-log.interceptor';
 import { AppThrottlerGuard } from './presentation/http/guards/app-throttler.guard';
+import { DefaultChannelSeedService } from './modules/whatsapp-accounts/application/services/default-channel-seed.service';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -41,12 +43,14 @@ import { AppThrottlerGuard } from './presentation/http/guards/app-throttler.guar
     MessagesModule,
     TemplatesModule,
     WebhooksModule,
+    DashboardModule,
   ],
   controllers: [HealthController],
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
     { provide: APP_INTERCEPTOR, useClass: AuditLogInterceptor },
     { provide: APP_GUARD, useClass: AppThrottlerGuard },
+    DefaultChannelSeedService,
   ],
 })
 export class AppModule {}

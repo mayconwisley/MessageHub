@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Delete, Edit } from '@mui/icons-material';
 import { Alert, Button, Chip, FormControl, InputLabel, MenuItem, Select, Stack, TextField } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -7,6 +8,7 @@ import { z } from 'zod';
 import { AsyncState } from '../../components/shared/AsyncState';
 import { FormDialog } from '../../components/shared/FormDialog';
 import { PaginatedTable } from '../../components/shared/PaginatedTable';
+import { TableActionsMenu } from '../../components/shared/TableActionsMenu';
 import { TenantAutocomplete } from '../../components/shared/TenantAutocomplete';
 import { WhatsAppAccountAutocomplete } from '../../components/shared/WhatsAppAccountAutocomplete';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -114,11 +116,11 @@ export function TemplatesPage() {
   return (
     <Stack spacing={3}>
       <PageHeader
-        title="Templates"
-        description="Cadastre, edite e sincronize templates da conta WhatsApp selecionada."
+        title="Modelos de mensagem"
+        description="Cadastre, edite e sincronize os modelos de mensagem da conta WhatsApp selecionada."
         action={
           <Button variant="contained" onClick={openCreate} sx={{ mt: 2 }}>
-            Criar template
+            Criar modelo
           </Button>
         }
       />
@@ -170,15 +172,15 @@ export function TemplatesPage() {
             }}
             sx={{ width: 200 }}
           />
-          <Button type="button" variant="outlined" onClick={() => sync.mutate()} disabled={!validAccount || sync.isPending} sx={{ whiteSpace: 'nowrap' }}>Sincronizar com Meta</Button>
+          <Button type="button" variant="outlined" onClick={() => sync.mutate()} disabled={!validAccount || sync.isPending} sx={{ whiteSpace: 'nowrap' }}>Sincronizar com a Meta</Button>
           <Button type="button" variant="outlined" onClick={() => publishPending.mutate()} disabled={!validAccount || publishPending.isPending} sx={{ whiteSpace: 'nowrap' }}>Publicar pendentes</Button>
         </Stack>
         {sync.error && <Alert severity="error">{sync.error.message}</Alert>}
-        {sync.data && <Alert severity="success">Sincronização concluída: {sync.data.total} templates processados.</Alert>}
+        {sync.data && <Alert severity="success">Sincronização concluída: {sync.data.total} modelos processados.</Alert>}
         {publishPending.error && <Alert severity="error">{publishPending.error.message}</Alert>}
-        {publishPending.data && <Alert severity="success">Publicação concluída: {publishPending.data.total} templates processados.</Alert>}
+        {publishPending.data && <Alert severity="success">Publicação concluída: {publishPending.data.total} modelos processados.</Alert>}
         {remove.error && <Alert severity="error">{remove.error.message}</Alert>}
-        <AsyncState isLoading={validAccount && list.isLoading} error={list.error} emptyMessage={validAccount ? undefined : 'Informe uma conta válida para listar os templates.'}>
+        <AsyncState isLoading={validAccount && list.isLoading} error={list.error} emptyMessage={validAccount ? undefined : 'Informe uma conta válida para listar os modelos.'}>
           <PaginatedTable<Template>
             columns={[
               { key: 'name', label: 'Nome' },
@@ -196,20 +198,22 @@ export function TemplatesPage() {
               setPage(1);
             }}
             rowActions={(row) => (
-              <Stack direction="row" spacing={1} justifyContent="flex-end">
-                <Button size="small" onClick={() => startEdit(row)}>Editar</Button>
-                <Button size="small" color="error" onClick={() => remove.mutate(row.id)} disabled={remove.isPending}>Excluir</Button>
-              </Stack>
+              <TableActionsMenu
+                actions={[
+                  { label: 'Editar modelo', icon: <Edit fontSize="small" />, onClick: () => startEdit(row) },
+                  { label: 'Excluir modelo', icon: <Delete fontSize="small" />, color: 'error', disabled: remove.isPending, onClick: () => remove.mutate(row.id) },
+                ]}
+              />
             )}
           />
         </AsyncState>
       </Stack>
 
-      <FormDialog open={createOpen} onClose={closeCreate} title="Novo template">
+      <FormDialog open={createOpen} onClose={closeCreate} title="Novo modelo de mensagem">
         <Stack spacing={2} sx={{ mt: 1 }}>
           {create.isSuccess ? (
             <>
-              <Alert severity="success">Template criado com sucesso.</Alert>
+              <Alert severity="success">Modelo criado com sucesso.</Alert>
               <Button variant="contained" onClick={closeCreate}>
                 Fechar
               </Button>
@@ -250,13 +254,13 @@ export function TemplatesPage() {
               <TextField label="Idioma" {...createForm.register('language')} error={!!createForm.formState.errors.language} helperText={createForm.formState.errors.language?.message} fullWidth />
               <TextField label="Categoria" {...createForm.register('category')} error={!!createForm.formState.errors.category} helperText={createForm.formState.errors.category?.message} fullWidth />
               <TextField label="Texto do corpo" multiline minRows={4} {...createForm.register('body')} error={!!createForm.formState.errors.body} helperText={createForm.formState.errors.body?.message} fullWidth />
-              <Button type="submit" variant="contained" disabled={create.isPending}>Criar template</Button>
+              <Button type="submit" variant="contained" disabled={create.isPending}>Criar modelo</Button>
             </Stack>
           )}
         </Stack>
       </FormDialog>
 
-      <FormDialog open={!!editing} onClose={() => setEditing(null)} title={editing ? `Editar "${editing.name}"` : 'Editar template'}>
+      <FormDialog open={!!editing} onClose={() => setEditing(null)} title={editing ? `Editar "${editing.name}"` : 'Editar modelo'}>
         <Stack component="form" spacing={2} sx={{ mt: 1 }} onSubmit={editForm.handleSubmit((data) => update.mutate(data))}>
           {update.error && <Alert severity="error">{update.error.message}</Alert>}
           <TextField label="Categoria" {...editForm.register('category')} error={!!editForm.formState.errors.category} helperText={editForm.formState.errors.category?.message} fullWidth autoFocus />

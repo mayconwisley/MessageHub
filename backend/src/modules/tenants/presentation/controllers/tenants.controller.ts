@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  ForbiddenException,
   Get,
   HttpCode,
   HttpStatus,
@@ -27,6 +28,7 @@ import { PaginationQueryDto } from '@presentation/http/dto/pagination-query.dto'
 import { ListTenantsQuery } from '../../application/queries/list-tenants.query';
 import { PaginatedResult } from '@shared/types';
 import { TenantStatus } from '../../domain/enums/tenant-status.enum';
+import { MetaConfigService } from '@infrastructure/configuration/meta-config.service';
 
 class ListTenantsRequestDto extends PaginationQueryDto {
   @ApiPropertyOptional({ enum: TenantStatus })
@@ -46,7 +48,10 @@ class ListTenantsRequestDto extends PaginationQueryDto {
 @UseGuards(UserSessionAuthGuard, PlatformAdminGuard)
 @Controller('v1/tenants')
 export class TenantsController {
-  constructor(@Inject(MEDIATOR) private readonly mediator: IMediator) {}
+  constructor(
+    @Inject(MEDIATOR) private readonly mediator: IMediator,
+    private readonly metaConfig: MetaConfigService,
+  ) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -84,6 +89,11 @@ export class TenantsController {
     @Param('id') id: string,
     @Body() dto: UpdateTenantStatusRequestDto,
   ): Promise<TenantResponseDto> {
+    if (this.metaConfig.defaultChannelEnabled && id === this.metaConfig.defaultTenantId) {
+      throw new ForbiddenException(
+        'O tenant do canal padrão é gerenciado exclusivamente pelas variáveis de ambiente.',
+      );
+    }
     const result = await this.mediator.send(new UpdateTenantStatusCommand(id, dto.status));
     if (result.isFailure) {
       throw toHttpException(result.error);

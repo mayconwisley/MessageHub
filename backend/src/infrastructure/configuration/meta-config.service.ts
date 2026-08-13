@@ -21,6 +21,29 @@ export class MetaConfigService {
     return this.configService.get<string>('meta.defaultAccessToken', { infer: true }) ?? null;
   }
 
+  get defaultTenantId(): string | null {
+    return this.configService.get<string>('meta.defaultTenantId', { infer: true }) ?? null;
+  }
+
+  get defaultTenantName(): string | null {
+    return this.configService.get<string>('meta.defaultTenantName', { infer: true }) ?? null;
+  }
+
+  get defaultApplicationName(): string {
+    return (
+      this.configService.get<string>('meta.defaultApplicationName', { infer: true }) ??
+      'Console padrão da plataforma'
+    );
+  }
+
+  get defaultPhoneNumberId(): string | null {
+    return this.configService.get<string>('meta.defaultPhoneNumberId', { infer: true }) ?? null;
+  }
+
+  get defaultPhoneNumber(): string | null {
+    return this.configService.get<string>('meta.defaultPhoneNumber', { infer: true }) ?? null;
+  }
+
   get defaultWabaId(): string | null {
     return this.configService.get<string>('meta.defaultWabaId', { infer: true }) ?? null;
   }

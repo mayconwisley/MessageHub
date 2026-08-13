@@ -82,6 +82,8 @@ Cada WABA possui uma origem de credenciais, informada no campo `credentialSource
 
 O token e o `appSecret` opcional do webhook nunca são retornados pela API, incluídos em DTOs de resposta ou registrados nos logs. Ambos são cifrados em repouso. Após implantar, execute as migrations. Credenciais legadas são protegidas automaticamente na primeira leitura; recomenda-se a rotação de tokens após a implantação.
 
+Quando `META_DEFAULT_CHANNEL_ENABLED=true`, informe também `META_DEFAULT_CHANNEL_TENANT_ID` (UUID estável), `META_DEFAULT_CHANNEL_TENANT_NAME` e `META_DEFAULT_CHANNEL_WABA_ID`. A cada inicialização, o Hub cria ou reconcilia esse tenant e sua conta WhatsApp com `credentialSource=default`; mudanças nesses valores do `.env` passam a valer após reiniciar a API. Esse cadastro é somente leitura na interface e não deve ser gerenciado por endpoints administrativos.
+
 ## Exemplos de parâmetros em templates
 
 Componentes `HEADER` e `BODY` que possuem placeholders posicionais (`{{1}}`, `{{2}}`, etc.)

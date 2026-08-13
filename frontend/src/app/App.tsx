@@ -66,7 +66,7 @@ const navGroups: NavGroupConfig[] = [
       { to: '/applications', label: 'Aplicações', icon: <AppsOutlined /> },
       { to: '/whatsapp-accounts', label: 'Contas WhatsApp', icon: <SmartToyOutlined /> },
       { to: '/phone-numbers', label: 'Números', icon: <PhoneOutlined /> },
-      { to: '/api-keys', label: 'API keys', icon: <VpnKeyOutlined /> },
+      { to: '/api-keys', label: 'Chaves de API', icon: <VpnKeyOutlined /> },
       { to: '/users', label: 'Usuários', icon: <PeopleOutlined /> },
     ],
   },
@@ -75,7 +75,7 @@ const navGroups: NavGroupConfig[] = [
     icon: <ForumOutlined />,
     items: [
       { to: '/messages', label: 'Mensagens', icon: <ChatOutlined /> },
-      { to: '/templates', label: 'Templates', icon: <SettingsOutlined /> },
+      { to: '/templates', label: 'Modelos de mensagem', icon: <SettingsOutlined /> },
       { to: '/api-docs', label: 'Documentação da API', icon: <IntegrationInstructionsOutlined /> },
     ],
   },

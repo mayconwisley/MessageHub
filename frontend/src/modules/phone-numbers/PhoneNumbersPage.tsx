@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Visibility } from '@mui/icons-material';
 import { Alert, Button, Chip, FormControl, InputLabel, MenuItem, Select, Stack, TextField } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -8,6 +9,7 @@ import { AsyncState } from '../../components/shared/AsyncState';
 import { EntityResult } from '../../components/shared/EntityResult';
 import { FormDialog } from '../../components/shared/FormDialog';
 import { PaginatedTable } from '../../components/shared/PaginatedTable';
+import { TableActionsMenu } from '../../components/shared/TableActionsMenu';
 import { TenantAutocomplete } from '../../components/shared/TenantAutocomplete';
 import { WhatsAppAccountAutocomplete } from '../../components/shared/WhatsAppAccountAutocomplete';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -17,7 +19,7 @@ import { phoneNumbersApi, type PhoneNumber } from './phone-numbers.api';
 const schema = z.object({
   tenantId: z.string().uuid('Selecione um tenant.'),
   whatsAppAccountId: z.string().uuid('Selecione uma conta WhatsApp.'),
-  phoneNumberId: z.string().min(1, 'Informe o Phone Number ID.'),
+  phoneNumberId: z.string().min(1, 'Informe o ID do número de telefone.'),
   displayNumber: z.string().min(1, 'Informe o número de exibição.'),
 });
 type FormData = z.infer<typeof schema>;
@@ -107,7 +109,7 @@ export function PhoneNumbersPage() {
           <PaginatedTable<PhoneNumber>
             columns={[
               { key: 'displayNumber', label: 'Número' },
-              { key: 'phoneNumberId', label: 'Phone Number ID' },
+              { key: 'phoneNumberId', label: 'ID do número de telefone' },
               { key: 'status', label: 'Status', render: (row) => <Chip label={statusLabels[row.status] ?? row.status} size="small" /> },
               { key: 'createdAt', label: 'Criado em', render: (row) => new Date(row.createdAt).toLocaleString('pt-BR') },
             ]}
@@ -121,9 +123,9 @@ export function PhoneNumbersPage() {
               setPage(1);
             }}
             rowActions={(row) => (
-              <Button size="small" onClick={() => setSelectedId(row.id)}>
-                Detalhes
-              </Button>
+              <TableActionsMenu
+                actions={[{ label: 'Ver detalhes', icon: <Visibility fontSize="small" />, onClick: () => setSelectedId(row.id) }]}
+              />
             )}
           />
         </AsyncState>
@@ -171,7 +173,7 @@ export function PhoneNumbersPage() {
                   />
                 )}
               />
-              <TextField label="Phone Number ID (Meta)" {...form.register('phoneNumberId')} error={!!form.formState.errors.phoneNumberId} helperText={form.formState.errors.phoneNumberId?.message} fullWidth />
+              <TextField label="ID do número de telefone (Meta)" {...form.register('phoneNumberId')} error={!!form.formState.errors.phoneNumberId} helperText={form.formState.errors.phoneNumberId?.message} fullWidth />
               <TextField label="Número de exibição" placeholder="+5511999999999" {...form.register('displayNumber')} error={!!form.formState.errors.displayNumber} helperText={form.formState.errors.displayNumber?.message} fullWidth />
               <Button type="submit" variant="contained" disabled={create.isPending}>
                 {create.isPending ? 'Salvando...' : 'Registrar número'}

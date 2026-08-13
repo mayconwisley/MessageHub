@@ -70,6 +70,11 @@ export class WhatsAppAccountsController {
     @CurrentOptionalAuthContext() auth?: AuthContextDto,
     @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
   ): Promise<WhatsAppAccountResponseDto> {
+    if (dto.tenantId !== this.metaConfig.defaultTenantId) {
+      throw new BadRequestException(
+        'O canal padrão é sincronizado automaticamente somente para o tenant configurado no ambiente.',
+      );
+    }
     const tenantId = auth?.tenantId ?? user?.tenantId ?? this.requireTenantId(dto.tenantId);
     const result = await this.mediator.send(new EnsureDefaultChannelAccountCommand(tenantId));
     if (result.isFailure) {
@@ -86,6 +91,11 @@ export class WhatsAppAccountsController {
     @CurrentOptionalAuthContext() auth?: AuthContextDto,
     @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
   ): Promise<WhatsAppAccountResponseDto> {
+    if (dto.credentialSource === 'default') {
+      throw new BadRequestException(
+        'A conta do canal padrão é gerenciada exclusivamente pelas variáveis de ambiente.',
+      );
+    }
     const result = await this.mediator.send(
       new RegisterWhatsAppAccountCommand(
         auth?.tenantId ?? user?.tenantId ?? this.requireTenantId(dto.tenantId),

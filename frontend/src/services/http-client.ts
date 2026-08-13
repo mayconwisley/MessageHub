@@ -3,7 +3,20 @@ import { authStorage } from './auth-storage';
 const baseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 
 export class ApiError extends Error {
-  constructor(message: string, readonly status: number) { super(message); }
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code?: string,
+    readonly requestId?: string,
+  ) {
+    super(message);
+  }
+}
+
+interface ApiErrorPayload {
+  message?: string | string[];
+  code?: string;
+  requestId?: string;
 }
 
 type RequestOptions = Omit<RequestInit, 'body' | 'headers'> & {
@@ -30,9 +43,11 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (!response.ok) {
-    const payload: unknown = await response.json().catch(() => null);
-    const message = typeof payload === 'object' && payload && 'message' in payload ? String(payload.message) : `A requisição falhou (${response.status}).`;
-    throw new ApiError(message, response.status);
+    const payload = (await response.json().catch(() => null)) as ApiErrorPayload | null;
+    const message = Array.isArray(payload?.message)
+      ? payload.message.join(' ')
+      : payload?.message ?? `A requisição falhou (${response.status}).`;
+    throw new ApiError(message, response.status, payload?.code, payload?.requestId);
   }
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
