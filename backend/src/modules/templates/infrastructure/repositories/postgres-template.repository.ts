@@ -10,7 +10,6 @@ import {
   ListTemplatesFilter,
 } from '../../domain/repositories/template.repository.interface';
 import { TemplateOrmEntity } from '../entities/template.orm-entity';
-import { TemplateComponentDefinition } from '../../application/ports/template-provider.interface';
 
 @Injectable()
 export class PostgresTemplateRepository implements ITemplateRepository {

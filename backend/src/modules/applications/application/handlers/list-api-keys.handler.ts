@@ -37,6 +37,9 @@ export class ListApiKeysHandler implements IQueryHandler<ListApiKeysQuery> {
       query.page,
       query.pageSize,
     );
-    return Result.ok({ ...result, items: result.items.map(ApiKeyMapper.toDto) });
+    return Result.ok({
+      ...result,
+      items: result.items.map((apiKey) => ApiKeyMapper.toDto(apiKey)),
+    });
   }
 }

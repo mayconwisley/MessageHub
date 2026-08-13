@@ -17,14 +17,23 @@ export class AuditLogInterceptor implements NestInterceptor {
     return next.handle().pipe(
       mergeMap(async (response: unknown) => {
         const resource = response as { id?: string; tenantId?: string };
+        const route: unknown = request.route;
+        const routePath =
+          typeof route === 'object' &&
+          route !== null &&
+          'path' in route &&
+          typeof route.path === 'string'
+            ? route.path
+            : request.path;
+        const requestId = typeof request.id === 'string' ? request.id : null;
         await this.auditLogService.record({
           actorUserId: request.user?.id ?? null,
           actorEmail: request.user?.email ?? null,
-          action: `${request.method} ${request.route?.path ?? request.path}`,
+          action: `${request.method} ${routePath}`,
           resourceType: request.baseUrl.split('/').filter(Boolean).pop() ?? 'unknown',
           resourceId: resource?.id ?? null,
           tenantId: resource?.tenantId ?? request.user?.tenantId ?? null,
-          requestId: request.id ? String(request.id) : null,
+          requestId,
           httpMethod: request.method,
           // Query strings podem conter dados sensíveis enviados por engano;
           // a trilha é suficiente para fins de auditoria.

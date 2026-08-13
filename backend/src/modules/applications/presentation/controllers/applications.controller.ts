@@ -71,7 +71,10 @@ export class ApplicationsController {
       new ListApplicationsQuery(query.tenantId, query.page, query.pageSize),
     );
     if (result.isFailure) throw toHttpException(result.error);
-    return { ...result.value, items: result.value.items.map(ApplicationResponseDto.fromDto) };
+    return {
+      ...result.value,
+      items: result.value.items.map((application) => ApplicationResponseDto.fromDto(application)),
+    };
   }
 
   @Put(':applicationId/webhook')

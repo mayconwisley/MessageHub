@@ -17,6 +17,11 @@ export interface EngineeringAlertDto extends CreateEngineeringAlertInput {
 export interface IEngineeringAlertRepository {
   create(input: CreateEngineeringAlertInput): Promise<EngineeringAlertDto>;
   markDispatched(id: string): Promise<void>;
+  list(
+    page: number,
+    pageSize: number,
+    severity?: EngineeringAlertSeverity,
+  ): Promise<import('@shared/types').PaginatedResult<EngineeringAlertDto>>;
 }
 
 export const ENGINEERING_ALERT_REPOSITORY = Symbol('ENGINEERING_ALERT_REPOSITORY');

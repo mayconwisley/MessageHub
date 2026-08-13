@@ -11,6 +11,16 @@ import {
   IntegrationMonitorDto,
 } from '../application/ports/monitoring-read.repository.interface';
 
+interface PhoneMonitorRow {
+  id: string;
+  display_number: string;
+  status: string;
+  account_id: string;
+  account_status: string;
+  credential_source: string;
+  credential_expires_at: string | null;
+}
+
 @Injectable()
 export class MonitoringReadRepository implements IMonitoringReadRepository {
   constructor(
@@ -57,7 +67,7 @@ export class MonitoringReadRepository implements IMonitoringReadRepository {
           'a.credential_source AS credential_source',
           'a.credential_expires_at AS credential_expires_at',
         ])
-        .getRawMany(),
+        .getRawMany<PhoneMonitorRow>(),
     ]);
     const final = messages.filter((message) =>
       ['SENT', 'DELIVERED', 'READ', 'FAILED'].includes(message.status),

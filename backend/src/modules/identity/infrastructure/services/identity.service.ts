@@ -134,6 +134,6 @@ export class IdentityService implements OnModuleInit {
   }
 
   private toAuthenticatedUser(user: UserOrmEntity): AuthenticatedUserDto {
-    return { id: user.id, email: user.email, role: user.role as UserRole, tenantId: user.tenantId };
+    return { id: user.id, email: user.email, role: user.role, tenantId: user.tenantId };
   }
 }

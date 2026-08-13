@@ -83,7 +83,10 @@ export class PhoneNumbersController {
       new ListPhoneNumbersQuery(tenantId, query.page, query.pageSize, query.status),
     );
     if (result.isFailure) throw toHttpException(result.error);
-    return { ...result.value, items: result.value.items.map(PhoneNumberResponseDto.fromDto) };
+    return {
+      ...result.value,
+      items: result.value.items.map((phoneNumber) => PhoneNumberResponseDto.fromDto(phoneNumber)),
+    };
   }
 
   @Get(':id')

@@ -70,7 +70,10 @@ export class TenantsController {
       new ListTenantsQuery(query.page, query.pageSize, query.status, query.search),
     );
     if (result.isFailure) throw toHttpException(result.error);
-    return { ...result.value, items: result.value.items.map(TenantResponseDto.fromDto) };
+    return {
+      ...result.value,
+      items: result.value.items.map((tenant) => TenantResponseDto.fromDto(tenant)),
+    };
   }
 
   @Get(':id')

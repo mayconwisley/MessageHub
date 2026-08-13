@@ -58,11 +58,12 @@ export class EngineeringAlertService {
       await this.alerts.markDispatched(alert.id);
       return;
     }
-    failures.forEach((failure) =>
+    failures.forEach((failure) => {
+      const error = failure.reason instanceof Error ? failure.reason : undefined;
       this.logger.error(
-        { err: failure.status === 'rejected' ? failure.reason : undefined, alertId: alert.id },
+        { err: error, alertId: alert.id },
         'Falha na entrega de alerta de engenharia.',
-      ),
-    );
+      );
+    });
   }
 }

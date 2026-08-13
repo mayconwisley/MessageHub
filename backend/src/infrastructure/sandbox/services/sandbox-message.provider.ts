@@ -15,24 +15,28 @@ import { MessageDeliveryRejectedError } from '@modules/messages/domain/errors/me
  */
 @Injectable()
 export class SandboxMessageProvider implements IMessageProvider {
-  async send(
+  send(
     input: Parameters<IMessageProvider['send']>[0],
   ): Promise<Result<ProviderMessageResult, MessageDeliveryError>> {
     const recipient = input.to.replace(/\D/g, '');
     if (recipient.endsWith('0000')) {
-      return Result.fail(
-        new MessageDeliveryRejectedError('Sandbox: destinatário rejeitado (terminação 0000).'),
+      return Promise.resolve(
+        Result.fail(
+          new MessageDeliveryRejectedError('Sandbox: destinatário rejeitado (terminação 0000).'),
+        ),
       );
     }
     if (recipient.endsWith('0001')) {
-      return Result.fail(
-        new ProviderUnavailableError('Sandbox: indisponibilidade transitória (terminação 0001).'),
+      return Promise.resolve(
+        Result.fail(
+          new ProviderUnavailableError('Sandbox: indisponibilidade transitória (terminação 0001).'),
+        ),
       );
     }
     const providerMessageId = `sandbox_${createHash('sha256')
       .update(`${input.phoneNumberId}:${input.to}:${input.content}:${input.template?.name ?? ''}`)
       .digest('hex')
       .slice(0, 24)}`;
-    return Result.ok({ providerMessageId });
+    return Promise.resolve(Result.ok({ providerMessageId }));
   }
 }

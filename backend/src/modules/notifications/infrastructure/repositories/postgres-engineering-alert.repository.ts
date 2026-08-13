@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'crypto';
 import { Repository } from 'typeorm';
+import { PaginatedResult } from '@shared/types';
 import {
   CreateEngineeringAlertInput,
   EngineeringAlertDto,
@@ -40,5 +41,32 @@ export class PostgresEngineeringAlertRepository implements IEngineeringAlertRepo
   }
   async markDispatched(id: string): Promise<void> {
     await this.repository.update(id, { dispatchedAt: new Date() });
+  }
+  async list(
+    page: number,
+    pageSize: number,
+    severity?: EngineeringAlertDto['severity'],
+  ): Promise<PaginatedResult<EngineeringAlertDto>> {
+    const [rows, total] = await this.repository.findAndCount({
+      where: severity ? { severity } : {},
+      order: { occurredAt: 'DESC' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+    return {
+      items: rows.map((row) => ({
+        id: row.id,
+        type: row.type,
+        severity: row.severity as EngineeringAlertDto['severity'],
+        title: row.title,
+        message: row.message,
+        metadata: row.metadata,
+        occurredAt: row.occurredAt,
+        dispatchedAt: row.dispatchedAt,
+      })),
+      total,
+      page,
+      pageSize,
+    };
   }
 }

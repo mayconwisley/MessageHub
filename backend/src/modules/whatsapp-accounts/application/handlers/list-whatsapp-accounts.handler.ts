@@ -25,6 +25,9 @@ export class ListWhatsAppAccountsHandler implements IQueryHandler<ListWhatsAppAc
       query.pageSize,
       { status: query.status },
     );
-    return Result.ok({ ...result, items: result.items.map(WhatsAppAccountMapper.toDto) });
+    return Result.ok({
+      ...result,
+      items: result.items.map((account) => WhatsAppAccountMapper.toDto(account)),
+    });
   }
 }

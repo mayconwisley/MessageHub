@@ -20,6 +20,8 @@ import {
   VpnKeyOutlined,
   WebhookOutlined,
   MonitorHeartOutlined,
+  NotificationsActiveOutlined,
+  ScienceOutlined,
 } from "@mui/icons-material";
 import {
   AppBar,
@@ -39,7 +41,7 @@ import {
   type Theme,
 } from "@mui/material";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useMemo, useState, type ReactNode } from "react";
+import { lazy, Suspense, useMemo, useState, type ReactNode } from "react";
 import {
   NavLink,
   Navigate,
@@ -51,25 +53,76 @@ import {
 } from "react-router-dom";
 import { BrowserRouter } from "react-router-dom";
 import { authStorage } from "../services/auth-storage";
-import { LoginPage } from "../modules/auth/LoginPage";
 import { logout as logoutRequest } from "../modules/auth/auth.api";
-import { DashboardPage } from "../modules/dashboard/DashboardPage";
-import { TenantsPage } from "../modules/tenants/TenantsPage";
-import { ApplicationsPage } from "../modules/applications/ApplicationsPage";
-import { WhatsAppAccountsPage } from "../modules/whatsapp-accounts/WhatsAppAccountsPage";
-import { PhoneNumbersPage } from "../modules/phone-numbers/PhoneNumbersPage";
-import { ApiKeysPage } from "../modules/api-keys/ApiKeysPage";
-import { UsersPage } from "../modules/users/UsersPage";
-import { MessagesPage } from "../modules/messages/MessagesPage";
-import { TemplatesPage } from "../modules/templates/TemplatesPage";
-import { ApiDocsPage } from "../modules/api-docs/ApiDocsPage";
-import { WebhooksPage } from "../modules/webhooks/WebhooksPage";
-import { MonitoringPage } from "../modules/monitoring/MonitoringPage";
-import { HelpPage } from "../modules/help/HelpPage";
 import { ThemeModeProvider, useThemeMode } from "./ThemeModeProvider";
 import { buildTheme } from "./theme";
 import brandLogoDark from "../assets/brand/message-hub-logo-dark.svg";
 import brandLogoLight from "../assets/brand/message-hub-logo-light.svg";
+
+const LoginPage = lazy(async () => {
+  const module = await import("../modules/auth/LoginPage");
+  return { default: module.LoginPage };
+});
+const DashboardPage = lazy(async () => {
+  const module = await import("../modules/dashboard/DashboardPage");
+  return { default: module.DashboardPage };
+});
+const TenantsPage = lazy(async () => {
+  const module = await import("../modules/tenants/TenantsPage");
+  return { default: module.TenantsPage };
+});
+const ApplicationsPage = lazy(async () => {
+  const module = await import("../modules/applications/ApplicationsPage");
+  return { default: module.ApplicationsPage };
+});
+const WhatsAppAccountsPage = lazy(async () => {
+  const module = await import("../modules/whatsapp-accounts/WhatsAppAccountsPage");
+  return { default: module.WhatsAppAccountsPage };
+});
+const PhoneNumbersPage = lazy(async () => {
+  const module = await import("../modules/phone-numbers/PhoneNumbersPage");
+  return { default: module.PhoneNumbersPage };
+});
+const ApiKeysPage = lazy(async () => {
+  const module = await import("../modules/api-keys/ApiKeysPage");
+  return { default: module.ApiKeysPage };
+});
+const UsersPage = lazy(async () => {
+  const module = await import("../modules/users/UsersPage");
+  return { default: module.UsersPage };
+});
+const MessagesPage = lazy(async () => {
+  const module = await import("../modules/messages/MessagesPage");
+  return { default: module.MessagesPage };
+});
+const TemplatesPage = lazy(async () => {
+  const module = await import("../modules/templates/TemplatesPage");
+  return { default: module.TemplatesPage };
+});
+const ApiDocsPage = lazy(async () => {
+  const module = await import("../modules/api-docs/ApiDocsPage");
+  return { default: module.ApiDocsPage };
+});
+const WebhooksPage = lazy(async () => {
+  const module = await import("../modules/webhooks/WebhooksPage");
+  return { default: module.WebhooksPage };
+});
+const MonitoringPage = lazy(async () => {
+  const module = await import("../modules/monitoring/MonitoringPage");
+  return { default: module.MonitoringPage };
+});
+const EngineeringAlertsPage = lazy(async () => {
+  const module = await import("../modules/engineering-alerts/EngineeringAlertsPage");
+  return { default: module.EngineeringAlertsPage };
+});
+const SandboxPage = lazy(async () => {
+  const module = await import("../modules/sandbox/SandboxPage");
+  return { default: module.SandboxPage };
+});
+const HelpPage = lazy(async () => {
+  const module = await import("../modules/help/HelpPage");
+  return { default: module.HelpPage };
+});
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
@@ -125,6 +178,8 @@ const navGroups: NavGroupConfig[] = [
       },
       { to: "/webhooks", label: "Webhooks e DLQ", icon: <WebhookOutlined /> },
       { to: "/monitoring", label: "Monitor de integrações", icon: <MonitorHeartOutlined /> },
+      { to: "/engineering-alerts", label: "Alertas de engenharia", icon: <NotificationsActiveOutlined /> },
+      { to: "/sandbox", label: "Ambiente sandbox", icon: <ScienceOutlined /> },
     ],
   },
 ];
@@ -341,28 +396,35 @@ function ThemedApp() {
       <CssBaseline />
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
-          <Routes>
-            <Route path="/login" element={<LoginRoute />} />
-            <Route element={<ProtectedRoute />}>
-              <Route path="/" element={<DashboardPage />} />
-              <Route path="/tenants" element={<TenantsPage />} />
-              <Route path="/applications" element={<ApplicationsPage />} />
-              <Route
-                path="/whatsapp-accounts"
-                element={<WhatsAppAccountsPage />}
-              />
-              <Route path="/phone-numbers" element={<PhoneNumbersPage />} />
-              <Route path="/api-keys" element={<ApiKeysPage />} />
-              <Route path="/users" element={<UsersPage />} />
-              <Route path="/messages" element={<MessagesPage />} />
-              <Route path="/templates" element={<TemplatesPage />} />
-              <Route path="/api-docs" element={<ApiDocsPage />} />
-              <Route path="/webhooks" element={<WebhooksPage />} />
-              <Route path="/monitoring" element={<MonitoringPage />} />
-              <Route path="/help" element={<HelpPage />} />
-            </Route>
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          <Suspense fallback={<Box sx={{ minHeight: "100vh" }} />}>
+            <Routes>
+              <Route path="/login" element={<LoginRoute />} />
+              <Route element={<ProtectedRoute />}>
+                <Route path="/" element={<DashboardPage />} />
+                <Route path="/tenants" element={<TenantsPage />} />
+                <Route path="/applications" element={<ApplicationsPage />} />
+                <Route
+                  path="/whatsapp-accounts"
+                  element={<WhatsAppAccountsPage />}
+                />
+                <Route path="/phone-numbers" element={<PhoneNumbersPage />} />
+                <Route path="/api-keys" element={<ApiKeysPage />} />
+                <Route path="/users" element={<UsersPage />} />
+                <Route path="/messages" element={<MessagesPage />} />
+                <Route path="/templates" element={<TemplatesPage />} />
+                <Route path="/api-docs" element={<ApiDocsPage />} />
+                <Route path="/webhooks" element={<WebhooksPage />} />
+                <Route path="/monitoring" element={<MonitoringPage />} />
+                <Route
+                  path="/engineering-alerts"
+                  element={<EngineeringAlertsPage />}
+                />
+                <Route path="/sandbox" element={<SandboxPage />} />
+                <Route path="/help" element={<HelpPage />} />
+              </Route>
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
         </BrowserRouter>
       </QueryClientProvider>
     </ThemeProvider>

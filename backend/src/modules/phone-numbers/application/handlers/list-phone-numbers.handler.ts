@@ -33,6 +33,9 @@ export class ListPhoneNumbersHandler implements IQueryHandler<ListPhoneNumbersQu
       query.pageSize,
       { status: query.status },
     );
-    return Result.ok({ ...result, items: result.items.map(PhoneNumberMapper.toDto) });
+    return Result.ok({
+      ...result,
+      items: result.items.map((phoneNumber) => PhoneNumberMapper.toDto(phoneNumber)),
+    });
   }
 }

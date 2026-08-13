@@ -4,21 +4,20 @@ import { EngineeringAlertService } from '@modules/notifications/application/serv
 jest.mock('axios');
 
 describe('EngineeringAlertService', () => {
-  const post = axios.post as jest.Mock;
+  const post = jest.spyOn(axios, 'post');
   const repository = {
-    create: jest
-      .fn()
-      .mockResolvedValue({
-        id: 'alert-1',
-        type: 'MESSAGE_DLQ',
-        severity: 'CRITICAL',
-        title: 'DLQ',
-        message: 'Falha',
-        metadata: { messageId: 'message-1' },
-        occurredAt: new Date('2026-08-13T00:00:00.000Z'),
-        dispatchedAt: null,
-      }),
+    create: jest.fn().mockResolvedValue({
+      id: 'alert-1',
+      type: 'MESSAGE_DLQ',
+      severity: 'CRITICAL',
+      title: 'DLQ',
+      message: 'Falha',
+      metadata: { messageId: 'message-1' },
+      occurredAt: new Date('2026-08-13T00:00:00.000Z'),
+      dispatchedAt: null,
+    }),
     markDispatched: jest.fn().mockResolvedValue(undefined),
+    list: jest.fn(),
   };
   const config = {
     slackWebhookUrl: 'https://hooks.slack.test/x',

@@ -9,8 +9,10 @@ import { ApiKeyAuthGuard } from '@presentation/http/guards/api-key-auth.guard';
 import { UserSessionAuthGuard } from '@presentation/http/guards/user-session-auth.guard';
 import { PlatformAdminGuard } from '@presentation/http/guards/platform-admin.guard';
 import { PlatformAdminOrTenantApiKeyGuard } from '@presentation/http/guards/platform-admin-or-tenant-api-key.guard';
+import { PlatformAdminOrApiKeyGuard } from '@presentation/http/guards/platform-admin-or-api-key.guard';
 import { TenantApiKeyGuard } from '@presentation/http/guards/tenant-api-key.guard';
 import { IdentityService } from '@modules/identity/infrastructure/services/identity.service';
+import { MetaConfigService } from '@infrastructure/configuration/meta-config.service';
 import { CreateApiKeyHandler } from '@modules/applications/application/handlers/create-api-key.handler';
 import { CreateApplicationHandler } from '@modules/applications/application/handlers/create-application.handler';
 import { ValidateApiKeyHandler } from '@modules/applications/application/handlers/validate-api-key.handler';
@@ -22,7 +24,10 @@ import { ApplicationsController } from '@modules/applications/presentation/contr
 import { GetMessageHandler } from '@modules/messages/application/handlers/get-message.handler';
 import { SendMessageHandler } from '@modules/messages/application/handlers/send-message.handler';
 import { MESSAGE_PUBLISHER } from '@modules/messages/application/ports/message-publisher.interface';
+import { MESSAGE_TIMELINE_REPOSITORY } from '@modules/messages/application/ports/message-timeline.repository.interface';
+import { ApplicationQuotaService } from '@modules/messages/application/services/application-quota.service';
 import { MESSAGE_REPOSITORY } from '@modules/messages/domain/repositories/message.repository.interface';
+import { MESSAGE_ATTEMPT_REPOSITORY } from '@modules/messages/domain/repositories/message-attempt.repository.interface';
 import { MessagesController } from '@modules/messages/presentation/controllers/messages.controller';
 import { RegisterPhoneNumberHandler } from '@modules/phone-numbers/application/handlers/register-phone-number.handler';
 import { PHONE_NUMBER_REPOSITORY } from '@modules/phone-numbers/domain/repositories/phone-number.repository.interface';
@@ -47,12 +52,19 @@ function createInMemoryRepository<TEntity extends { id: { value: string } }>() {
     async findByIdempotencyKey(): Promise<TEntity | null> {
       return null;
     },
+    async recordUsage(): Promise<void> {
+      return undefined;
+    },
   };
 }
 
 describe('Messages flow (e2e)', () => {
   let app: INestApplication;
   const messagePublisher = { publishMessageRequested: jest.fn().mockResolvedValue(undefined) };
+  const messageTimelineRepository = { record: jest.fn().mockResolvedValue(undefined) };
+  const applicationQuotaService = {
+    assertCanAcceptMessage: jest.fn().mockResolvedValue(undefined),
+  };
   const adminSession = 'mh_session_e2e-test-token';
 
   beforeAll(async () => {
@@ -74,11 +86,18 @@ describe('Messages flow (e2e)', () => {
         { provide: WHATSAPP_ACCOUNT_REPOSITORY, useValue: createInMemoryRepository() },
         { provide: PHONE_NUMBER_REPOSITORY, useValue: createInMemoryRepository() },
         { provide: MESSAGE_REPOSITORY, useValue: createInMemoryRepository() },
+        {
+          provide: MESSAGE_ATTEMPT_REPOSITORY,
+          useValue: { findLatestByMessageId: jest.fn().mockResolvedValue(null) },
+        },
         { provide: MESSAGE_PUBLISHER, useValue: messagePublisher },
+        { provide: MESSAGE_TIMELINE_REPOSITORY, useValue: messageTimelineRepository },
+        { provide: ApplicationQuotaService, useValue: applicationQuotaService },
         ApiKeyGeneratorService,
         ApiKeyAuthGuard,
         TenantApiKeyGuard,
         PlatformAdminOrTenantApiKeyGuard,
+        PlatformAdminOrApiKeyGuard,
         UserSessionAuthGuard,
         PlatformAdminGuard,
         {
@@ -91,6 +110,10 @@ describe('Messages flow (e2e)', () => {
               tenantId: null,
             }),
           },
+        },
+        {
+          provide: MetaConfigService,
+          useValue: { defaultChannelEnabled: false, defaultTenantId: null },
         },
         GlobalExceptionFilter,
         CreateTenantHandler,
@@ -111,7 +134,7 @@ describe('Messages flow (e2e)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    await app?.close();
   });
 
   it('sends a message end-to-end through tenant/application/api-key/account/phone-number setup', async () => {
@@ -147,7 +170,8 @@ describe('Messages flow (e2e)', () => {
       .send({
         tenantId: tenant.body.id,
         wabaId: 'waba-admin-managed',
-        credentialSource: 'default',
+        credentialSource: 'tenant',
+        accessToken: 'meta-access-token-admin-managed',
       })
       .expect(201);
 

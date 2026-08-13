@@ -22,7 +22,7 @@ import { PaginationQueryDto } from '@presentation/http/dto/pagination-query.dto'
 import { PaginatedResult } from '@shared/types';
 import { CurrentOptionalAuthContext } from '@presentation/http/decorators/current-optional-auth-context.decorator';
 import { CurrentAuthenticatedUser } from '@presentation/http/decorators/current-authenticated-user.decorator';
-import { PlatformAdminOrTenantApiKeyGuard } from '@presentation/http/guards/platform-admin-or-tenant-api-key.guard';
+import { PlatformAdminOrApiKeyGuard } from '@presentation/http/guards/platform-admin-or-api-key.guard';
 import { toHttpException } from '@presentation/http/result-http.mapper';
 import { AuthContextDto } from '@modules/applications/application/dto/api-key.dto';
 import { AuthenticatedUserDto } from '@modules/identity/application/dto/authenticated-user.dto';
@@ -86,7 +86,7 @@ function resolveRequestingTenantId(user: AuthenticatedUserDto | undefined): stri
 
 @ApiTags('messages')
 @ApiBearerAuth()
-@UseGuards(PlatformAdminOrTenantApiKeyGuard)
+@UseGuards(PlatformAdminOrApiKeyGuard)
 @Controller('v1/messages')
 export class MessagesController {
   constructor(@Inject(MEDIATOR) private readonly mediator: IMediator) {}
@@ -164,7 +164,10 @@ export class MessagesController {
       ),
     );
     if (result.isFailure) throw toHttpException(result.error);
-    return { ...result.value, items: result.value.items.map(MessageResponseDto.fromDto) };
+    return {
+      ...result.value,
+      items: result.value.items.map((message) => MessageResponseDto.fromDto(message)),
+    };
   }
 
   @Get(':id')
@@ -198,7 +201,7 @@ export class MessagesController {
       new ListMessageAttemptsQuery(id, applicationId, resolveRequestingTenantId(user)),
     );
     if (result.isFailure) throw toHttpException(result.error);
-    return result.value.map(MessageAttemptResponseDto.fromDto);
+    return result.value.map((attempt) => MessageAttemptResponseDto.fromDto(attempt));
   }
 
   @Get(':id/timeline')

@@ -105,6 +105,15 @@ Bibliotecas adicionais devem ser adicionadas somente quando houver justificativa
 
 Evitar dependências desnecessárias.
 
+## Tipagem TypeScript
+
+É proibido utilizar `any` no backend e no frontend, inclusive de forma explícita, implícita, em casts, tipos genéricos, callbacks, DTOs, contratos HTTP, mocks e integrações externas.
+
+- Usar `unknown` para dados cujo formato ainda não foi validado e realizar o estreitamento de tipo antes do uso;
+- Definir interfaces, tipos, DTOs e generics explícitos para todos os contratos conhecidos;
+- Preferir `Record<string, unknown>` a objetos sem tipagem quando a estrutura for dinâmica;
+- Não desabilitar regras do TypeScript ou ESLint para contornar a proibição de `any`.
+
 ---
 
 # 4. Clean Architecture
@@ -1753,6 +1762,6 @@ frontend/src/
 - Não duplicar autorização no frontend como mecanismo de segurança. O frontend apenas controla a experiência; o backend é a fonte de verdade.
 - Construir interfaces acessíveis, responsivas e com estados vazios, de carregamento e de erro.
 - Criar um item de menu e uma tela próprios quando áreas exibirem dados, permissões ou ações diferentes. Não agrupar cadastros independentes em uma única tela apenas por pertencerem ao mesmo contexto administrativo.
-- Tipar contratos HTTP explicitamente e não usar `any`.
+- Tipar contratos HTTP explicitamente, observando a proibição global de `any`.
 - Manter tokens somente no `sessionStorage`; nunca registrar, exibir novamente ou persistir API keys em texto puro.
 - Para coleções administrativas, consumir os endpoints paginados do backend; não simular listagens no cliente.

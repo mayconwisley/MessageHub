@@ -5,6 +5,9 @@ export function buildTheme(mode: PaletteMode) {
   const divider = isDark ? 'rgba(230,242,236,0.12)' : 'rgba(23,43,36,0.10)';
   const paper = isDark ? '#141f1a' : '#ffffff';
   const surface = isDark ? '#0e1613' : '#ffffff';
+  const scrollbarTrack = isDark ? '#0a100d' : '#edf2ef';
+  const scrollbarThumb = isDark ? '#49665b' : '#8ba39a';
+  const scrollbarThumbHover = isDark ? '#638578' : '#67877b';
 
   return createTheme({
     palette: {
@@ -23,6 +26,29 @@ export function buildTheme(mode: PaletteMode) {
       button: { textTransform: 'none', fontWeight: 600 },
     },
     components: {
+      MuiCssBaseline: {
+        styleOverrides: {
+          '*': {
+            scrollbarColor: `${scrollbarThumb} ${scrollbarTrack}`,
+            scrollbarWidth: 'thin',
+          },
+          '*::-webkit-scrollbar': {
+            width: 10,
+            height: 10,
+          },
+          '*::-webkit-scrollbar-track': {
+            backgroundColor: scrollbarTrack,
+          },
+          '*::-webkit-scrollbar-thumb': {
+            backgroundColor: scrollbarThumb,
+            border: `2px solid ${scrollbarTrack}`,
+            borderRadius: 10,
+          },
+          '*::-webkit-scrollbar-thumb:hover': {
+            backgroundColor: scrollbarThumbHover,
+          },
+        },
+      },
       MuiPaper: { styleOverrides: { root: { backgroundImage: 'none' } } },
       MuiCard: {
         defaultProps: { variant: 'outlined' },

@@ -3,6 +3,7 @@ import { IdentityModule } from '@modules/identity/identity.module';
 import { MediatorModule } from '@shared/mediator';
 import { ApiKeyAuthGuard } from './guards/api-key-auth.guard';
 import { PlatformAdminGuard } from './guards/platform-admin.guard';
+import { PlatformAdminOrApiKeyGuard } from './guards/platform-admin-or-api-key.guard';
 import { PlatformAdminOrTenantApiKeyGuard } from './guards/platform-admin-or-tenant-api-key.guard';
 import { TenantApiKeyGuard } from './guards/tenant-api-key.guard';
 import { UserSessionAuthGuard } from './guards/user-session-auth.guard';
@@ -16,6 +17,7 @@ import { UserSessionAuthGuard } from './guards/user-session-auth.guard';
     PlatformAdminGuard,
     ApiKeyAuthGuard,
     TenantApiKeyGuard,
+    PlatformAdminOrApiKeyGuard,
     PlatformAdminOrTenantApiKeyGuard,
   ],
   exports: [
@@ -23,6 +25,7 @@ import { UserSessionAuthGuard } from './guards/user-session-auth.guard';
     PlatformAdminGuard,
     ApiKeyAuthGuard,
     TenantApiKeyGuard,
+    PlatformAdminOrApiKeyGuard,
     PlatformAdminOrTenantApiKeyGuard,
   ],
 })

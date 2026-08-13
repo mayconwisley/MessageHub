@@ -1,8 +1,11 @@
-export abstract class BaseError {
+export abstract class BaseError extends Error {
   protected constructor(
     public readonly code: string,
-    public readonly message: string,
-  ) {}
+    message: string,
+  ) {
+    super(message);
+    this.name = new.target.name;
+  }
 }
 
 /** Regra de negocio do dominio violada (ex: TenantNotFound, InvalidMessage). */

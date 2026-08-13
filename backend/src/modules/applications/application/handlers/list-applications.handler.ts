@@ -24,6 +24,9 @@ export class ListApplicationsHandler implements IQueryHandler<ListApplicationsQu
       query.page,
       query.pageSize,
     );
-    return Result.ok({ ...result, items: result.items.map(ApplicationMapper.toDto) });
+    return Result.ok({
+      ...result,
+      items: result.items.map((application) => ApplicationMapper.toDto(application)),
+    });
   }
 }

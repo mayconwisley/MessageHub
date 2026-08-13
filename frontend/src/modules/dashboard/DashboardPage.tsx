@@ -3,6 +3,7 @@ import {
   CheckCircleOutlineOutlined,
   HubOutlined,
   InboxOutlined,
+  MonitorHeartOutlined,
   OpenInNewOutlined,
   PhoneIphoneOutlined,
   QueueOutlined,
@@ -160,7 +161,7 @@ function PlatformStatusCard() {
     refetchInterval: REFRESH_INTERVAL_MS,
     retry: false,
   });
-  const isApiAvailable = !query.isError && !query.data?.error;
+  const isApiAvailable = query.data?.status === "ok";
   const components = [
     { label: "API", status: isApiAvailable ? "up" : "down", icon: <ApiOutlined /> },
     {
@@ -522,6 +523,9 @@ function QuickActions() {
     { label: "Consultar mensagens", description: "Status, tentativas e erros do provedor", icon: <RuleOutlined />, path: "/messages" },
     { label: "Gerenciar aplicações", description: "Chaves, callbacks e números vinculados", icon: <InboxOutlined />, path: "/applications" },
     { label: "Documentação da API", description: "Contratos e exemplos de integração", icon: <ApiOutlined />, path: "/api-docs" },
+    { label: "Monitor de integrações", description: "Quotas, credenciais, números e entrega", icon: <MonitorHeartOutlined />, path: "/monitoring" },
+    { label: "Alertas de engenharia", description: "DLQs e falhas persistentes", icon: <WarningAmberOutlined />, path: "/engineering-alerts" },
+    { label: "Ambiente sandbox", description: "Simulador de provider e webhooks", icon: <RuleOutlined />, path: "/sandbox" },
   ];
   return (
     <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>

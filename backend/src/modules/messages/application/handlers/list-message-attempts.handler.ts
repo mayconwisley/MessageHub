@@ -38,6 +38,6 @@ export class ListMessageAttemptsHandler implements IQueryHandler<ListMessageAtte
     }
 
     const attempts = await this.messageAttemptRepository.listByMessageId(messageId);
-    return Result.ok(attempts.map(MessageAttemptMapper.toDto));
+    return Result.ok(attempts.map((attempt) => MessageAttemptMapper.toDto(attempt)));
   }
 }

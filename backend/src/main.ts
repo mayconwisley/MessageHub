@@ -4,6 +4,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Logger } from 'nestjs-pino';
 import compression from 'compression';
 import helmet from 'helmet';
+import type { Express } from 'express';
 import { AppModule } from './app.module';
 import { AppConfigService } from './infrastructure/configuration/app-config.service';
 import { translateValidationErrors } from './presentation/http/validation-message.translator';
@@ -19,7 +20,8 @@ async function bootstrap(): Promise<void> {
 
   app.use(helmet());
   app.use(compression());
-  app.getHttpAdapter().getInstance().disable('x-powered-by');
+  const expressApp = app.getHttpAdapter().getInstance() as unknown as Express;
+  expressApp.disable('x-powered-by');
   if (appConfig.corsOrigins.length > 0) {
     app.enableCors({
       origin: appConfig.corsOrigins,

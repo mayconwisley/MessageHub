@@ -31,6 +31,7 @@ import { PaginationQueryDto } from '@presentation/http/dto/pagination-query.dto'
 import { ListWhatsAppAccountsQuery } from '../../application/queries/list-whatsapp-accounts.query';
 import { PaginatedResult } from '@shared/types';
 import { WhatsAppAccountStatus } from '../../domain/enums/whatsapp-account-status.enum';
+import { WhatsAppCredentialSource } from '../../domain/enums/whatsapp-credential-source.enum';
 
 class ListWhatsAppAccountsRequestDto extends PaginationQueryDto {
   @ApiPropertyOptional()
@@ -91,7 +92,7 @@ export class WhatsAppAccountsController {
     @CurrentOptionalAuthContext() auth?: AuthContextDto,
     @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
   ): Promise<WhatsAppAccountResponseDto> {
-    if (dto.credentialSource === 'default') {
+    if (dto.credentialSource === WhatsAppCredentialSource.DEFAULT) {
       throw new BadRequestException(
         'A conta do canal padrão é gerenciada exclusivamente pelas variáveis de ambiente.',
       );
@@ -123,7 +124,10 @@ export class WhatsAppAccountsController {
       new ListWhatsAppAccountsQuery(tenantId, query.page, query.pageSize, query.status),
     );
     if (result.isFailure) throw toHttpException(result.error);
-    return { ...result.value, items: result.value.items.map(WhatsAppAccountResponseDto.fromDto) };
+    return {
+      ...result.value,
+      items: result.value.items.map((account) => WhatsAppAccountResponseDto.fromDto(account)),
+    };
   }
 
   @Get(':id')

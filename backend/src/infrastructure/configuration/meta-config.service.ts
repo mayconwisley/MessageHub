@@ -14,7 +14,7 @@ export class MetaConfigService {
   }
 
   get defaultChannelEnabled(): boolean {
-    return this.configService.get<boolean>('meta.defaultChannelEnabled', { infer: true }) ?? false;
+    return this.configService.get<boolean>('meta.defaultChannelEnabled') ?? false;
   }
 
   get defaultAccessToken(): string | null {

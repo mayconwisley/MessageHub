@@ -19,7 +19,6 @@ import { PlatformAdminGuard } from '@presentation/http/guards/platform-admin.gua
 import { toHttpException } from '@presentation/http/result-http.mapper';
 import { ReprocessWebhookEventCommand } from '../../application/commands/reprocess-webhook-event.command';
 import { ListWebhookEventsQuery } from '../../application/queries/list-webhook-events.query';
-import { WebhookEventOperationDto } from '../../application/ports/webhook-event-operations.repository.interface';
 import { WebhookEventResponseDto } from '../dto/webhook-event-response.dto';
 
 class ListWebhookEventsRequestDto extends PaginationQueryDto {
@@ -45,9 +44,7 @@ export class WebhookEventsController {
     );
     return {
       ...result,
-      items: result.items.map((item) =>
-        WebhookEventResponseDto.fromEntity(item as WebhookEventOperationDto),
-      ),
+      items: result.items.map((item) => WebhookEventResponseDto.fromEntity(item)),
     };
   }
 
@@ -56,6 +53,6 @@ export class WebhookEventsController {
   async reprocess(@Param('id') id: string): Promise<WebhookEventResponseDto> {
     const result = await this.mediator.send(new ReprocessWebhookEventCommand(id));
     if (result.isFailure) throw toHttpException(result.error);
-    return WebhookEventResponseDto.fromEntity(result.value as WebhookEventOperationDto);
+    return WebhookEventResponseDto.fromEntity(result.value);
   }
 }

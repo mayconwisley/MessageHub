@@ -19,6 +19,9 @@ export class ListTenantsHandler implements IQueryHandler<ListTenantsQuery> {
       status: query.status,
       search: query.search,
     });
-    return Result.ok({ ...result, items: result.items.map(TenantMapper.toDto) });
+    return Result.ok({
+      ...result,
+      items: result.items.map((tenant) => TenantMapper.toDto(tenant)),
+    });
   }
 }

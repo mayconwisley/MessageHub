@@ -63,7 +63,10 @@ export class ApiKeysController {
       new ListApiKeysQuery(applicationId, query.page, query.pageSize),
     );
     if (result.isFailure) throw toHttpException(result.error);
-    return { ...result.value, items: result.value.items.map(ApiKeyResponseDto.fromDto) };
+    return {
+      ...result.value,
+      items: result.value.items.map((apiKey) => ApiKeyResponseDto.fromDto(apiKey)),
+    };
   }
 
   @Delete(':apiKeyId')

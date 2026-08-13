@@ -18,7 +18,7 @@ import { AuthContextDto } from '@modules/applications/application/dto/api-key.dt
 import { AuthenticatedUserDto } from '@modules/identity/application/dto/authenticated-user.dto';
 import { CurrentOptionalAuthContext } from '@presentation/http/decorators/current-optional-auth-context.decorator';
 import { CurrentAuthenticatedUser } from '@presentation/http/decorators/current-authenticated-user.decorator';
-import { PlatformAdminOrTenantApiKeyGuard } from '@presentation/http/guards/platform-admin-or-tenant-api-key.guard';
+import { PlatformAdminOrApiKeyGuard } from '@presentation/http/guards/platform-admin-or-api-key.guard';
 import { toHttpException } from '@presentation/http/result-http.mapper';
 import { PaginationQueryDto } from '@presentation/http/dto/pagination-query.dto';
 import { PaginatedResult } from '@shared/types';
@@ -84,7 +84,7 @@ function resolveTenantId(
 
 @ApiTags('templates')
 @ApiBearerAuth()
-@UseGuards(PlatformAdminOrTenantApiKeyGuard)
+@UseGuards(PlatformAdminOrApiKeyGuard)
 @Controller('v1/templates')
 export class TemplatesController {
   constructor(private readonly templates: TemplateManagementService) {}
