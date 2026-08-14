@@ -1,0 +1,140 @@
+# Ambiente completo do Message Hub via Docker, para permitir que qualquer
+# pessoa teste a aplicação inteira com um único comando:
+#
+#   docker compose up --build
+#
+# Sobe Postgres + RabbitMQ, roda as migrations uma única vez (serviço
+# `migrate`) e então inicia a API e o console web. Por padrão usa
+# MESSAGE_PROVIDER=sandbox, então o envio de mensagens é simulado e NÃO é
+# necessário ter credenciais reais da Meta para explorar o sistema.
+#
+# Este arquivo NÃO é usado no fluxo normal de desenvolvimento (ver README.md,
+# que usa `npm run start:dev` / `npm run dev` diretamente) nem em produção -
+# ele existe para permitir testar o produto completo rapidamente. Para
+# produção, combine com docker-compose.prod.yml (ver esse arquivo e o
+# .env.example na raiz).
+#
+# Todas as variáveis abaixo podem ser sobrescritas criando um arquivo `.env`
+# na raiz do projeto (ver .env.example) - sem esse arquivo, os valores padrão
+# abaixo (apenas para uso local/teste) já são suficientes para subir tudo.
+
+name: message-hub
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-message_hub}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-message_hub}
+      POSTGRES_DB: ${POSTGRES_DB:-message_hub}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-message_hub} -d ${POSTGRES_DB:-message_hub}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-message_hub}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-message_hub}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Serviço "one-shot": roda `npm run migration:run` e encerra. O backend só
+  # inicia depois que este serviço termina com sucesso (evita condições de
+  # corrida de rodar migrations a partir de múltiplas réplicas do backend).
+  migrate:
+    image: message-hub-backend:local
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: ["npm", "run", "migration:run"]
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-message_hub}:${POSTGRES_PASSWORD:-message_hub}@postgres:5432/${POSTGRES_DB:-message_hub}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  backend:
+    image: message-hub-backend:local
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3000
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
+      SWAGGER_ENABLED: ${SWAGGER_ENABLED:-true}
+      TRUST_PROXY: ${TRUST_PROXY:-false}
+      INITIAL_PLATFORM_ADMIN_EMAIL: ${INITIAL_PLATFORM_ADMIN_EMAIL:-admin@example.com}
+      INITIAL_PLATFORM_ADMIN_PASSWORD: ${INITIAL_PLATFORM_ADMIN_PASSWORD:-ChangeMe123!Hub}
+      DATABASE_URL: postgres://${POSTGRES_USER:-message_hub}:${POSTGRES_PASSWORD:-message_hub}@postgres:5432/${POSTGRES_DB:-message_hub}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-message_hub}:${RABBITMQ_PASSWORD:-message_hub}@rabbitmq:5672
+      MESSAGE_PROVIDER: ${MESSAGE_PROVIDER:-sandbox}
+      MESSAGING_DEFAULT_PROVIDER: ${MESSAGE_PROVIDER:-sandbox}
+      SANDBOX_ENABLED: ${SANDBOX_ENABLED:-true}
+      META_GRAPH_API_URL_BASE: ${META_GRAPH_API_URL_BASE:-https://graph.facebook.com/v25.0/}
+      META_WEBHOOK_VERIFY_TOKEN: ${META_WEBHOOK_VERIFY_TOKEN:-}
+      META_APP_SECRET: ${META_APP_SECRET:-}
+      META_DEFAULT_CHANNEL_ENABLED: ${META_DEFAULT_CHANNEL_ENABLED:-false}
+      META_DEFAULT_CHANNEL_TENANT_ID: ${META_DEFAULT_CHANNEL_TENANT_ID:-}
+      META_DEFAULT_CHANNEL_TENANT_NAME: ${META_DEFAULT_CHANNEL_TENANT_NAME:-}
+      META_DEFAULT_CHANNEL_APPLICATION_NAME: ${META_DEFAULT_CHANNEL_APPLICATION_NAME:-}
+      META_DEFAULT_CHANNEL_WABA_ID: ${META_DEFAULT_CHANNEL_WABA_ID:-}
+      META_DEFAULT_CHANNEL_BEARER: ${META_DEFAULT_CHANNEL_BEARER:-}
+      META_DEFAULT_CHANNEL_PHONE_NUMBER_ID: ${META_DEFAULT_CHANNEL_PHONE_NUMBER_ID:-}
+      META_DEFAULT_CHANNEL_PHONE_NUMBER: ${META_DEFAULT_CHANNEL_PHONE_NUMBER:-}
+      META_DEFAULT_CHANNEL_USERNAME: ${META_DEFAULT_CHANNEL_USERNAME:-}
+      # Chave de 32 bytes em Base64 SOMENTE para uso local/teste - gere a sua
+      # com `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`
+      # e defina META_CREDENTIALS_ENCRYPTION_KEY no .env antes de usar em produção.
+      META_CREDENTIALS_ENCRYPTION_KEY: ${META_CREDENTIALS_ENCRYPTION_KEY:-YdY22vFhvdlUKe4gEPrAJ9rxxJh4M6vI1ZHjjkRGtPk=}
+      ENGINEERING_SLACK_WEBHOOK_URL: ${ENGINEERING_SLACK_WEBHOOK_URL:-}
+      ENGINEERING_TEAMS_WEBHOOK_URL: ${ENGINEERING_TEAMS_WEBHOOK_URL:-}
+      ENGINEERING_EMAIL_WEBHOOK_URL: ${ENGINEERING_EMAIL_WEBHOOK_URL:-}
+    ports:
+      - "${BACKEND_PORT:-3000}:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Executa no navegador do host, então precisa da URL publicada acima
+        # (BACKEND_PORT), não do hostname interno da rede Docker.
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  rabbitmq_data:

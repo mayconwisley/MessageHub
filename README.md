@@ -76,6 +76,42 @@ templates, e como enviar e acompanhar mensagens — é a referência recomendada
 Hub pela interface web. Para quem vai integrar sistemas via API, use a tela **Documentação da
 API** (`/api-docs`) ou o Swagger em `/docs`.
 
+## Docker
+
+Para testar a aplicação completa (console web + API + PostgreSQL + RabbitMQ) sem instalar
+nada localmente, com um único comando:
+
+```bash
+docker compose up --build
+```
+
+Console em `http://localhost:8080`, API em `http://localhost:3000` (Swagger em `/docs`).
+O login inicial usa `admin@example.com` / `ChangeMe123!Hub` (definidos em
+[docker-compose.yml](./docker-compose.yml); sobrescreva copiando [.env.example](./.env.example)
+para `.env` na raiz). Por padrão o compose usa `MESSAGE_PROVIDER=sandbox`, então o envio de
+mensagens é simulado e não são necessárias credenciais reais da Meta para explorar o sistema.
+
+As migrations rodam automaticamente antes da API subir (serviço `migrate`, que executa uma vez e
+encerra). Dados de Postgres/RabbitMQ persistem em volumes Docker entre reinicializações; para
+recomeçar do zero: `docker compose down -v`.
+
+Este fluxo com Docker existe apenas para facilitar testes/demonstração — o desenvolvimento do
+dia a dia continua com os comandos de [Setup](#setup) e [Console web](#console-web-frontend)
+acima, executados diretamente com Node.js.
+
+Para produção, combine com o overlay [docker-compose.prod.yml](./docker-compose.prod.yml), que
+desativa o Swagger, ativa `TRUST_PROXY`, não publica as portas do Postgres/RabbitMQ e restringe
+backend/frontend a `127.0.0.1` (assumindo um reverse proxy com TLS na frente). É obrigatório
+fornecer um `.env` próprio com segredos reais (senhas, chave de cifragem, `CORS_ORIGINS` HTTPS) —
+ver os comentários em `docker-compose.prod.yml` e `.env.example`:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+```
+
+Esses artefatos de containerização não são usados hoje nem no desenvolvimento nem na operação
+real da plataforma — foram preparados para quando essa etapa for iniciada.
+
 ## Fluxo de ponta a ponta
 
 1. `POST /v1/tenants` — cria um Tenant.

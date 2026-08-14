@@ -1,0 +1,80 @@
+# Overlay de produção. Use combinando com o compose base:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Requer um arquivo .env na raiz com valores reais e seguros (ver
+# .env.example) - em especial:
+#   - POSTGRES_PASSWORD / RABBITMQ_PASSWORD fortes e distintas dos padrões de teste;
+#   - INITIAL_PLATFORM_ADMIN_PASSWORD forte;
+#   - META_CREDENTIALS_ENCRYPTION_KEY própria (32 bytes em Base64, gerada com
+#     `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`);
+#   - CORS_ORIGINS com o(s) domínio(s) HTTPS reais do console - é obrigatório em
+#     produção: a API se recusa a iniciar com CORS_ORIGINS http:// ou vazio
+#     quando NODE_ENV=production (ver env.validation.ts);
+#   - MESSAGE_PROVIDER=meta e as credenciais reais da Meta, se for operar de
+#     fato (o padrão "sandbox" do compose base é apenas para testes locais).
+#
+# Este overlay:
+#   - remove a publicação das portas do Postgres/RabbitMQ (ficam só na rede
+#     interna do Docker Compose);
+#   - publica backend/frontend somente em 127.0.0.1, assumindo um reverse
+#     proxy (Nginx, Traefik, Caddy, load balancer gerenciado etc.) na frente
+#     do host, terminando HTTPS - este overlay NÃO configura TLS;
+#   - desativa o Swagger e ativa TRUST_PROXY;
+#   - limita tamanho de log e recursos de CPU/memória dos containers da app.
+
+services:
+  postgres:
+    restart: always
+    ports: []
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  rabbitmq:
+    restart: always
+    ports: []
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  migrate:
+    restart: "no"
+
+  backend:
+    restart: always
+    environment:
+      NODE_ENV: production
+      SWAGGER_ENABLED: "false"
+      TRUST_PROXY: "true"
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-3000}:3000"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+
+  frontend:
+    restart: always
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-8080}:80"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M

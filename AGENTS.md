@@ -1556,8 +1556,11 @@ com valores fictícios.
 # 43. Serviços externos
 
 Durante o desenvolvimento, PostgreSQL, RabbitMQ e Redis quando necessário são configurados por
-variáveis de ambiente e podem ser executados pela infraestrutura que o time definir. Artefatos de
-containerização e implantação serão introduzidos somente quando essa etapa for iniciada.
+variáveis de ambiente e podem ser executados pela infraestrutura que o time definir. Existem
+`Dockerfile`s (`backend/Dockerfile`, `frontend/Dockerfile`) e `docker-compose.yml` /
+`docker-compose.prod.yml` na raiz para permitir testar a aplicação completa com um único comando
+(ver seção "Docker" do README.md), mas esses artefatos ainda não são usados no fluxo real de
+desenvolvimento nem na implantação em produção da plataforma.
 
 ---
 
