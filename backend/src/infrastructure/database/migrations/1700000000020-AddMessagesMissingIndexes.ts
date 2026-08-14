@@ -19,7 +19,12 @@ export class AddMessagesMissingIndexes1700000000020 implements MigrationInterfac
   }
 
   async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query('DROP INDEX CONCURRENTLY app.idx_messages_phone_number_id');
-    await queryRunner.query('DROP INDEX CONCURRENTLY app.idx_messages_tenant_id_created_at');
+    // Sem CONCURRENTLY aqui: `migration:revert` do TypeORM sempre roda o down()
+    // dentro de uma transação (ignora `transaction = false` nesse caminho, ao
+    // contrário do up()), e DROP INDEX CONCURRENTLY não pode rodar em transação.
+    // Isso é seguro porque, ao contrário do CREATE, o DROP só precisa de um lock
+    // exclusivo breve para remover o metadado do índice.
+    await queryRunner.query('DROP INDEX app.idx_messages_phone_number_id');
+    await queryRunner.query('DROP INDEX app.idx_messages_tenant_id_created_at');
   }
 }
