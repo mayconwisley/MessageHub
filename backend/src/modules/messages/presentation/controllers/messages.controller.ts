@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Inject,
   Param,
+  ParseUUIDPipe,
   Post,
   Query,
   Req,
@@ -161,7 +162,7 @@ export class MessagesController {
   @Get(':id')
   @ApiResponse({ status: HttpStatus.OK, type: MessageResponseDto })
   async getById(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Query() query: ApplicationScopedQueryDto,
     @CurrentOptionalAuthContext() authContext?: AuthContextDto,
     @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
@@ -179,7 +180,7 @@ export class MessagesController {
   @Get(':id/attempts')
   @ApiResponse({ status: HttpStatus.OK, type: [MessageAttemptResponseDto] })
   async listAttempts(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Query() query: ApplicationScopedQueryDto,
     @CurrentOptionalAuthContext() authContext?: AuthContextDto,
     @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
@@ -194,7 +195,7 @@ export class MessagesController {
 
   @Get(':id/timeline')
   async listTimeline(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Query() query: ApplicationScopedQueryDto,
     @CurrentOptionalAuthContext() authContext?: AuthContextDto,
     @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,

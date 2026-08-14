@@ -5,6 +5,7 @@ import { Result } from '@shared/result';
 import { EmailAlreadyInUseError } from '../../domain/errors/email-already-in-use.error';
 import { InvalidUserEmailError } from '../../domain/errors/invalid-user-email.error';
 import { InvalidUserNameError } from '../../domain/errors/invalid-user-name.error';
+import { InvalidUserTenantAssignmentError } from '../../domain/errors/invalid-user-tenant-assignment.error';
 import { UserNotFoundError } from '../../domain/errors/user-not-found.error';
 import {
   IUserRepository,
@@ -23,7 +24,11 @@ export class UpdateUserHandler implements ICommandHandler<UpdateUserCommand> {
   ): Promise<
     Result<
       UserDto,
-      UserNotFoundError | InvalidUserNameError | InvalidUserEmailError | EmailAlreadyInUseError
+      | UserNotFoundError
+      | InvalidUserNameError
+      | InvalidUserEmailError
+      | EmailAlreadyInUseError
+      | InvalidUserTenantAssignmentError
     >
   > {
     const user = await this.users.findById(UniqueId.create(command.userId));

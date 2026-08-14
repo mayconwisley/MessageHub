@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Inject,
   Param,
+  ParseUUIDPipe,
   Post,
   Put,
   Query,
@@ -131,7 +132,7 @@ export class TemplatesController {
   @Get(':id')
   @ApiResponse({ status: HttpStatus.OK, type: TemplateResponseDto })
   async getById(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Query() query: TenantScopedQueryDto,
     @CurrentOptionalAuthContext() auth?: AuthContextDto,
     @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
@@ -174,7 +175,7 @@ export class TemplatesController {
 
   @Put(':id')
   async update(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateTemplateRequestDto,
     @CurrentOptionalAuthContext() auth?: AuthContextDto,
     @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
@@ -190,7 +191,7 @@ export class TemplatesController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Query() query: TenantScopedQueryDto,
     @CurrentOptionalAuthContext() auth?: AuthContextDto,
     @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,

@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Inject,
   Param,
+  ParseUUIDPipe,
   Post,
   Query,
   UseGuards,
@@ -98,7 +99,7 @@ export class PhoneNumbersController {
   @Get(':id')
   @ApiResponse({ status: HttpStatus.OK, type: PhoneNumberResponseDto })
   async getById(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @CurrentOptionalAuthContext() auth?: AuthContextDto,
     @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
   ): Promise<PhoneNumberResponseDto> {

@@ -22,11 +22,7 @@ const NOT_FOUND_CODES = new Set([
   'USER_NOT_FOUND',
 ]);
 
-const TOO_MANY_REQUESTS_CODES = new Set([
-  'RATE_LIMIT_EXCEEDED',
-  'PROVIDER_RATE_LIMITED',
-  'ACCOUNT_LOCKED',
-]);
+const TOO_MANY_REQUESTS_CODES = new Set(['RATE_LIMIT_EXCEEDED', 'PROVIDER_RATE_LIMITED']);
 
 export function toHttpException(error: BaseError): HttpException {
   return new HttpException({ code: error.code, message: error.message }, resolveHttpStatus(error));

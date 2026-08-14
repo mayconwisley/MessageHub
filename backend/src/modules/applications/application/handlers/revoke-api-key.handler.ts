@@ -15,7 +15,7 @@ export class RevokeApiKeyHandler implements ICommandHandler<RevokeApiKeyCommand>
 
   async execute(command: RevokeApiKeyCommand): Promise<Result<void, ApiKeyNotFoundError>> {
     const apiKey = await this.apiKeyRepository.findById(UniqueId.create(command.apiKeyId));
-    if (!apiKey) {
+    if (!apiKey || !apiKey.applicationId.equals(UniqueId.create(command.applicationId))) {
       return Result.fail(new ApiKeyNotFoundError(command.apiKeyId));
     }
 

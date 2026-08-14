@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Inject,
   Param,
+  ParseUUIDPipe,
   Post,
   Query,
   UseGuards,
@@ -139,7 +140,7 @@ export class WhatsAppAccountsController {
   @Get(':id')
   @ApiResponse({ status: HttpStatus.OK, type: WhatsAppAccountResponseDto })
   async getById(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @CurrentOptionalAuthContext() auth?: AuthContextDto,
     @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
   ): Promise<WhatsAppAccountResponseDto> {

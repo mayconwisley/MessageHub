@@ -5,6 +5,7 @@ import {
   HttpStatus,
   Inject,
   Param,
+  ParseUUIDPipe,
   Post,
   Query,
   UseGuards,
@@ -50,7 +51,7 @@ export class WebhookEventsController {
 
   @Post(':id/reprocess')
   @HttpCode(HttpStatus.ACCEPTED)
-  async reprocess(@Param('id') id: string): Promise<WebhookEventResponseDto> {
+  async reprocess(@Param('id', ParseUUIDPipe) id: string): Promise<WebhookEventResponseDto> {
     const result = await this.mediator.send(new ReprocessWebhookEventCommand(id));
     if (result.isFailure) throw toHttpException(result.error);
     return WebhookEventResponseDto.fromEntity(result.value);

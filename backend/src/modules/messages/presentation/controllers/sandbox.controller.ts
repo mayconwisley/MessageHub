@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  ParseUUIDPipe,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -38,7 +39,7 @@ export class SandboxController {
   @Post(':id/status')
   @HttpCode(HttpStatus.ACCEPTED)
   simulateStatus(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() body: SimulateWebhookStatusRequestDto,
   ): Promise<void> {
     return this.simulator.simulateStatus(id, body.status);

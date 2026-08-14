@@ -1,4 +1,4 @@
-import { Controller, Get, Inject, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Inject, Param, ParseUUIDPipe, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { IMediator, MEDIATOR } from '@shared/mediator';
 import { UserSessionAuthGuard } from '@presentation/http/guards/user-session-auth.guard';
@@ -11,7 +11,8 @@ import { GetIntegrationMonitorQuery } from '../application/queries/get-integrati
 @Controller('v1/monitoring')
 export class MonitoringController {
   constructor(@Inject(MEDIATOR) private readonly mediator: IMediator) {}
-  @Get('applications/:applicationId') async get(@Param('applicationId') applicationId: string) {
+  @Get('applications/:applicationId')
+  async get(@Param('applicationId', ParseUUIDPipe) applicationId: string) {
     const result = await this.mediator.query(new GetIntegrationMonitorQuery(applicationId));
     if (result.isFailure) throw toHttpException(result.error);
     return result.value;

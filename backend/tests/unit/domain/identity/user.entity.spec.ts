@@ -1,8 +1,10 @@
+import { UniqueId } from '@shared/domain';
 import { Result } from '@shared/result';
 import { User } from '@modules/identity/domain/entities/user.entity';
 import { UserRole } from '@modules/identity/domain/enums/user-role.enum';
 import { InvalidUserNameError } from '@modules/identity/domain/errors/invalid-user-name.error';
 import { InvalidUserEmailError } from '@modules/identity/domain/errors/invalid-user-email.error';
+import { InvalidUserTenantAssignmentError } from '@modules/identity/domain/errors/invalid-user-tenant-assignment.error';
 
 function expectOk<T, E>(result: Result<T, E>): T {
   if (result.isFailure)
@@ -115,5 +117,63 @@ describe('User', () => {
     user.recordLogin();
 
     expect(user.lastLoginAt).not.toBeNull();
+  });
+
+  it('falha ao criar um tenant_admin ou operator sem tenantId', () => {
+    const result = User.create({
+      name: 'Bruno',
+      email: 'bruno@hub.com',
+      passwordHash: 'hash',
+      role: UserRole.TENANT_ADMIN,
+    });
+
+    expect(result.isFailure).toBe(true);
+    expect(result.error).toBeInstanceOf(InvalidUserTenantAssignmentError);
+  });
+
+  it('permite criar um platform_admin sem tenantId', () => {
+    const result = User.create({
+      name: 'Ana Admin',
+      email: 'ana@hub.com',
+      passwordHash: 'hash',
+      role: UserRole.PLATFORM_ADMIN,
+    });
+
+    expect(result.isFailure).toBe(false);
+  });
+
+  it('falha ao promover um tenant_admin para operator removendo o tenantId', () => {
+    const user = expectOk(
+      User.create({
+        name: 'Bruno',
+        email: 'bruno@hub.com',
+        passwordHash: 'hash',
+        role: UserRole.TENANT_ADMIN,
+        tenantId: UniqueId.create().value,
+      }),
+    );
+
+    const result = user.updateProfile({ tenantId: null });
+
+    expect(result.isFailure).toBe(true);
+    expect(result.error).toBeInstanceOf(InvalidUserTenantAssignmentError);
+  });
+
+  it('permite remover o tenantId ao promover para platform_admin no mesmo update', () => {
+    const user = expectOk(
+      User.create({
+        name: 'Bruno',
+        email: 'bruno@hub.com',
+        passwordHash: 'hash',
+        role: UserRole.TENANT_ADMIN,
+        tenantId: UniqueId.create().value,
+      }),
+    );
+
+    const result = user.updateProfile({ role: UserRole.PLATFORM_ADMIN, tenantId: null });
+
+    expect(result.isFailure).toBe(false);
+    expect(user.tenantId).toBeNull();
+    expect(user.role).toBe(UserRole.PLATFORM_ADMIN);
   });
 });

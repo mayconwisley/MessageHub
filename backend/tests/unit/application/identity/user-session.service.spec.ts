@@ -1,4 +1,5 @@
 import * as bcrypt from 'bcryptjs';
+import { UniqueId } from '@shared/domain';
 import { Result } from '@shared/result';
 import { PaginatedResult } from '@shared/types';
 import { User } from '@modules/identity/domain/entities/user.entity';
@@ -63,7 +64,13 @@ class FakeUserSessionRepository implements IUserSessionRepository {
 async function createActiveUser(password: string): Promise<User> {
   const passwordHash = await bcrypt.hash(password, 4);
   return expectOk(
-    User.create({ name: 'Ana', email: 'ana@hub.com', passwordHash, role: UserRole.TENANT_ADMIN }),
+    User.create({
+      name: 'Ana',
+      email: 'ana@hub.com',
+      passwordHash,
+      role: UserRole.TENANT_ADMIN,
+      tenantId: UniqueId.create().value,
+    }),
   );
 }
 
@@ -96,7 +103,7 @@ describe('UserSessionService.authenticate', () => {
     expect(users.saved[0].failedLoginAttempts).toBe(1);
   });
 
-  it('bloqueia a conta na 5ª tentativa de senha errada', async () => {
+  it('bloqueia a conta na 5ª tentativa de senha errada, sem distinguir a resposta de um "invalid" comum', async () => {
     const user = await createActiveUser('correct-password');
     users.seed(user);
 
@@ -105,12 +112,13 @@ describe('UserSessionService.authenticate', () => {
     }
     const outcome = await service.authenticate('ana@hub.com', 'wrong-password', {});
 
-    expect(outcome.status).toBe('locked');
+    expect(outcome).toEqual({ status: 'invalid' });
     expect(users.saved[users.saved.length - 1].failedLoginAttempts).toBe(0);
+    expect(users.saved[users.saved.length - 1].lockedUntil).not.toBeNull();
     expect(sessions.created).toHaveLength(0);
   });
 
-  it('rejeita login com senha correta enquanto a conta estiver bloqueada', async () => {
+  it('rejeita login com senha correta enquanto a conta estiver bloqueada, sem resetar o bloqueio', async () => {
     const user = await createActiveUser('correct-password');
     users.seed(user);
     for (let i = 0; i < 5; i += 1) {
@@ -119,8 +127,25 @@ describe('UserSessionService.authenticate', () => {
 
     const outcome = await service.authenticate('ana@hub.com', 'correct-password', {});
 
-    expect(outcome.status).toBe('locked');
+    expect(outcome).toEqual({ status: 'invalid' });
     expect(sessions.created).toHaveLength(0);
+  });
+
+  it('não distingue e-mail inexistente de senha errada (evita enumeração de contas)', async () => {
+    const user = await createActiveUser('correct-password');
+    users.seed(user);
+
+    const unknownEmailOutcome = await service.authenticate('unknown@hub.com', 'whatever', {});
+    const wrongPasswordOutcome = await service.authenticate('ana@hub.com', 'wrong-password', {});
+
+    expect(unknownEmailOutcome).toEqual({ status: 'invalid' });
+    expect(wrongPasswordOutcome).toEqual({ status: 'invalid' });
+  });
+
+  it('não incrementa nem persiste tentativas de login para e-mail inexistente', async () => {
+    await service.authenticate('unknown@hub.com', 'whatever', {});
+
+    expect(users.saved).toHaveLength(0);
   });
 
   it('autentica com sucesso, zera o contador e cria a sessão', async () => {

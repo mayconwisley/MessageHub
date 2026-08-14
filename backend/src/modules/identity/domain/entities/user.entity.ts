@@ -4,6 +4,7 @@ import { UserRole } from '../enums/user-role.enum';
 import { UserStatus } from '../enums/user-status.enum';
 import { InvalidUserNameError } from '../errors/invalid-user-name.error';
 import { InvalidUserEmailError } from '../errors/invalid-user-email.error';
+import { InvalidUserTenantAssignmentError } from '../errors/invalid-user-tenant-assignment.error';
 
 export interface UserProps {
   tenantId: string | null;
@@ -46,7 +47,7 @@ export class User extends Entity<UserProps> {
   static create(
     params: CreateUserParams,
     id?: UniqueId,
-  ): Result<User, InvalidUserNameError | InvalidUserEmailError> {
+  ): Result<User, InvalidUserNameError | InvalidUserEmailError | InvalidUserTenantAssignmentError> {
     const name = params.name?.trim();
     if (!name) {
       return Result.fail(new InvalidUserNameError());
@@ -55,12 +56,16 @@ export class User extends Entity<UserProps> {
     if (!email) {
       return Result.fail(new InvalidUserEmailError());
     }
+    const tenantId = params.tenantId ?? null;
+    if (params.role !== UserRole.PLATFORM_ADMIN && !tenantId) {
+      return Result.fail(new InvalidUserTenantAssignmentError());
+    }
 
     const now = new Date();
     return Result.ok(
       new User(
         {
-          tenantId: params.tenantId ?? null,
+          tenantId,
           name,
           email,
           passwordHash: params.passwordHash,
@@ -166,7 +171,7 @@ export class User extends Entity<UserProps> {
 
   updateProfile(
     params: UpdateUserProfileParams,
-  ): Result<void, InvalidUserNameError | InvalidUserEmailError> {
+  ): Result<void, InvalidUserNameError | InvalidUserEmailError | InvalidUserTenantAssignmentError> {
     if (params.name !== undefined) {
       const name = params.name.trim();
       if (!name) {
@@ -180,6 +185,11 @@ export class User extends Entity<UserProps> {
         return Result.fail(new InvalidUserEmailError());
       }
       this.props.email = email;
+    }
+    const nextRole = params.role ?? this.props.role;
+    const nextTenantId = params.tenantId !== undefined ? params.tenantId : this.props.tenantId;
+    if (nextRole !== UserRole.PLATFORM_ADMIN && !nextTenantId) {
+      return Result.fail(new InvalidUserTenantAssignmentError());
     }
     if (params.role !== undefined) {
       this.props.role = params.role;

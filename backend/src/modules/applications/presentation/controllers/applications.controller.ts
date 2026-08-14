@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Inject,
   Param,
+  ParseUUIDPipe,
   Post,
   Put,
   Query,
@@ -86,7 +87,7 @@ export class ApplicationsController {
   @Put(':applicationId/webhook')
   @ApiResponse({ status: HttpStatus.OK, type: WebhookConfigResponseDto })
   async configureWebhook(
-    @Param('applicationId') applicationId: string,
+    @Param('applicationId', ParseUUIDPipe) applicationId: string,
     @Body() dto: ConfigureWebhookRequestDto,
   ): Promise<WebhookConfigResponseDto> {
     if (dto.webhookUrl) {
@@ -109,7 +110,7 @@ export class ApplicationsController {
   @Put(':applicationId/quotas')
   @ApiResponse({ status: HttpStatus.OK, type: ApplicationResponseDto })
   async configureQuotas(
-    @Param('applicationId') applicationId: string,
+    @Param('applicationId', ParseUUIDPipe) applicationId: string,
     @Body() dto: ConfigureApplicationQuotasRequestDto,
   ): Promise<ApplicationResponseDto> {
     const result = await this.mediator.send(
@@ -122,7 +123,7 @@ export class ApplicationsController {
   @Get(':applicationId/phone-numbers')
   @ApiResponse({ status: HttpStatus.OK, type: [LinkedPhoneNumberResponseDto] })
   async listPhoneNumbers(
-    @Param('applicationId') applicationId: string,
+    @Param('applicationId', ParseUUIDPipe) applicationId: string,
   ): Promise<LinkedPhoneNumberResponseDto[]> {
     const result = await this.mediator.query(new ListApplicationPhoneNumbersQuery(applicationId));
     if (result.isFailure) throw toHttpException(result.error);
@@ -132,7 +133,7 @@ export class ApplicationsController {
   @Put(':applicationId/phone-numbers')
   @ApiResponse({ status: HttpStatus.OK, type: [LinkedPhoneNumberResponseDto] })
   async setPhoneNumbers(
-    @Param('applicationId') applicationId: string,
+    @Param('applicationId', ParseUUIDPipe) applicationId: string,
     @Body() dto: SetApplicationPhoneNumbersRequestDto,
   ): Promise<LinkedPhoneNumberResponseDto[]> {
     const result = await this.mediator.send(

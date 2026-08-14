@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsWhere, ILike, In, Repository } from 'typeorm';
+import { FindOptionsWhere, ILike, In, QueryFailedError, Repository } from 'typeorm';
 import { UniqueId } from '@shared/domain';
 import { PhoneNumber, PhoneNumberProps } from '../../domain/entities/phone-number.entity';
+import { PhoneNumberAlreadyRegisteredError } from '../../domain/errors/phone-number-already-registered.error';
 import { PhoneNumberStatus } from '../../domain/enums/phone-number-status.enum';
 import {
   IPhoneNumberRepository,
@@ -10,6 +11,8 @@ import {
 } from '../../domain/repositories/phone-number.repository.interface';
 import { PhoneNumberOrmEntity } from '../entities/phone-number.orm-entity';
 import { PaginatedResult } from '@shared/types';
+
+const UNIQUE_VIOLATION = '23505';
 
 @Injectable()
 export class PostgresPhoneNumberRepository implements IPhoneNumberRepository {
@@ -19,7 +22,18 @@ export class PostgresPhoneNumberRepository implements IPhoneNumberRepository {
   ) {}
 
   async save(phoneNumber: PhoneNumber): Promise<void> {
-    await this.repository.save(this.toOrmEntity(phoneNumber));
+    try {
+      await this.repository.save(this.toOrmEntity(phoneNumber));
+    } catch (error) {
+      const driverCode =
+        error instanceof QueryFailedError
+          ? (error.driverError as { code?: string }).code
+          : undefined;
+      if (driverCode === UNIQUE_VIOLATION) {
+        throw new PhoneNumberAlreadyRegisteredError(phoneNumber.phoneNumberId);
+      }
+      throw error;
+    }
   }
 
   async findById(id: UniqueId): Promise<PhoneNumber | null> {

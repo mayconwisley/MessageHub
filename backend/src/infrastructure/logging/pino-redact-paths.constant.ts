@@ -18,6 +18,21 @@ const SENSITIVE_KEYS = [
   'token',
 ];
 
+/**
+ * Caminhos fixos (não cobertos pelo wildcard de 1 nível acima) onde PII de
+ * clientes (telefone, nome, conteúdo da mensagem) aparece nos payloads da
+ * fila de webhook de mensagem recebida (`inbound-message-webhook.worker.ts`),
+ * logados em WARN/ERROR a cada retry.
+ */
+const INBOUND_MESSAGE_WEBHOOK_PII_PATHS = [
+  'payload.sender.id',
+  'payload.sender.displayName',
+  'payload.message',
+  'nextPayload.sender.id',
+  'nextPayload.sender.displayName',
+  'nextPayload.message',
+];
+
 export const PINO_REDACT_PATHS: string[] = [
   'req.headers.authorization',
   'req.headers.cookie',
@@ -27,4 +42,5 @@ export const PINO_REDACT_PATHS: string[] = [
   // objeto logado quanto aninhado um nivel abaixo (ex.: `{ account: { accessToken } }`).
   ...SENSITIVE_KEYS,
   ...SENSITIVE_KEYS.map((key) => `*.${key}`),
+  ...INBOUND_MESSAGE_WEBHOOK_PII_PATHS,
 ];

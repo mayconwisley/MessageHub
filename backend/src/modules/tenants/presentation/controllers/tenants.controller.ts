@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Inject,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -78,7 +79,7 @@ export class TenantsController {
 
   @Get(':id')
   @ApiResponse({ status: HttpStatus.OK, type: TenantResponseDto })
-  async getById(@Param('id') id: string): Promise<TenantResponseDto> {
+  async getById(@Param('id', ParseUUIDPipe) id: string): Promise<TenantResponseDto> {
     const result = await this.mediator.query(new GetTenantQuery(id));
     if (result.isFailure) {
       throw toHttpException(result.error);
@@ -89,7 +90,7 @@ export class TenantsController {
   @Patch(':id/status')
   @ApiResponse({ status: HttpStatus.OK, type: TenantResponseDto })
   async updateStatus(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateTenantStatusRequestDto,
   ): Promise<TenantResponseDto> {
     if (this.metaConfig.defaultChannelEnabled && id === this.metaConfig.defaultTenantId) {

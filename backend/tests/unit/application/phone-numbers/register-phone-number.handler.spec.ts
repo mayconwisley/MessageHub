@@ -6,6 +6,7 @@ import { WhatsAppAccount } from '@modules/whatsapp-accounts/domain/entities/what
 import { IWhatsAppAccountRepository } from '@modules/whatsapp-accounts/domain/repositories/whatsapp-account.repository.interface';
 import { PhoneNumber } from '@modules/phone-numbers/domain/entities/phone-number.entity';
 import { InvalidPhoneNumberError } from '@modules/phone-numbers/domain/errors/invalid-phone-number.error';
+import { PhoneNumberAlreadyRegisteredError } from '@modules/phone-numbers/domain/errors/phone-number-already-registered.error';
 import { IPhoneNumberRepository } from '@modules/phone-numbers/domain/repositories/phone-number.repository.interface';
 import { RegisterPhoneNumberCommand } from '@modules/phone-numbers/application/commands/register-phone-number.command';
 import { RegisterPhoneNumberHandler } from '@modules/phone-numbers/application/handlers/register-phone-number.handler';
@@ -41,6 +42,8 @@ class FakeWhatsAppAccountRepository implements IWhatsAppAccountRepository {
 class FakePhoneNumberRepository implements IPhoneNumberRepository {
   readonly saved: PhoneNumber[] = [];
 
+  constructor(private readonly existing: PhoneNumber | null = null) {}
+
   async save(phoneNumber: PhoneNumber): Promise<void> {
     this.saved.push(phoneNumber);
   }
@@ -50,7 +53,7 @@ class FakePhoneNumberRepository implements IPhoneNumberRepository {
   }
 
   async findByProviderPhoneNumberId(): Promise<PhoneNumber | null> {
-    return null;
+    return this.existing;
   }
 
   async listByWhatsAppAccountIds(): Promise<PaginatedResult<PhoneNumber>> {
@@ -65,8 +68,11 @@ function createWhatsAppAccount(tenantId: UniqueId): WhatsAppAccount {
 describe('RegisterPhoneNumberHandler', () => {
   const tenantId = UniqueId.create();
 
-  function buildHandler(options: { accounts?: WhatsAppAccount[] }) {
-    const phoneNumbers = new FakePhoneNumberRepository();
+  function buildHandler(options: {
+    accounts?: WhatsAppAccount[];
+    existingPhoneNumber?: PhoneNumber | null;
+  }) {
+    const phoneNumbers = new FakePhoneNumberRepository(options.existingPhoneNumber ?? null);
     const accounts = new FakeWhatsAppAccountRepository(options.accounts ?? []);
     const handler = new RegisterPhoneNumberHandler(phoneNumbers, accounts);
     return { handler, phoneNumbers, accounts };
@@ -147,6 +153,30 @@ describe('RegisterPhoneNumberHandler', () => {
 
     expect(result.isFailure).toBe(true);
     expect(result.error).toBeInstanceOf(InvalidPhoneNumberError);
+    expect(phoneNumbers.saved).toHaveLength(0);
+  });
+
+  it('falha quando o phoneNumberId já está registrado em outra conta (evita sequestro cross-tenant)', async () => {
+    const account = createWhatsAppAccount(tenantId);
+    const otherAccount = createWhatsAppAccount(UniqueId.create());
+    const existing = expectOk(
+      PhoneNumber.create({
+        whatsAppAccountId: otherAccount.id,
+        phoneNumberId: 'meta-phone-1',
+        displayNumber: '+5511888888888',
+      }),
+    );
+    const { handler, phoneNumbers } = buildHandler({
+      accounts: [account],
+      existingPhoneNumber: existing,
+    });
+
+    const result = await handler.execute(
+      new RegisterPhoneNumberCommand(account.id.value, 'meta-phone-1', '+5511999999999'),
+    );
+
+    expect(result.isFailure).toBe(true);
+    expect(result.error).toBeInstanceOf(PhoneNumberAlreadyRegisteredError);
     expect(phoneNumbers.saved).toHaveLength(0);
   });
 });

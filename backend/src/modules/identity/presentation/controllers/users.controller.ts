@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Inject,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -101,7 +102,7 @@ export class UsersController {
 
   @Get(':id')
   @ApiResponse({ status: HttpStatus.OK, type: UserResponseDto })
-  async getById(@Param('id') id: string): Promise<UserResponseDto> {
+  async getById(@Param('id', ParseUUIDPipe) id: string): Promise<UserResponseDto> {
     const result = await this.mediator.query(new GetUserQuery(id));
     if (result.isFailure) {
       throw toHttpException(result.error);
@@ -112,7 +113,7 @@ export class UsersController {
   @Patch(':id')
   @ApiResponse({ status: HttpStatus.OK, type: UserResponseDto })
   async update(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateUserRequestDto,
   ): Promise<UserResponseDto> {
     const result = await this.mediator.send(
@@ -127,7 +128,7 @@ export class UsersController {
   @Patch(':id/status')
   @ApiResponse({ status: HttpStatus.OK, type: UserResponseDto })
   async updateStatus(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateUserStatusRequestDto,
     @Req() request: UserAuthenticatedRequest,
   ): Promise<UserResponseDto> {

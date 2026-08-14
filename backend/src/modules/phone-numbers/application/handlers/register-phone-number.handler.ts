@@ -9,6 +9,7 @@ import {
 } from '@modules/whatsapp-accounts/domain/repositories/whatsapp-account.repository.interface';
 import { PhoneNumber } from '../../domain/entities/phone-number.entity';
 import { InvalidPhoneNumberError } from '../../domain/errors/invalid-phone-number.error';
+import { PhoneNumberAlreadyRegisteredError } from '../../domain/errors/phone-number-already-registered.error';
 import {
   IPhoneNumberRepository,
   PHONE_NUMBER_REPOSITORY,
@@ -27,7 +28,12 @@ export class RegisterPhoneNumberHandler implements ICommandHandler<RegisterPhone
 
   async execute(
     command: RegisterPhoneNumberCommand,
-  ): Promise<Result<PhoneNumberDto, InvalidPhoneNumberError | WhatsAppAccountNotFoundError>> {
+  ): Promise<
+    Result<
+      PhoneNumberDto,
+      InvalidPhoneNumberError | WhatsAppAccountNotFoundError | PhoneNumberAlreadyRegisteredError
+    >
+  > {
     const whatsAppAccountId = UniqueId.create(command.whatsAppAccountId);
     const whatsAppAccount = await this.whatsAppAccountRepository.findById(whatsAppAccountId);
     if (
@@ -35,6 +41,13 @@ export class RegisterPhoneNumberHandler implements ICommandHandler<RegisterPhone
       (command.tenantId && !whatsAppAccount.tenantId.equals(UniqueId.create(command.tenantId)))
     ) {
       return Result.fail(new WhatsAppAccountNotFoundError(command.whatsAppAccountId));
+    }
+
+    const existing = await this.phoneNumberRepository.findByProviderPhoneNumberId(
+      command.phoneNumberId,
+    );
+    if (existing) {
+      return Result.fail(new PhoneNumberAlreadyRegisteredError(command.phoneNumberId));
     }
 
     const phoneNumberResult = PhoneNumber.create({
@@ -47,7 +60,14 @@ export class RegisterPhoneNumberHandler implements ICommandHandler<RegisterPhone
     }
 
     const phoneNumber = phoneNumberResult.value;
-    await this.phoneNumberRepository.save(phoneNumber);
+    try {
+      await this.phoneNumberRepository.save(phoneNumber);
+    } catch (error) {
+      if (error instanceof PhoneNumberAlreadyRegisteredError) {
+        return Result.fail(error);
+      }
+      throw error;
+    }
 
     return Result.ok(PhoneNumberMapper.toDto(phoneNumber));
   }

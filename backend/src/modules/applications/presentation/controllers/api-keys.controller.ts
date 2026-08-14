@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Inject,
   Param,
+  ParseUUIDPipe,
   Post,
   Query,
   UseGuards,
@@ -36,7 +37,7 @@ export class ApiKeysController {
   @HttpCode(HttpStatus.CREATED)
   @ApiResponse({ status: HttpStatus.CREATED, type: CreatedApiKeyResponseDto })
   async create(
-    @Param('applicationId') applicationId: string,
+    @Param('applicationId', ParseUUIDPipe) applicationId: string,
     @Body() dto: CreateApiKeyRequestDto,
   ): Promise<CreatedApiKeyResponseDto> {
     const expiresAt = dto.expiresAt ? new Date(dto.expiresAt) : undefined;
@@ -56,7 +57,7 @@ export class ApiKeysController {
 
   @Get()
   async list(
-    @Param('applicationId') applicationId: string,
+    @Param('applicationId', ParseUUIDPipe) applicationId: string,
     @Query() query: PaginationQueryDto,
   ): Promise<PaginatedResult<ApiKeyResponseDto>> {
     const result = await this.mediator.query(
@@ -71,8 +72,11 @@ export class ApiKeysController {
 
   @Delete(':apiKeyId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async revoke(@Param('apiKeyId') apiKeyId: string): Promise<void> {
-    const result = await this.mediator.send(new RevokeApiKeyCommand(apiKeyId));
+  async revoke(
+    @Param('applicationId', ParseUUIDPipe) applicationId: string,
+    @Param('apiKeyId', ParseUUIDPipe) apiKeyId: string,
+  ): Promise<void> {
+    const result = await this.mediator.send(new RevokeApiKeyCommand(apiKeyId, applicationId));
     if (result.isFailure) {
       throw toHttpException(result.error);
     }

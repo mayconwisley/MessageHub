@@ -6,6 +6,7 @@ import { User } from '../../domain/entities/user.entity';
 import { EmailAlreadyInUseError } from '../../domain/errors/email-already-in-use.error';
 import { InvalidUserEmailError } from '../../domain/errors/invalid-user-email.error';
 import { InvalidUserNameError } from '../../domain/errors/invalid-user-name.error';
+import { InvalidUserTenantAssignmentError } from '../../domain/errors/invalid-user-tenant-assignment.error';
 import {
   IUserRepository,
   USER_REPOSITORY,
@@ -23,7 +24,13 @@ export class CreateUserHandler implements ICommandHandler<CreateUserCommand> {
   async execute(
     command: CreateUserCommand,
   ): Promise<
-    Result<UserDto, InvalidUserNameError | InvalidUserEmailError | EmailAlreadyInUseError>
+    Result<
+      UserDto,
+      | InvalidUserNameError
+      | InvalidUserEmailError
+      | EmailAlreadyInUseError
+      | InvalidUserTenantAssignmentError
+    >
   > {
     const email = command.email.trim().toLowerCase();
     const existing = await this.users.findByEmail(email);

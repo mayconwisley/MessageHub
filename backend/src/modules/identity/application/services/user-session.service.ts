@@ -16,11 +16,16 @@ import { AuthenticatedUserDto } from '../dto/authenticated-user.dto';
 
 const SESSION_PREFIX = 'mh_session_';
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
+/**
+ * Hash bcrypt "fantasma" comparado quando o e-mail não existe, para que a resposta gaste
+ * aproximadamente o mesmo tempo de um login com e-mail válido — evita enumeração de contas
+ * por diferença de latência entre "e-mail inexistente" (retorno imediato) e "e-mail existente"
+ * (paga o custo do bcrypt).
+ */
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync('mh-timing-normalization', 12);
 
 export type AuthenticationOutcome =
-  | { status: 'ok'; session: AuthenticatedSessionDto }
-  | { status: 'invalid' }
-  | { status: 'locked'; lockedUntil: Date };
+  { status: 'ok'; session: AuthenticatedSessionDto } | { status: 'invalid' };
 
 /** Emite, valida e revoga sessões de usuário administrativo. */
 @Injectable()
@@ -36,20 +41,22 @@ export class UserSessionService {
     metadata: { ipAddress?: string; userAgent?: string },
   ): Promise<AuthenticationOutcome> {
     const user = await this.users.findByEmail(email.trim().toLowerCase());
-    if (!user || !user.isActive()) {
+    // Sempre roda o bcrypt.compare, mesmo sem usuário encontrado (contra o hash fantasma),
+    // e nunca distingue "bloqueada"/"inativa"/"senha errada" na resposta: tudo isso vaza
+    // se a conta existe (enumeração) e permite a um atacante confirmar que travou a conta
+    // de outra pessoa de propósito.
+    const passwordMatches = await bcrypt.compare(
+      password,
+      user?.passwordHash ?? DUMMY_PASSWORD_HASH,
+    );
+
+    if (!user || !user.isActive() || user.isLocked()) {
       return { status: 'invalid' };
     }
-    if (user.isLocked()) {
-      return { status: 'locked', lockedUntil: user.lockedUntil as Date };
-    }
-
-    const passwordMatches = await bcrypt.compare(password, user.passwordHash);
     if (!passwordMatches) {
       user.recordFailedLogin();
       await this.users.save(user);
-      return user.isLocked()
-        ? { status: 'locked', lockedUntil: user.lockedUntil as Date }
-        : { status: 'invalid' };
+      return { status: 'invalid' };
     }
 
     const token = `${SESSION_PREFIX}${randomBytes(32).toString('base64url')}`;

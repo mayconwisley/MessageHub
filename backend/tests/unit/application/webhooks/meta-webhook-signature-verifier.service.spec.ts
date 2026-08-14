@@ -82,4 +82,36 @@ describe('MetaWebhookSignatureVerifierService', () => {
     expect(findByProviderPhoneNumberId).toHaveBeenCalledWith('phone-1');
     expect(findAccountById).toHaveBeenCalledWith('account-1');
   });
+
+  it('não consulta o banco quando a assinatura já bate com o secret global', async () => {
+    const service = createService('global-secret');
+    const body = Buffer.from(JSON.stringify({ hello: 'world' }));
+    const payload: MetaWebhookPayload = {
+      object: 'whatsapp_business_account',
+      entry: [
+        { changes: [{ field: 'messages', value: { metadata: { phone_number_id: 'phone-1' } } }] },
+      ],
+    };
+
+    await expect(service.verify(body, sign('global-secret', body), payload)).resolves.toBe(true);
+    expect(findByProviderPhoneNumberId).not.toHaveBeenCalled();
+  });
+
+  it('limita e deduplica as consultas ao banco a um número forjado de phone_number_id', async () => {
+    const service = createService(null);
+    const body = Buffer.from(JSON.stringify({ hello: 'world' }));
+    const changes = Array.from({ length: 500 }, (_, i) => ({
+      field: 'messages',
+      value: { metadata: { phone_number_id: `phone-${i % 3}` } },
+    }));
+    const payload: MetaWebhookPayload = {
+      object: 'whatsapp_business_account',
+      entry: [{ changes }],
+    };
+    findByProviderPhoneNumberId.mockResolvedValue(null);
+
+    await expect(service.verify(body, sign('irrelevant', body), payload)).resolves.toBe(false);
+    // apenas os phone_number_id distintos (3), não uma chamada por change (500)
+    expect(findByProviderPhoneNumberId).toHaveBeenCalledTimes(3);
+  });
 });
