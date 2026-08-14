@@ -282,8 +282,11 @@ backend/src/
 │   ├── decorators/             # current-auth-context, current-authenticated-user...
 │   ├── dto/                     # pagination-query.dto.ts
 │   ├── filters/                  # global-exception.filter.ts
-│   ├── guards/                   # api-key, platform-admin, tenant-api-key, user-session...
+│   ├── guards/                   # api-key, platform-admin, tenant-api-key, user-session,
+│   │                             # app-throttler (rate limiting)...
 │   ├── interceptors/            # audit-log.interceptor.ts
+│   ├── administration-security.module.ts
+│   ├── auth-scope.resolver.ts
 │   ├── result-http.mapper.ts
 │   └── validation-message.translator.ts
 │
@@ -1151,6 +1154,11 @@ Migrations devem ser:
 - reversíveis quando possível;
 - testadas antes de produção.
 
+O CI (job `backend-migrations`, ver [seção 54](#54-integração-contínua-cicd)) roda todas as
+migrations contra um Postgres limpo, reverte cada uma individualmente (modo de transação
+individual) e roda novamente, garantindo que os caminhos `up` e `down` de toda migration nova
+funcionem antes do merge.
+
 ---
 
 # 26. Observabilidade
@@ -1510,6 +1518,11 @@ Considerar:
 
 O rate limit interno deve ser separado dos limites impostos pela Meta.
 
+Referência viva: `AppThrottlerGuard` (`presentation/http/guards/app-throttler.guard.ts`) aplica o
+rate limit por Application/Tenant nos endpoints de mensagens. Quando o Hub roda atrás de reverse
+proxy (ver `TRUST_PROXY` e o overlay `docker-compose.prod.yml`), o guard deve resolver o IP real do
+cliente a partir dos cabeçalhos confiáveis, e não do socket direto.
+
 ---
 
 # 41. Configuração
@@ -1813,6 +1826,46 @@ Message Hub
 ```
 
 O Hub deve ser tratado como uma **plataforma de mensageria interna**, e não como um simples wrapper HTTP da API da Meta.
+
+---
+
+# 54. Integração Contínua (CI/CD)
+
+O repositório possui dois workflows do GitHub Actions em `.github/workflows/`:
+
+```text
+ci.yml
+    └── roda em push/PR para main, com detecção de mudanças (dorny/paths-filter)
+        para só executar os jobs de backend e/ou frontend quando cada pasta muda.
+
+    Backend:
+    ├── backend-quality       # format:check, lint, typecheck
+    ├── backend-unit-tests    # test:cov, com upload de cobertura
+    ├── backend-e2e-tests     # test:e2e
+    ├── backend-migrations    # migration:run + revert individual de cada migration + run novamente
+    │                          # (Postgres efêmero via service container)
+    ├── backend-build         # build, depende dos quatro jobs acima
+    └── backend-audit         # npm audit --audit-level=high (non-blocking)
+
+    Frontend:
+    ├── frontend-quality      # format:check, lint, typecheck
+    ├── frontend-tests        # test:coverage
+    ├── frontend-build        # build, depende dos dois jobs acima
+    └── frontend-audit        # npm audit --audit-level=high (non-blocking)
+
+    └── ci-success             # gate final: falha se algum job obrigatório não passou
+
+codeql.yml
+    └── análise de segurança estática (CodeQL, queries security-extended) em push/PR
+        para main e semanalmente (segunda-feira); resultados vão para a aba Security do GitHub.
+```
+
+Novas funcionalidades devem manter os jobs de qualidade passando (format/lint/typecheck,
+testes unitários e e2e, build) antes do merge. Toda migration nova deve sobreviver ao ciclo
+`up → down → up` exercido por `backend-migrations` (ver [seção 25](#25-migrations)).
+
+Os artefatos Docker (`Dockerfile`s e `docker-compose*.yml`, ver [seção 43](#43-serviços-externos))
+não fazem parte destes workflows — o CI roda diretamente com Node.js, não via imagem Docker.
 
 # Frontend
 
