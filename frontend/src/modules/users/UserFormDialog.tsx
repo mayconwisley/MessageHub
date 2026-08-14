@@ -22,15 +22,25 @@ const roleLabels: Record<string, string> = {
 };
 
 function buildSchema(isEditing: boolean) {
-  return z.object({
-    name: z.string().min(2, 'Informe ao menos 2 caracteres.'),
-    email: z.string().email('Informe um e-mail válido.'),
-    password: isEditing
-      ? z.string().optional()
-      : z.string().min(12, 'A senha deve ter ao menos 12 caracteres.'),
-    role: z.enum(['platform_admin', 'tenant_admin', 'operator']),
-    tenantId: z.string().uuid('Informe um UUID válido.').optional().or(z.literal('')),
-  });
+  return z
+    .object({
+      name: z.string().min(2, 'Informe ao menos 2 caracteres.'),
+      email: z.string().email('Informe um e-mail válido.'),
+      password: isEditing
+        ? z.string().optional()
+        : z.string().min(12, 'A senha deve ter ao menos 12 caracteres.'),
+      role: z.enum(['platform_admin', 'tenant_admin', 'operator']),
+      tenantId: z.string().uuid('Informe um UUID válido.').optional().or(z.literal('')),
+    })
+    .superRefine((value, context) => {
+      if (value.role !== 'platform_admin' && !value.tenantId) {
+        context.addIssue({
+          code: 'custom',
+          path: ['tenantId'],
+          message: 'Obrigatório para usuários não globais.',
+        });
+      }
+    });
 }
 export type UserFormData = z.infer<ReturnType<typeof buildSchema>>;
 

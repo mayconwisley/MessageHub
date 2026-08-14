@@ -51,7 +51,7 @@ export function WhatsAppAccountAutocomplete({
       return;
     }
     const match = data?.items.find((account) => account.id === value);
-    if (match) setSelectedOption(match);
+    setSelectedOption(match ?? null);
   }, [data, value]);
 
   return (

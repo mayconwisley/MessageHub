@@ -27,7 +27,6 @@ import { GetMessageHandler } from '@modules/messages/application/handlers/get-me
 import { SendMessageHandler } from '@modules/messages/application/handlers/send-message.handler';
 import { MESSAGE_PUBLISHER } from '@modules/messages/application/ports/message-publisher.interface';
 import { MESSAGE_TIMELINE_REPOSITORY } from '@modules/messages/application/ports/message-timeline.repository.interface';
-import { ApplicationQuotaService } from '@modules/messages/application/services/application-quota.service';
 import { PhoneNumberResolverService } from '@modules/messages/application/services/phone-number-resolver.service';
 import { MESSAGE_REPOSITORY } from '@modules/messages/domain/repositories/message.repository.interface';
 import { MESSAGE_ATTEMPT_REPOSITORY } from '@modules/messages/domain/repositories/message-attempt.repository.interface';
@@ -49,10 +48,22 @@ function createInMemoryRepository<TEntity extends { id: { value: string } }>() {
     async save(entity: TEntity): Promise<void> {
       store.set(entity.id.value, entity);
     },
+    async saveWithQuotaCheck(entity: TEntity): Promise<{ outcome: 'saved' }> {
+      store.set(entity.id.value, entity);
+      return { outcome: 'saved' };
+    },
     async findById(id: { value: string }): Promise<TEntity | null> {
       return store.get(id.value) ?? null;
     },
     async findByIdempotencyKey(): Promise<TEntity | null> {
+      return null;
+    },
+    async findByProviderPhoneNumberId(phoneNumberId: string): Promise<TEntity | null> {
+      for (const entity of store.values()) {
+        if ((entity as unknown as { phoneNumberId?: string }).phoneNumberId === phoneNumberId) {
+          return entity;
+        }
+      }
       return null;
     },
     async recordUsage(): Promise<void> {
@@ -65,7 +76,10 @@ function createInMemoryRepository<TEntity extends { id: { value: string } }>() {
 function createInMemoryPhoneNumberLinkRepository() {
   const store = new Map<string, { value: string }[]>();
   return {
-    async replaceForApplication(applicationId: { value: string }, phoneNumberIds: { value: string }[]) {
+    async replaceForApplication(
+      applicationId: { value: string },
+      phoneNumberIds: { value: string }[],
+    ) {
       store.set(applicationId.value, phoneNumberIds);
     },
     async listPhoneNumberIdsByApplication(applicationId: { value: string }) {
@@ -81,9 +95,6 @@ describe('Messages flow (e2e)', () => {
   let app: INestApplication;
   const messagePublisher = { publishMessageRequested: jest.fn().mockResolvedValue(undefined) };
   const messageTimelineRepository = { record: jest.fn().mockResolvedValue(undefined) };
-  const applicationQuotaService = {
-    assertCanAcceptMessage: jest.fn().mockResolvedValue(undefined),
-  };
   const adminSession = 'mh_session_e2e-test-token';
 
   beforeAll(async () => {
@@ -115,7 +126,6 @@ describe('Messages flow (e2e)', () => {
         },
         { provide: MESSAGE_PUBLISHER, useValue: messagePublisher },
         { provide: MESSAGE_TIMELINE_REPOSITORY, useValue: messageTimelineRepository },
-        { provide: ApplicationQuotaService, useValue: applicationQuotaService },
         ApiKeyGeneratorService,
         ApiKeyAuthGuard,
         TenantApiKeyGuard,

@@ -47,7 +47,7 @@ export function ApplicationAutocomplete({
       return;
     }
     const match = data?.items.find((application) => application.id === value);
-    if (match) setSelectedOption(match);
+    setSelectedOption(match ?? null);
   }, [data, value]);
 
   return (

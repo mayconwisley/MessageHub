@@ -1,5 +1,6 @@
 import { Command } from '@shared/mediator';
 import { Result } from '@shared/result';
+import { RateLimitExceededError } from '@shared/errors';
 import { ApplicationNotFoundError } from '@modules/applications/domain/errors/application-not-found.error';
 import { PhoneNumberNotFoundError } from '@modules/phone-numbers/domain/errors';
 import { InvalidMessageError } from '../../domain/errors/invalid-message.error';
@@ -15,6 +16,7 @@ export class SendMessageCommand extends Command<
     | PhoneNumberNotFoundError
     | PhoneNumberNotConfiguredError
     | AmbiguousPhoneNumberError
+    | RateLimitExceededError
   >
 > {
   constructor(

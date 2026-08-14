@@ -6,6 +6,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { ApplicationAutocomplete } from '../../components/shared/ApplicationAutocomplete';
 import { AsyncState } from '../../components/shared/AsyncState';
+import { CodeBlock } from '../../components/shared/CodeBlock';
 import { EntityResult } from '../../components/shared/EntityResult';
 import { FormDialog } from '../../components/shared/FormDialog';
 import { PaginatedTable } from '../../components/shared/PaginatedTable';
@@ -244,9 +245,20 @@ export function ApplicationsPage() {
             </Button>
           </Stack>
           {configureWebhook.data && (
-            <Alert severity="success">
-              Webhook atual: {configureWebhook.data.webhookUrl ?? 'nenhum configurado'}
-            </Alert>
+            <>
+              <Alert severity="success">
+                Webhook atual: {configureWebhook.data.webhookUrl ?? 'nenhum configurado'}
+              </Alert>
+              {configureWebhook.data.webhookSecret && (
+                <>
+                  <Alert severity="warning">
+                    Copie o segredo agora para validar a assinatura dos webhooks recebidos - ele
+                    não será exibido novamente nesta tela.
+                  </Alert>
+                  <CodeBlock code={configureWebhook.data.webhookSecret} />
+                </>
+              )}
+            </>
           )}
         </Stack>
       </FormDialog>

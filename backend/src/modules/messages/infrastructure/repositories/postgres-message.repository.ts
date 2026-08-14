@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, MoreThanOrEqual, Repository } from 'typeorm';
+import { Brackets, MoreThanOrEqual, QueryFailedError, Repository } from 'typeorm';
 import { UniqueId } from '@shared/domain';
 import { PaginatedResult } from '@shared/types';
 import { Message, MessageProps } from '../../domain/entities/message.entity';
@@ -8,11 +8,17 @@ import { MessageStatus } from '../../domain/enums/message-status.enum';
 import {
   IMessageRepository,
   ListMessagesFilter,
+  MessageQuotaLimits,
+  SaveWithQuotaCheckResult,
 } from '../../domain/repositories/message.repository.interface';
 import { MessageContent } from '../../domain/value-objects/message-content.value-object';
 import { MessageType } from '../../domain/enums/message-type.enum';
 import { TemplateMessage } from '../../domain/value-objects/template-message.value-object';
 import { MessageOrmEntity } from '../entities/message.orm-entity';
+
+/** Namespace arbitrário para travas consultivas desta feature, evita colisão com outras travas futuras. */
+const MESSAGE_QUOTA_LOCK_NAMESPACE = 424_242;
+const UNIQUE_VIOLATION = '23505';
 
 @Injectable()
 export class PostgresMessageRepository implements IMessageRepository {
@@ -23,6 +29,77 @@ export class PostgresMessageRepository implements IMessageRepository {
 
   async save(message: Message): Promise<void> {
     await this.repository.save(this.toOrmEntity(message));
+  }
+
+  async saveWithQuotaCheck(
+    message: Message,
+    limits: MessageQuotaLimits,
+  ): Promise<SaveWithQuotaCheckResult> {
+    const queryRunner = this.repository.manager.connection.createQueryRunner();
+    try {
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+      // Trava exclusiva por applicationId, liberada automaticamente ao fim da transação
+      // (xact-scoped) - serializa a checagem de quota com o insert para fechar a corrida
+      // entre requisições concorrentes que, sem isso, passariam todas na contagem antes de
+      // qualquer insert acontecer.
+      await queryRunner.query('SELECT pg_advisory_xact_lock($1, hashtext($2))', [
+        MESSAGE_QUOTA_LOCK_NAMESPACE,
+        message.applicationId.value,
+      ]);
+
+      const now = Date.now();
+      const [lastMinute, lastDay] = await Promise.all([
+        queryRunner.manager.count(MessageOrmEntity, {
+          where: {
+            applicationId: message.applicationId.value,
+            createdAt: MoreThanOrEqual(new Date(now - 60_000)),
+          },
+        }),
+        queryRunner.manager.count(MessageOrmEntity, {
+          where: {
+            applicationId: message.applicationId.value,
+            createdAt: MoreThanOrEqual(new Date(now - 86_400_000)),
+          },
+        }),
+      ]);
+
+      if (lastMinute >= limits.perMinute) {
+        await queryRunner.rollbackTransaction();
+        return { outcome: 'rate_limited', scope: 'minute' };
+      }
+      if (lastDay >= limits.perDay) {
+        await queryRunner.rollbackTransaction();
+        return { outcome: 'rate_limited', scope: 'day' };
+      }
+
+      await queryRunner.manager.save(this.toOrmEntity(message));
+      await queryRunner.commitTransaction();
+      return { outcome: 'saved' };
+    } catch (error) {
+      if (queryRunner.isTransactionActive) {
+        await queryRunner.rollbackTransaction();
+      }
+      const driverCode =
+        error instanceof QueryFailedError
+          ? (error.driverError as { code?: string }).code
+          : undefined;
+      if (driverCode === UNIQUE_VIOLATION && message.idempotencyKey) {
+        // Duas requisições concorrentes com a mesma chave de idempotência: a perdedora
+        // do índice único (applicationId, idempotencyKey) recupera a mensagem já criada
+        // pela vencedora, em vez de propagar o erro de violação de constraint.
+        const existing = await this.findByIdempotencyKey(
+          message.applicationId,
+          message.idempotencyKey,
+        );
+        if (existing) {
+          return { outcome: 'idempotent_conflict', existing };
+        }
+      }
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async findById(id: UniqueId): Promise<Message | null> {

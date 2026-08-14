@@ -22,6 +22,12 @@ async function bootstrap(): Promise<void> {
   app.use(compression());
   const expressApp = app.getHttpAdapter().getInstance() as unknown as Express;
   expressApp.disable('x-powered-by');
+  if (appConfig.trustProxy) {
+    // So confia em X-Forwarded-For quando de fato ha um proxy/load balancer na frente
+    // (TRUST_PROXY=true) - caso contrario o rate limit por IP (AppThrottlerGuard) poderia
+    // ser contornado por um cliente que forja esse header diretamente.
+    expressApp.set('trust proxy', true);
+  }
   if (appConfig.corsOrigins.length > 0) {
     app.enableCors({
       origin: appConfig.corsOrigins,

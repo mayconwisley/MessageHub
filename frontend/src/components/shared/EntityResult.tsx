@@ -1,5 +1,5 @@
 import { Alert, Box, Divider, Stack, Typography } from '@mui/material';
-import { toPresentationLabel, toPresentationValue } from '../../lib/presentation';
+import { isSensitiveField, toPresentationLabel, toPresentationValue } from '../../lib/presentation';
 
 export function EntityResult({
   title,
@@ -16,7 +16,7 @@ export function EntityResult({
       </Typography>
       <Stack divider={<Divider flexItem />}>
         {Object.entries(data)
-          .filter(([, value]) => typeof value !== 'object')
+          .filter(([key, value]) => typeof value !== 'object' && !isSensitiveField(key))
           .map(([key, value]) => (
             <Box key={key} sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, py: 1 }}>
               <Typography color="text.secondary">{toPresentationLabel(key)}</Typography>

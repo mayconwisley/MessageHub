@@ -22,15 +22,14 @@ const SENSITIVE_KEYS = [
  * Caminhos fixos (não cobertos pelo wildcard de 1 nível acima) onde PII de
  * clientes (telefone, nome, conteúdo da mensagem) aparece nos payloads da
  * fila de webhook de mensagem recebida (`inbound-message-webhook.worker.ts`),
- * logados em WARN/ERROR a cada retry.
+ * logados em WARN/ERROR a cada retry. Todos os pontos de log usam a chave
+ * "payload" (mesmo para a variável local `nextPayload`), então um único
+ * conjunto de caminhos cobre todos eles.
  */
 const INBOUND_MESSAGE_WEBHOOK_PII_PATHS = [
   'payload.sender.id',
   'payload.sender.displayName',
   'payload.message',
-  'nextPayload.sender.id',
-  'nextPayload.sender.displayName',
-  'nextPayload.message',
 ];
 
 export const PINO_REDACT_PATHS: string[] = [

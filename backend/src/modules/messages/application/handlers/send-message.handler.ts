@@ -2,6 +2,7 @@ import { Inject } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { UniqueId } from '@shared/domain';
 import { Result } from '@shared/result';
+import { RateLimitExceededError } from '@shared/errors';
 import {
   APPLICATION_REPOSITORY,
   IApplicationRepository,
@@ -24,7 +25,6 @@ import {
   IMessageTimelineRepository,
   MESSAGE_TIMELINE_REPOSITORY,
 } from '../ports/message-timeline.repository.interface';
-import { ApplicationQuotaService } from '../services/application-quota.service';
 import { PhoneNumberResolverService } from '../services/phone-number-resolver.service';
 
 @CommandHandler(SendMessageCommand)
@@ -35,7 +35,6 @@ export class SendMessageHandler implements ICommandHandler<SendMessageCommand> {
     private readonly phoneNumberResolver: PhoneNumberResolverService,
     @Inject(MESSAGE_PUBLISHER) private readonly messagePublisher: IMessagePublisher,
     @Inject(MESSAGE_TIMELINE_REPOSITORY) private readonly timeline?: IMessageTimelineRepository,
-    private readonly quotaService?: ApplicationQuotaService,
   ) {}
 
   async execute(
@@ -48,6 +47,7 @@ export class SendMessageHandler implements ICommandHandler<SendMessageCommand> {
       | PhoneNumberNotFoundError
       | PhoneNumberNotConfiguredError
       | AmbiguousPhoneNumberError
+      | RateLimitExceededError
     >
   > {
     const applicationId = UniqueId.create(command.applicationId);
@@ -59,7 +59,6 @@ export class SendMessageHandler implements ICommandHandler<SendMessageCommand> {
       // Nunca revelar que a Application existe em outro tenant (secao 17).
       return Result.fail(new ApplicationNotFoundError(command.applicationId));
     }
-    await this.quotaService?.assertCanAcceptMessage(application);
 
     const phoneNumberResult = await this.phoneNumberResolver.resolve(
       application,
@@ -95,7 +94,20 @@ export class SendMessageHandler implements ICommandHandler<SendMessageCommand> {
     }
 
     const message = messageResult.value;
-    await this.messageRepository.save(message);
+    const saveResult = await this.messageRepository.saveWithQuotaCheck(message, {
+      perMinute: application.quotaPerMinute,
+      perDay: application.quotaPerDay,
+    });
+    if (saveResult.outcome === 'rate_limited') {
+      const scopeLabel =
+        saveResult.scope === 'minute'
+          ? 'quota por minuto da aplicação'
+          : 'quota diária da aplicação';
+      return Result.fail(new RateLimitExceededError(scopeLabel));
+    }
+    if (saveResult.outcome === 'idempotent_conflict') {
+      return Result.ok(MessageMapper.toDto(saveResult.existing));
+    }
     await this.timeline?.record({
       messageId: message.id.value,
       eventType: 'MESSAGE_ACCEPTED',

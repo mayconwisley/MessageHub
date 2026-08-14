@@ -7,6 +7,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { ApplicationAutocomplete } from '../../components/shared/ApplicationAutocomplete';
 import { AsyncState } from '../../components/shared/AsyncState';
+import { CodeBlock } from '../../components/shared/CodeBlock';
 import { FormDialog } from '../../components/shared/FormDialog';
 import { PaginatedTable } from '../../components/shared/PaginatedTable';
 import { TableActionsMenu } from '../../components/shared/TableActionsMenu';
@@ -175,9 +176,9 @@ export function ApiKeysPage() {
           {create.isSuccess ? (
             <>
               <Alert severity="warning">
-                Copie a chave agora, ela não poderá ser recuperada depois:{' '}
-                <strong>{create.data?.plainTextKey}</strong>
+                Copie a chave agora, ela não poderá ser recuperada depois.
               </Alert>
+              <CodeBlock code={create.data?.plainTextKey ?? ''} />
               <Button variant="contained" onClick={closeCreate}>
                 Fechar
               </Button>

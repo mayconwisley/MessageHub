@@ -22,6 +22,10 @@ class FakeMessageRepository implements IMessageRepository {
   async save(): Promise<void> {
     this.saved++;
   }
+  async saveWithQuotaCheck() {
+    this.saved++;
+    return { outcome: 'saved' as const };
+  }
   async findById(): Promise<Message | null> {
     return null;
   }

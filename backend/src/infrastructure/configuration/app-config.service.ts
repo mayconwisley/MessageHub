@@ -41,6 +41,10 @@ export class AppConfigService {
     return this.configService.get<boolean>('app.swaggerEnabled', { infer: true }) as boolean;
   }
 
+  get trustProxy(): boolean {
+    return this.configService.get<boolean>('app.trustProxy', { infer: true }) as boolean;
+  }
+
   get messageProvider(): 'meta' | 'sandbox' {
     return this.configService.get<'meta' | 'sandbox'>('app.messageProvider', { infer: true }) as
       'meta' | 'sandbox';

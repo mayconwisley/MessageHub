@@ -13,6 +13,9 @@ export const appConfig = registerAs('app', () => ({
   swaggerEnabled:
     (process.env.SWAGGER_ENABLED ?? (process.env.NODE_ENV === 'production' ? 'false' : 'true')) ===
     'true',
+  // So habilite atras de um proxy/load balancer confiavel que sobrescreve X-Forwarded-For
+  // (senao um cliente pode falsificar o IP usado pelo rate limit por tenant).
+  trustProxy: (process.env.TRUST_PROXY ?? 'false') === 'true',
   messageProvider: process.env.MESSAGE_PROVIDER ?? 'meta',
   sandboxEnabled: (process.env.SANDBOX_ENABLED ?? 'false') === 'true',
   slackWebhookUrl: process.env.ENGINEERING_SLACK_WEBHOOK_URL,

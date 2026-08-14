@@ -2,6 +2,7 @@ import { ApplicationNotFoundError } from '@modules/applications/domain/errors/ap
 import { PhoneNumberNotFoundError } from '@modules/phone-numbers/domain/errors';
 import { Command } from '@shared/mediator';
 import { Result } from '@shared/result';
+import { RateLimitExceededError } from '@shared/errors';
 import {
   AmbiguousPhoneNumberError,
   InvalidMessageError,
@@ -19,6 +20,7 @@ export class SendTemplateMessageCommand extends Command<
     | PhoneNumberNotConfiguredError
     | AmbiguousPhoneNumberError
     | TemplateNotFoundError
+    | RateLimitExceededError
   >
 > {
   constructor(

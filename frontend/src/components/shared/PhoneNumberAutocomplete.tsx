@@ -48,7 +48,7 @@ export function PhoneNumberAutocomplete({
       return;
     }
     const match = data?.items.find((phoneNumber) => phoneNumber.id === value);
-    if (match) setSelectedOption(match);
+    setSelectedOption(match ?? null);
   }, [data, value]);
 
   return (

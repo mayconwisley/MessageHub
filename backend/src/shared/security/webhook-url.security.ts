@@ -108,6 +108,7 @@ function isPrivateOrReservedIpv6(address: string): boolean {
     normalized.startsWith('fc') ||
     normalized.startsWith('fd') ||
     /^fe[89ab]/.test(normalized) ||
+    normalized.startsWith('ff') || // multicast (ff00::/8)
     normalized.startsWith('2001:db8:')
   );
 }

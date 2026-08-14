@@ -17,6 +17,7 @@ import {
 } from '@modules/whatsapp-accounts/domain/repositories/whatsapp-account.repository.interface';
 import { UniqueId } from '@shared/domain';
 import { Result } from '@shared/result';
+import { RateLimitExceededError } from '@shared/errors';
 import { Message } from '../../domain/entities/message.entity';
 import {
   AmbiguousPhoneNumberError,
@@ -36,7 +37,6 @@ import {
   IMessageTimelineRepository,
   MESSAGE_TIMELINE_REPOSITORY,
 } from '../ports/message-timeline.repository.interface';
-import { ApplicationQuotaService } from '../services/application-quota.service';
 import { PhoneNumberResolverService } from '../services/phone-number-resolver.service';
 
 @CommandHandler(SendTemplateMessageCommand)
@@ -50,7 +50,6 @@ export class SendTemplateMessageHandler implements ICommandHandler<SendTemplateM
     @Inject(TEMPLATE_REPOSITORY) private readonly templateRepository: ITemplateRepository,
     @Inject(MESSAGE_PUBLISHER) private readonly messagePublisher: IMessagePublisher,
     @Inject(MESSAGE_TIMELINE_REPOSITORY) private readonly timeline?: IMessageTimelineRepository,
-    private readonly quotaService?: ApplicationQuotaService,
   ) {}
 
   async execute(
@@ -64,6 +63,7 @@ export class SendTemplateMessageHandler implements ICommandHandler<SendTemplateM
       | PhoneNumberNotConfiguredError
       | AmbiguousPhoneNumberError
       | TemplateNotFoundError
+      | RateLimitExceededError
     >
   > {
     const applicationId = UniqueId.create(command.applicationId);
@@ -73,7 +73,6 @@ export class SendTemplateMessageHandler implements ICommandHandler<SendTemplateM
       // Nunca revelar que a Application existe em outro tenant (secao 17).
       return Result.fail(new ApplicationNotFoundError(command.applicationId));
     }
-    await this.quotaService?.assertCanAcceptMessage(application);
 
     const phoneNumberResult = await this.phoneNumberResolver.resolve(
       application,
@@ -136,7 +135,20 @@ export class SendTemplateMessageHandler implements ICommandHandler<SendTemplateM
     });
     if (messageResult.isFailure) return Result.fail(messageResult.error);
     const message = messageResult.value;
-    await this.messageRepository.save(message);
+    const saveResult = await this.messageRepository.saveWithQuotaCheck(message, {
+      perMinute: application.quotaPerMinute,
+      perDay: application.quotaPerDay,
+    });
+    if (saveResult.outcome === 'rate_limited') {
+      const scopeLabel =
+        saveResult.scope === 'minute'
+          ? 'quota por minuto da aplicação'
+          : 'quota diária da aplicação';
+      return Result.fail(new RateLimitExceededError(scopeLabel));
+    }
+    if (saveResult.outcome === 'idempotent_conflict') {
+      return Result.ok(MessageMapper.toDto(saveResult.existing));
+    }
     await this.timeline?.record({
       messageId: message.id.value,
       eventType: 'TEMPLATE_MESSAGE_ACCEPTED',

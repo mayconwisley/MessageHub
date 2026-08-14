@@ -1,5 +1,6 @@
 import { UniqueId } from '@shared/domain';
 import { Result } from '@shared/result';
+import { RateLimitExceededError } from '@shared/errors';
 import { Application } from '@modules/applications/domain/entities/application.entity';
 import { IApplicationRepository } from '@modules/applications/domain/repositories/application.repository.interface';
 import { IApplicationPhoneNumberLinkRepository } from '@modules/applications/domain/repositories/application-phone-number-link.repository.interface';
@@ -15,7 +16,11 @@ import {
   MessageRequestedPayload,
 } from '@modules/messages/application/ports/message-publisher.interface';
 import { Message } from '@modules/messages/domain/entities/message.entity';
-import { IMessageRepository } from '@modules/messages/domain/repositories/message.repository.interface';
+import {
+  IMessageRepository,
+  MessageQuotaLimits,
+  SaveWithQuotaCheckResult,
+} from '@modules/messages/domain/repositories/message.repository.interface';
 
 class FakeApplicationRepository implements IApplicationRepository {
   constructor(private readonly applications: Application[]) {}
@@ -78,6 +83,23 @@ class FakeMessageRepository implements IMessageRepository {
   readonly saved: Message[] = [];
   async save(message: Message): Promise<void> {
     this.saved.push(message);
+  }
+  async saveWithQuotaCheck(
+    message: Message,
+    limits: MessageQuotaLimits,
+  ): Promise<SaveWithQuotaCheckResult> {
+    const existing = message.idempotencyKey
+      ? (this.saved.find((saved) => saved.idempotencyKey === message.idempotencyKey) ?? null)
+      : null;
+    if (existing) {
+      return { outcome: 'idempotent_conflict', existing };
+    }
+    const lastMinute = this.saved.length;
+    if (lastMinute >= limits.perMinute) {
+      return { outcome: 'rate_limited', scope: 'minute' };
+    }
+    this.saved.push(message);
+    return { outcome: 'saved' };
   }
   async findById(): Promise<Message | null> {
     return null;
@@ -174,6 +196,46 @@ describe('SendMessageHandler', () => {
     expect(dto.status).toBe('PENDING');
     expect(messageRepository.saved).toHaveLength(1);
     expect(messagePublisher.published).toEqual([{ messageId: dto.id }]);
+  });
+
+  it('returns RATE_LIMIT_EXCEEDED (429) when the repository reports the application is over quota', async () => {
+    const application = expectOk(Application.create({ tenantId, name: 'Notifications' }));
+    const whatsAppAccount = expectOk(
+      WhatsAppAccount.create({ tenantId, wabaId: 'waba-1', accessToken: 'token-1' }),
+    );
+    const phoneNumber = expectOk(
+      PhoneNumber.create({
+        whatsAppAccountId: whatsAppAccount.id,
+        phoneNumberId: 'meta-phone-1',
+        displayNumber: '+5511999999999',
+      }),
+    );
+    const messagePublisher = new FakeMessagePublisher();
+    const baseRepository = new FakeMessageRepository();
+    const rateLimitedRepository: IMessageRepository = {
+      save: (message) => baseRepository.save(message),
+      saveWithQuotaCheck: async () => ({ outcome: 'rate_limited', scope: 'minute' }),
+      findById: () => baseRepository.findById(),
+      findByIdempotencyKey: () => baseRepository.findByIdempotencyKey(),
+      findByProviderMessageId: () => baseRepository.findByProviderMessageId(),
+      countCreatedSince: () => baseRepository.countCreatedSince(),
+      listByApplicationId: () => baseRepository.listByApplicationId(),
+    };
+    const handler = new SendMessageHandler(
+      rateLimitedRepository,
+      new FakeApplicationRepository([application]),
+      buildResolver([phoneNumber], [whatsAppAccount]),
+      messagePublisher,
+    );
+
+    const result = await handler.execute(
+      new SendMessageCommand(application.id.value, phoneNumber.id.value, '+5511988888888', 'Ola!'),
+    );
+
+    expect(result.isFailure).toBe(true);
+    expect(result.error).toBeInstanceOf(RateLimitExceededError);
+    expect(result.error.code).toBe('RATE_LIMIT_EXCEEDED');
+    expect(messagePublisher.published).toHaveLength(0);
   });
 
   it('returns the existing message when the idempotency key repeats', async () => {

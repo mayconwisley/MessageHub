@@ -38,6 +38,9 @@ function expectOk<T>(result: Result<T, unknown>): T {
 class FakeMessageRepository implements IMessageRepository {
   constructor(private readonly message: Message) {}
   async save(): Promise<void> {}
+  async saveWithQuotaCheck() {
+    return { outcome: 'saved' as const };
+  }
   async findById(): Promise<Message | null> {
     return this.message;
   }
@@ -101,7 +104,9 @@ class FakeWhatsAppAccountRepository implements IWhatsAppAccountRepository {
 
 class FakeMessageProvider implements IMessageProvider {
   constructor(private readonly result: Result<ProviderMessageResult, MessageDeliveryError>) {}
-  async send(_message: OutgoingMessage): Promise<Result<ProviderMessageResult, MessageDeliveryError>> {
+  async send(
+    _message: OutgoingMessage,
+  ): Promise<Result<ProviderMessageResult, MessageDeliveryError>> {
     return this.result;
   }
 }
@@ -244,6 +249,7 @@ describe('MessageDeliveryProcessor', () => {
     const statusWebhookPublisher = new FakeStatusWebhookPublisher();
     const missingMessageRepository: IMessageRepository = {
       save: async () => undefined,
+      saveWithQuotaCheck: async () => ({ outcome: 'saved' }),
       findById: async () => null,
       findByIdempotencyKey: async () => null,
       findByProviderMessageId: async () => null,

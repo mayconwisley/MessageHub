@@ -61,6 +61,26 @@ const valueLabels: Record<string, string> = {
 
 const dateFields = new Set(['createdAt', 'updatedAt', 'occurredAt', 'expiresAt', 'lastLoginAt']);
 
+/**
+ * Campos que nunca devem aparecer em texto legível em uma exibição genérica de entidade:
+ * mesmo que uma resposta futura do backend inclua um desses por engano, o componente que
+ * lista campos automaticamente (ex.: EntityResult) não deve renderizá-los.
+ */
+const SENSITIVE_FIELDS = new Set([
+  'accessToken',
+  'appSecret',
+  'webhookSecret',
+  'plainTextKey',
+  'passwordHash',
+  'password',
+  'secret',
+  'token',
+]);
+
+export function isSensitiveField(field: string): boolean {
+  return SENSITIVE_FIELDS.has(field);
+}
+
 export function toPresentationLabel(field: string): string {
   return fieldLabels[field] ?? field;
 }
