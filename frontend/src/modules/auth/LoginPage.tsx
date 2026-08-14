@@ -23,7 +23,7 @@ export function LoginPage() {
     mutationFn: login,
     onSuccess: (session) => {
       authStorage.setSessionToken(session.accessToken);
-      navigate('/');
+      void navigate('/');
     },
   });
   return (

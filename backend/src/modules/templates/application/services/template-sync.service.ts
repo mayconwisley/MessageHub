@@ -20,10 +20,7 @@ export class TemplateSyncService {
     private readonly accountResolver: TemplateAccountResolverService,
   ) {}
 
-  async sync(
-    tenantId: string,
-    accountId: string,
-  ): Promise<Result<SyncTemplatesResult, BaseError>> {
+  async sync(tenantId: string, accountId: string): Promise<Result<SyncTemplatesResult, BaseError>> {
     const account = await this.accountResolver.resolve(tenantId, accountId);
     if (account.isFailure) return Result.fail(account.error);
     const remote = await this.provider.list(account.value);

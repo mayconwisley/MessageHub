@@ -59,7 +59,7 @@ export function TenantsPage() {
   const create = useMutation({
     mutationFn: tenantsApi.create,
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['tenants'] });
+      void client.invalidateQueries({ queryKey: ['tenants'] });
     },
   });
   const details = useQuery({
@@ -71,8 +71,8 @@ export function TenantsPage() {
     mutationFn: (status: 'ACTIVE' | 'SUSPENDED') =>
       tenantsApi.updateStatus(selectedId as string, status),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['tenant', selectedId] });
-      client.invalidateQueries({ queryKey: ['tenants'] });
+      void client.invalidateQueries({ queryKey: ['tenant', selectedId] });
+      void client.invalidateQueries({ queryKey: ['tenants'] });
     },
   });
 

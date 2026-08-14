@@ -45,7 +45,7 @@ export function ApplicationsPage() {
   const create = useMutation({
     mutationFn: applicationsApi.create,
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['applications'] });
+      void client.invalidateQueries({ queryKey: ['applications'] });
     },
   });
   const configureWebhook = useMutation({
@@ -67,7 +67,7 @@ export function ApplicationsPage() {
   const setPhoneNumbers = useMutation({
     mutationFn: () => applicationsApi.setLinkedPhoneNumbers(linkApplicationId, linkPhoneNumberIds),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['application-phone-numbers', linkApplicationId] });
+      void client.invalidateQueries({ queryKey: ['application-phone-numbers', linkApplicationId] });
     },
   });
 
@@ -252,8 +252,8 @@ export function ApplicationsPage() {
               {configureWebhook.data.webhookSecret && (
                 <>
                   <Alert severity="warning">
-                    Copie o segredo agora para validar a assinatura dos webhooks recebidos - ele
-                    não será exibido novamente nesta tela.
+                    Copie o segredo agora para validar a assinatura dos webhooks recebidos - ele não
+                    será exibido novamente nesta tela.
                   </Alert>
                   <CodeBlock code={configureWebhook.data.webhookSecret} />
                 </>

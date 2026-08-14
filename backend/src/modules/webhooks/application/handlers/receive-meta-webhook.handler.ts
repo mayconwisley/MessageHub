@@ -22,7 +22,9 @@ export class ReceiveMetaWebhookHandler implements ICommandHandler<ReceiveMetaWeb
     @Inject(WEBHOOK_EVENT_PUBLISHER) private readonly publisher: IWebhookEventPublisher,
   ) {}
 
-  async execute(command: ReceiveMetaWebhookCommand): Promise<Result<void, InvalidWebhookSignatureError>> {
+  async execute(
+    command: ReceiveMetaWebhookCommand,
+  ): Promise<Result<void, InvalidWebhookSignatureError>> {
     const { rawBody, signatureHeader, payload } = command;
     const validSignature = await this.signatureVerifier.verify(rawBody, signatureHeader, payload);
     if (!validSignature) return Result.fail(new InvalidWebhookSignatureError());

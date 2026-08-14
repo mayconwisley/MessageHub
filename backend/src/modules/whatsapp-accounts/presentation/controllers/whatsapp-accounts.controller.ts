@@ -78,12 +78,17 @@ export class WhatsAppAccountsController {
     @CurrentOptionalAuthContext() auth?: AuthContextDto,
     @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
   ): Promise<WhatsAppAccountResponseDto> {
-    if (dto.tenantId !== this.metaConfig.defaultTenantId) {
+    // Valida o tenant que de fato será usado no comando (nunca dto.tenantId isoladamente):
+    // caso contrário, um chamador com uma API key de outro tenant poderia informar o
+    // tenantId da plataforma apenas para passar nesta checagem, enquanto o comando roda
+    // sobre o seu próprio tenant (vindo de auth/user) - obtendo indevidamente uma
+    // WhatsAppAccount com a credencial DEFAULT compartilhada da plataforma.
+    const tenantId = auth?.tenantId ?? user?.tenantId ?? this.requireTenantId(dto.tenantId);
+    if (tenantId !== this.metaConfig.defaultTenantId) {
       throw new BadRequestException(
         'O canal padrão é sincronizado automaticamente somente para o tenant configurado no ambiente.',
       );
     }
-    const tenantId = auth?.tenantId ?? user?.tenantId ?? this.requireTenantId(dto.tenantId);
     const result = await this.mediator.send(new EnsureDefaultChannelAccountCommand(tenantId));
     if (result.isFailure) {
       throw toHttpException(result.error);
@@ -128,7 +133,13 @@ export class WhatsAppAccountsController {
   ): Promise<PaginatedResult<WhatsAppAccountResponseDto>> {
     const tenantId = auth?.tenantId ?? user?.tenantId ?? this.requireTenantId(query.tenantId);
     const result = await this.mediator.query(
-      new ListWhatsAppAccountsQuery(tenantId, query.page, query.pageSize, query.status, query.search),
+      new ListWhatsAppAccountsQuery(
+        tenantId,
+        query.page,
+        query.pageSize,
+        query.status,
+        query.search,
+      ),
     );
     if (result.isFailure) throw toHttpException(result.error);
     return {

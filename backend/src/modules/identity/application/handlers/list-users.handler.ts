@@ -31,7 +31,9 @@ export class ListUsersHandler implements IQueryHandler<ListUsersQuery> {
       search: query.search,
     });
 
-    const tenantIds = [...new Set(result.items.map((user) => user.tenantId).filter(Boolean))] as string[];
+    const tenantIds = [
+      ...new Set(result.items.map((user) => user.tenantId).filter(Boolean)),
+    ] as string[];
     const tenants = await Promise.all(
       tenantIds.map((tenantId) => this.tenants.findById(UniqueId.create(tenantId))),
     );
@@ -42,7 +44,7 @@ export class ListUsersHandler implements IQueryHandler<ListUsersQuery> {
     return Result.ok({
       ...result,
       items: result.items.map((user) =>
-        UserMapper.toDto(user, user.tenantId ? tenantNamesById.get(user.tenantId) ?? null : null),
+        UserMapper.toDto(user, user.tenantId ? (tenantNamesById.get(user.tenantId) ?? null) : null),
       ),
     });
   }

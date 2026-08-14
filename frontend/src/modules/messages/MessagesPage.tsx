@@ -69,7 +69,7 @@ export function MessagesPage() {
   const send = useMutation({
     mutationFn: (data: FormData) => messagesApi.send({ ...data, applicationId }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['messages', applicationId] });
+      void client.invalidateQueries({ queryKey: ['messages', applicationId] });
       setFeedback({
         severity: 'success',
         message: 'Mensagem enfileirada para envio. Acompanhe o status na lista abaixo.',
@@ -349,7 +349,7 @@ export function MessagesPage() {
         attempts={attempts.data}
         timeline={timeline.data}
         isLoading={details.isLoading || attempts.isLoading || timeline.isLoading}
-        error={(details.error ?? attempts.error ?? timeline.error) as Error | null}
+        error={details.error ?? attempts.error ?? timeline.error}
         onClose={() => setTimelineMessageId(null)}
       />
 

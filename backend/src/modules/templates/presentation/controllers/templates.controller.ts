@@ -152,7 +152,9 @@ export class TemplatesController {
     @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
   ) {
     const tenantId = resolveRequiredTenantId(auth, user, dto.tenantId);
-    const result = await this.mediator.send(new SyncTemplatesCommand(tenantId, dto.whatsAppAccountId));
+    const result = await this.mediator.send(
+      new SyncTemplatesCommand(tenantId, dto.whatsAppAccountId),
+    );
     if (result.isFailure) throw toHttpException(result.error);
     return result.value;
   }

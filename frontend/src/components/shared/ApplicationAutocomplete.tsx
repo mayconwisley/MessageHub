@@ -35,7 +35,8 @@ export function ApplicationAutocomplete({
 
   const { data, isLoading } = useQuery({
     queryKey: ['applications-select', tenantId, search],
-    queryFn: () => applicationsApi.list({ tenantId, page: 1, pageSize: 20, search: search || undefined }),
+    queryFn: () =>
+      applicationsApi.list({ tenantId, page: 1, pageSize: 20, search: search || undefined }),
     enabled: validTenantId,
     staleTime: 30_000,
   });

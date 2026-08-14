@@ -61,10 +61,14 @@ export function UsersPage() {
 
   const create = useMutation({
     mutationFn: (data: UserFormData) =>
-      usersApi.create({ ...data, password: data.password ?? '', tenantId: data.tenantId || undefined }),
+      usersApi.create({
+        ...data,
+        password: data.password ?? '',
+        tenantId: data.tenantId || undefined,
+      }),
     onSuccess: () => {
       setCreating(false);
-      invalidate();
+      void invalidate();
     },
   });
   const update = useMutation({
@@ -77,7 +81,7 @@ export function UsersPage() {
       }),
     onSuccess: () => {
       setEditing(null);
-      invalidate();
+      void invalidate();
     },
   });
   const updateStatus = useMutation({

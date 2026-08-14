@@ -52,7 +52,7 @@ export function PhoneNumbersPage() {
         displayNumber: data.displayNumber,
       }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['phone-numbers'] });
+      void client.invalidateQueries({ queryKey: ['phone-numbers'] });
     },
   });
   const details = useQuery({

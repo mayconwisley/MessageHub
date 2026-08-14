@@ -88,7 +88,15 @@ export function toPresentationLabel(field: string): string {
 export function toPresentationValue(field: string, value: unknown): string {
   if (value === null || value === undefined || value === '') return '—';
   if (typeof value === 'boolean') return value ? 'Sim' : 'Não';
-  if (typeof value !== 'string') return String(value);
+  if (typeof value !== 'string') {
+    switch (typeof value) {
+      case 'number':
+      case 'bigint':
+        return String(value);
+      default:
+        return JSON.stringify(value);
+    }
+  }
   if (dateFields.has(field)) {
     const date = new Date(value);
     if (!Number.isNaN(date.getTime())) return date.toLocaleString('pt-BR');

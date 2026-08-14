@@ -266,7 +266,7 @@ function Layout() {
     }
     authStorage.removeSessionToken();
     queryClient.clear();
-    navigate('/login');
+    void navigate('/login');
   };
 
   const navList = (

@@ -177,18 +177,26 @@ export class MessageDeliveryProcessor {
       status: message.status,
       source: 'WORKER',
       attemptNumber: message.attemptCount,
-      metadata: { delayMs },
+      metadata: { delayMs, errorCode: error.code, errorMessage: error.message },
     });
 
     const messageId = message.id.value;
     setTimeout(() => {
-      this.messagePublisher.publishMessageRequested({ messageId }).catch((publishError: unknown) => {
-        this.logger.error({ err: publishError, messageId }, 'Failed to requeue message for retry.');
-      });
+      this.messagePublisher
+        .publishMessageRequested({ messageId })
+        .catch((publishError: unknown) => {
+          this.logger.error(
+            { err: publishError, messageId },
+            'Failed to requeue message for retry.',
+          );
+        });
     }, delayMs);
   }
 
-  private async sendToDeadLetterQueue(message: Message, error: MessageDeliveryError): Promise<void> {
+  private async sendToDeadLetterQueue(
+    message: Message,
+    error: MessageDeliveryError,
+  ): Promise<void> {
     await this.messagePublisher.publishToDeadLetterQueue({ messageId: message.id.value });
     await this.timeline?.record({
       messageId: message.id.value,

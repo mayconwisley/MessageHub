@@ -32,10 +32,8 @@ export const usersApi = {
     tenantId?: string;
   }) => request<User>('/v1/users', { method: 'POST', body: data }),
   getById: (id: string) => request<User>(`/v1/users/${id}`),
-  update: (
-    id: string,
-    data: { name?: string; email?: string; role?: string; tenantId?: string },
-  ) => request<User>(`/v1/users/${id}`, { method: 'PATCH', body: data }),
+  update: (id: string, data: { name?: string; email?: string; role?: string; tenantId?: string }) =>
+    request<User>(`/v1/users/${id}`, { method: 'PATCH', body: data }),
   updateStatus: (id: string, status: 'active' | 'suspended') =>
     request<User>(`/v1/users/${id}/status`, { method: 'PATCH', body: { status } }),
 };

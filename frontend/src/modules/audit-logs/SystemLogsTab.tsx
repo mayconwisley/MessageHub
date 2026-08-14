@@ -41,7 +41,12 @@ export function SystemLogsTab() {
   const systemLogs = useQuery({
     queryKey: ['system-logs', page, pageSize, level, search],
     queryFn: () =>
-      systemLogsApi.list({ page, pageSize, level: level || undefined, search: search || undefined }),
+      systemLogsApi.list({
+        page,
+        pageSize,
+        level: level || undefined,
+        search: search || undefined,
+      }),
     refetchInterval: 30_000,
   });
 

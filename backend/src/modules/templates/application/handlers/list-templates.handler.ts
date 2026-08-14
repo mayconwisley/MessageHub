@@ -38,6 +38,9 @@ export class ListTemplatesHandler implements IQueryHandler<ListTemplatesQuery> {
       query.pageSize,
       query.filter,
     );
-    return Result.ok({ ...result, items: result.items.map((template) => TemplateMapper.toDto(template)) });
+    return Result.ok({
+      ...result,
+      items: result.items.map((template) => TemplateMapper.toDto(template)),
+    });
   }
 }

@@ -53,7 +53,7 @@ export function WhatsAppAccountsPage() {
   const create = useMutation({
     mutationFn: whatsAppAccountsApi.create,
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['whatsapp-accounts'] });
+      void client.invalidateQueries({ queryKey: ['whatsapp-accounts'] });
     },
   });
   const details = useQuery({

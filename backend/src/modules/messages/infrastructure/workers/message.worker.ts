@@ -5,7 +5,10 @@ import { PinoLogger } from 'nestjs-pino';
 import { RABBITMQ_CONNECTION } from '@infrastructure/messaging/rabbitmq/rabbitmq.constants';
 import { MessageRequestedPayload } from '../../application/ports/message-publisher.interface';
 import { MessageDeliveryProcessor } from '../../application/services/message-delivery-processor.service';
-import { MESSAGE_REQUESTED_DLQ, MESSAGE_REQUESTED_QUEUE } from '../messaging/message-queues.constant';
+import {
+  MESSAGE_REQUESTED_DLQ,
+  MESSAGE_REQUESTED_QUEUE,
+} from '../messaging/message-queues.constant';
 
 /**
  * Consumer de `message.requested` (secao 21/51). Assume at-least-once delivery: mensagens

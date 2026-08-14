@@ -28,7 +28,9 @@ export class GetUserHandler implements IQueryHandler<GetUserQuery> {
       return Result.fail(new UserNotFoundError(query.userId));
     }
 
-    const tenant = user.tenantId ? await this.tenants.findById(UniqueId.create(user.tenantId)) : null;
+    const tenant = user.tenantId
+      ? await this.tenants.findById(UniqueId.create(user.tenantId))
+      : null;
     return Result.ok(UserMapper.toDto(user, tenant?.name ?? null));
   }
 }

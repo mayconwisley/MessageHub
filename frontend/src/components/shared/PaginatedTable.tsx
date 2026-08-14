@@ -17,6 +17,19 @@ export interface PaginatedTableColumn<T> {
   render?: (row: T) => ReactNode;
 }
 
+function toCellText(value: unknown): string {
+  if (value === null || value === undefined) return '—';
+  switch (typeof value) {
+    case 'string':
+    case 'number':
+    case 'boolean':
+    case 'bigint':
+      return String(value);
+    default:
+      return JSON.stringify(value);
+  }
+}
+
 export interface PaginatedTableProps<T extends { id: string }> {
   columns: PaginatedTableColumn<T>[];
   rows: T[];
@@ -69,7 +82,7 @@ export function PaginatedTable<T extends { id: string }>({
                   <TableCell key={column.key}>
                     {column.render
                       ? column.render(row)
-                      : String((row as Record<string, unknown>)[column.key] ?? '—')}
+                      : toCellText((row as Record<string, unknown>)[column.key])}
                   </TableCell>
                 ))}
                 {rowActions && <TableCell align="right">{rowActions(row)}</TableCell>}

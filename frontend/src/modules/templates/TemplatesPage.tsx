@@ -80,7 +80,7 @@ export function TemplatesPage() {
     mutationFn: (data: TemplateFormData) => templatesApi.create(toMutationData(data)),
     onSuccess: () => {
       setCreating(false);
-      invalidate();
+      void invalidate();
     },
   });
   const update = useMutation({
@@ -94,14 +94,14 @@ export function TemplatesPage() {
     },
     onSuccess: () => {
       setEditing(null);
-      invalidate();
+      void invalidate();
     },
   });
   const remove = useMutation({
     mutationFn: (template: Template) => templatesApi.delete(template.id, tenantId),
     onSuccess: () => {
       setDeleting(null);
-      invalidate();
+      void invalidate();
     },
   });
   const sync = useMutation({

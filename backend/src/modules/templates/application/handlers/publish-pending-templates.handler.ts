@@ -16,9 +16,7 @@ import { TemplateAccountResolverService } from '../services/template-account-res
 import { TemplateExamplesValidator } from '../services/template-examples.validator';
 
 @CommandHandler(PublishPendingTemplatesCommand)
-export class PublishPendingTemplatesHandler
-  implements ICommandHandler<PublishPendingTemplatesCommand>
-{
+export class PublishPendingTemplatesHandler implements ICommandHandler<PublishPendingTemplatesCommand> {
   constructor(
     @Inject(TEMPLATE_REPOSITORY) private readonly templates: ITemplateRepository,
     @Inject(TEMPLATE_PROVIDER) private readonly provider: ITemplateProvider,

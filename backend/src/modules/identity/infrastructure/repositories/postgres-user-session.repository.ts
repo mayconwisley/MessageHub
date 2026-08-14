@@ -23,7 +23,11 @@ export class PostgresUserSessionRepository implements IUserSessionRepository {
 
   async createForUser(user: User, session: UserSessionRecord): Promise<void> {
     const userOrm = UserOrmMapper.toOrmEntity(user);
-    const sessionOrm = Object.assign(new UserSessionOrmEntity(), { ...session, userId: user.id.value, revokedAt: null });
+    const sessionOrm = Object.assign(new UserSessionOrmEntity(), {
+      ...session,
+      userId: user.id.value,
+      revokedAt: null,
+    });
     await this.users.manager.transaction(async (manager) => {
       await manager.save(userOrm);
       await manager.save(sessionOrm);

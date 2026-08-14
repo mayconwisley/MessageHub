@@ -14,7 +14,6 @@ import { IMessageRepository } from '@modules/messages/domain/repositories/messag
 import {
   IMessageProvider,
   MessageDeliveryError,
-  OutgoingMessage,
   ProviderMessageResult,
 } from '@modules/messages/application/ports/message-provider.interface';
 import {
@@ -104,9 +103,7 @@ class FakeWhatsAppAccountRepository implements IWhatsAppAccountRepository {
 
 class FakeMessageProvider implements IMessageProvider {
   constructor(private readonly result: Result<ProviderMessageResult, MessageDeliveryError>) {}
-  async send(
-    _message: OutgoingMessage,
-  ): Promise<Result<ProviderMessageResult, MessageDeliveryError>> {
+  async send(): Promise<Result<ProviderMessageResult, MessageDeliveryError>> {
     return this.result;
   }
 }

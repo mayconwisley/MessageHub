@@ -14,10 +14,6 @@ export interface SystemLog {
 }
 
 export const systemLogsApi = {
-  list: (params: {
-    page: number;
-    pageSize: number;
-    level?: string;
-    search?: string;
-  }) => request<PaginatedResult<SystemLog>>(`/v1/system-logs${toQueryString(params)}`),
+  list: (params: { page: number; pageSize: number; level?: string; search?: string }) =>
+    request<PaginatedResult<SystemLog>>(`/v1/system-logs${toQueryString(params)}`),
 };

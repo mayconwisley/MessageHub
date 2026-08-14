@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { authStorage } from '../../src/services/auth-storage';
-import { ApiError, request, toQueryString } from '../../src/services/http-client';
+import { request, toQueryString } from '../../src/services/http-client';
 
 describe('toQueryString', () => {
   it('serializa apenas valores definidos e não vazios', () => {
@@ -70,7 +70,7 @@ describe('request', () => {
       ),
     );
 
-    await expect(request('/v1/messages')).rejects.toMatchObject<ApiError>({
+    await expect(request('/v1/messages')).rejects.toMatchObject({
       message: 'Campo inválido Tente novamente',
       status: 400,
       code: 'VALIDATION_ERROR',

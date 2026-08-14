@@ -43,12 +43,7 @@ export interface MessageTimelineEvent {
 }
 
 export const messagesApi = {
-  send: (data: {
-    applicationId: string;
-    phoneNumberId?: string;
-    to: string;
-    content: string;
-  }) =>
+  send: (data: { applicationId: string; phoneNumberId?: string; to: string; content: string }) =>
     request<Message>('/v1/messages', {
       method: 'POST',
       body: data,

@@ -48,7 +48,7 @@ export function ApiKeysPage() {
     onSuccess: (_, variables) => {
       setTenantIdFilter(variables.tenantId);
       setApplicationIdFilter(variables.applicationId);
-      client.invalidateQueries({ queryKey: ['api-keys', variables.applicationId] });
+      void client.invalidateQueries({ queryKey: ['api-keys', variables.applicationId] });
     },
   });
   const revoke = useMutation({

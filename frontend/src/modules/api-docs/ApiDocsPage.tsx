@@ -196,7 +196,8 @@ const templateEndpoints: Endpoint[] = [
         },
       ],
     }),
-    notes: 'parameterFormat é opcional (ex.: POSITIONAL) e pode ser informado junto de category/components.',
+    notes:
+      'parameterFormat é opcional (ex.: POSITIONAL) e pode ser informado junto de category/components.',
   },
   {
     method: 'DELETE',

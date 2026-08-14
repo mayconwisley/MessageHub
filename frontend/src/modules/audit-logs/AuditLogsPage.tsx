@@ -13,7 +13,7 @@ export function AuditLogsPage() {
         title="Eventos e logs"
         description="Trilha de auditoria das ações administrativas e logs técnicos de execução registrados pela ferramenta."
       />
-      <Tabs value={tab} onChange={(_, value) => setTab(value)}>
+      <Tabs value={tab} onChange={(_, value: 'events' | 'logs') => setTab(value)}>
         <Tab value="events" label="Eventos" />
         <Tab value="logs" label="Logs" />
       </Tabs>

@@ -85,7 +85,7 @@ function buildEvents(
       const detail = statusDetails[event.status] ?? {
         title: event.eventType.replaceAll('_', ' '),
         description: 'Evento operacional persistido pelo Message Hub.',
-        color: 'info' as TimelineColor,
+        color: 'info',
         icon: Schedule,
       };
       return {
