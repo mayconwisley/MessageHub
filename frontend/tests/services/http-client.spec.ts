@@ -85,4 +85,12 @@ describe('request', () => {
       request<void>('/v1/messages/message-1', { method: 'DELETE' }),
     ).resolves.toBeUndefined();
   });
+
+  it('retorna undefined para respostas aceitas sem corpo', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 202 })));
+
+    await expect(
+      request<void>('/v1/sandbox/messages/message-1/status', { method: 'POST' }),
+    ).resolves.toBeUndefined();
+  });
 });

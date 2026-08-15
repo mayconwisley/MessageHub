@@ -58,7 +58,11 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     throw new ApiError(message, response.status, payload?.code, payload?.requestId);
   }
   if (response.status === 204) return undefined as T;
-  return response.json() as Promise<T>;
+
+  const responseBody = await response.text();
+  if (!responseBody.trim()) return undefined as T;
+
+  return JSON.parse(responseBody) as T;
 }
 
 // Endpoints de health check retornam 503 quando alguma dependência está down,
