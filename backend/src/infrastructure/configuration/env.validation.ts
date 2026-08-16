@@ -73,6 +73,40 @@ class EnvironmentVariables {
   @IsBase64()
   META_CREDENTIALS_ENCRYPTION_KEY!: string;
 
+  @IsOptional()
+  @IsIn(['true', 'false'])
+  SMTP_DEFAULT_ENABLED?: string;
+
+  @IsOptional()
+  @IsString()
+  SMTP_HOST?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(65535)
+  SMTP_PORT?: number;
+
+  @IsOptional()
+  @IsIn(['true', 'false'])
+  SMTP_SECURE?: string;
+
+  @IsOptional()
+  @IsString()
+  SMTP_USER?: string;
+
+  @IsOptional()
+  @IsString()
+  SMTP_PASSWORD?: string;
+
+  @IsOptional()
+  @IsEmail()
+  SMTP_FROM_EMAIL?: string;
+
+  @IsOptional()
+  @IsString()
+  SMTP_FROM_NAME?: string;
+
   @IsEmail()
   INITIAL_PLATFORM_ADMIN_EMAIL!: string;
 
@@ -184,6 +218,18 @@ export function validateEnv(config: Record<string, unknown>): EnvironmentVariabl
   ) {
     throw new Error(
       'META_GRAPH_API_URL_BASE, META_DEFAULT_CHANNEL_BEARER, META_DEFAULT_CHANNEL_TENANT_ID, META_DEFAULT_CHANNEL_TENANT_NAME e META_DEFAULT_CHANNEL_WABA_ID sao obrigatorios quando o canal Meta padrao estiver habilitado.',
+    );
+  }
+
+  if (
+    validatedConfig.SMTP_DEFAULT_ENABLED === 'true' &&
+    (!validatedConfig.SMTP_HOST ||
+      !validatedConfig.SMTP_USER ||
+      !validatedConfig.SMTP_PASSWORD ||
+      !validatedConfig.SMTP_FROM_EMAIL)
+  ) {
+    throw new Error(
+      'SMTP_HOST, SMTP_USER, SMTP_PASSWORD e SMTP_FROM_EMAIL sao obrigatorios quando o SMTP padrao estiver habilitado.',
     );
   }
 

@@ -23,6 +23,7 @@ import {
   MonitorHeartOutlined,
   NotificationsActiveOutlined,
   ScienceOutlined,
+  EmailOutlined,
 } from '@mui/icons-material';
 import {
   AppBar,
@@ -129,6 +130,10 @@ const HelpPage = lazy(async () => {
   const module = await import('../modules/help/HelpPage');
   return { default: module.HelpPage };
 });
+const EmailConfigurationsPage = lazy(async () => {
+  const module = await import('../modules/email-configurations/EmailConfigurationsPage');
+  return { default: module.EmailConfigurationsPage };
+});
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
@@ -161,6 +166,7 @@ const navGroups: NavGroupConfig[] = [
         icon: <SmartToyOutlined />,
       },
       { to: '/phone-numbers', label: 'Números', icon: <PhoneOutlined /> },
+      { to: '/email-configurations', label: 'E-mail SMTP', icon: <EmailOutlined /> },
       { to: '/api-keys', label: 'Chaves de API', icon: <VpnKeyOutlined /> },
       { to: '/users', label: 'Usuários', icon: <PeopleOutlined /> },
       { to: '/audit-logs', label: 'Eventos e logs', icon: <HistoryOutlined /> },
@@ -387,6 +393,7 @@ function ThemedApp() {
                 <Route path="/applications" element={<ApplicationsPage />} />
                 <Route path="/whatsapp-accounts" element={<WhatsAppAccountsPage />} />
                 <Route path="/phone-numbers" element={<PhoneNumbersPage />} />
+                <Route path="/email-configurations" element={<EmailConfigurationsPage />} />
                 <Route path="/api-keys" element={<ApiKeysPage />} />
                 <Route path="/users" element={<UsersPage />} />
                 <Route path="/audit-logs" element={<AuditLogsPage />} />

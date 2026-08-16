@@ -25,6 +25,8 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { MonitoringModule } from './modules/monitoring/monitoring.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { SystemLogsModule } from './modules/system-logs/system-logs.module';
+import { EmailConfigurationsModule } from './modules/email-configurations/email-configurations.module';
+import { EmailsModule } from './modules/emails/emails.module';
 
 @Module({
   imports: [
@@ -50,6 +52,8 @@ import { SystemLogsModule } from './modules/system-logs/system-logs.module';
     MonitoringModule,
     NotificationsModule,
     SystemLogsModule,
+    EmailConfigurationsModule,
+    EmailsModule,
   ],
   controllers: [HealthController],
   providers: [

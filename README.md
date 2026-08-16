@@ -187,6 +187,24 @@ O token e o `appSecret` opcional do webhook nunca são retornados pela API, incl
 
 Quando `META_DEFAULT_CHANNEL_ENABLED=true`, informe também `META_DEFAULT_CHANNEL_TENANT_ID` (UUID estável), `META_DEFAULT_CHANNEL_TENANT_NAME` e `META_DEFAULT_CHANNEL_WABA_ID`. A cada inicialização, o Hub cria ou reconcilia esse tenant e sua conta WhatsApp com `credentialSource=default`; mudanças nesses valores do `.env` passam a valer após reiniciar a API. Esse cadastro é somente leitura na interface e não deve ser gerenciado por endpoints administrativos.
 
+## E-mails via SMTP
+
+O Hub também aceita `POST /v1/emails`, autenticado pela API Key da Application. O envio é
+assíncrono, idempotente por `Idempotency-Key` e passa por RabbitMQ, tentativas com backoff e DLQ,
+da mesma forma que o canal WhatsApp. O payload contém `to`, `subject` e ao menos um entre
+`textBody` e `htmlBody`.
+
+O SMTP padrão da plataforma é configurado no ambiente com `SMTP_DEFAULT_ENABLED`, `SMTP_HOST`,
+`SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL` e
+`SMTP_FROM_NAME`. Ele é o fallback de todo tenant sem SMTP próprio. Para sobrescrevê-lo, o tenant
+autenticado (ou um administrador da plataforma informando `tenantId`) usa
+`GET`, `PUT` ou `DELETE /v1/email-configurations/smtp`. O `DELETE` remove apenas o override e
+restaura o fallback global.
+
+As senhas SMTP dos tenants são cifradas com AES-256-GCM usando
+`META_CREDENTIALS_ENCRYPTION_KEY`; elas não são devolvidas pela API ou registradas em logs. A
+configuração SMTP global também não expõe seus detalhes de infraestrutura aos tenants.
+
 ## Exemplos de parâmetros em templates
 
 Componentes `HEADER` e `BODY` que possuem placeholders posicionais (`{{1}}`, `{{2}}`, etc.)
@@ -240,14 +258,19 @@ npm test          # unitários (domain + application)
 npm run test:e2e  # fluxo HTTP de ponta a ponta
 ```
 
-## Limitações conhecidas desta entrega
+## Segurança e limitações conhecidas
 
-- Endpoints de administração (`tenants`, `applications`, `api-keys`, `whatsapp-accounts`,
-  `phone-numbers`) ainda não possuem autenticação própria — em produção devem ficar atrás de um
-  controle de acesso administrativo separado do `wh_live_` usado pelos consumidores.
-- O reagendamento de retry do `MessageWorker` usa `setTimeout` em memória; não é durável a
-  reinícios do processo. Em produção, considerar o plugin de mensagens atrasadas do RabbitMQ ou
-  um scheduler externo.
-- O processamento dos webhooks é persistido e deduplicado por hash; o request HTTP apenas valida e publica o evento, enquanto um worker RabbitMQ atualiza a mensagem e encaminha falhas para DLQ.
-- Hashing de API Key usa `bcryptjs` (implementação pura em JS) em vez de `bcrypt` nativo, para
-  evitar dependência de build nativo no ambiente de desenvolvimento.
+- Os endpoints de `tenants`, `applications` e `api-keys` exigem uma sessão autenticada de
+  `PLATFORM_ADMIN`. Os endpoints de `whatsapp-accounts`, `phone-numbers` e configurações SMTP
+  exigem uma sessão administrativa (de plataforma ou do próprio tenant) ou uma API key de tenant
+  (`wh_tenant_live_`). Eles não aceitam a API key de integração comum (`wh_live_`). Para ambientes
+  que desejam restringir toda alteração de configuração ao console administrativo, remova a
+  autorização por API key de tenant desses endpoints.
+- O reagendamento de retry de mensagens, e-mails e workers de webhook usa `setTimeout` em memória;
+  ele não é durável a reinícios do processo. Em produção, adote o plugin de mensagens atrasadas do
+  RabbitMQ, filas TTL com DLQ ou um scheduler externo persistente.
+- O processamento dos webhooks é persistido e deduplicado pelo hash SHA-256 do corpo. O request
+  HTTP valida a assinatura, persiste e publica o evento; um worker RabbitMQ processa eventos
+  pendentes, atualiza a mensagem e encaminha falhas definitivas para a DLQ.
+- Hashing de API Keys e senhas de usuários usa `bcryptjs` (implementação pura em JavaScript), em
+  vez de `bcrypt` nativo, para evitar dependência de build nativo no ambiente de desenvolvimento.

@@ -9,17 +9,31 @@ import { metaConfig } from './meta.config';
 import { MetaConfigService } from './meta-config.service';
 import { rabbitmqConfig } from './rabbitmq.config';
 import { RabbitMqConfigService } from './rabbitmq-config.service';
+import { SmtpConfigService } from './smtp-config.service';
+import { smtpConfig } from './smtp.config';
 
 @Global()
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, databaseConfig, rabbitmqConfig, metaConfig],
+      load: [appConfig, databaseConfig, rabbitmqConfig, metaConfig, smtpConfig],
       validate: validateEnv,
     }),
   ],
-  providers: [AppConfigService, DatabaseConfigService, RabbitMqConfigService, MetaConfigService],
-  exports: [AppConfigService, DatabaseConfigService, RabbitMqConfigService, MetaConfigService],
+  providers: [
+    AppConfigService,
+    DatabaseConfigService,
+    RabbitMqConfigService,
+    MetaConfigService,
+    SmtpConfigService,
+  ],
+  exports: [
+    AppConfigService,
+    DatabaseConfigService,
+    RabbitMqConfigService,
+    MetaConfigService,
+    SmtpConfigService,
+  ],
 })
 export class ConfigurationModule {}
