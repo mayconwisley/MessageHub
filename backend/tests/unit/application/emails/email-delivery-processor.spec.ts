@@ -130,7 +130,7 @@ function buildProcessor(options: {
   const provider = new FakeEmailProvider(providerResult);
   const timeline = includeOptionalDeps ? new FakeEmailTimelineRepository() : undefined;
   const alerts = includeOptionalDeps
-    ? ({ notify: jest.fn().mockResolvedValue(undefined) } as unknown as EngineeringAlertService)
+    ? { notify: jest.fn().mockResolvedValue(undefined) }
     : undefined;
 
   const processor = new EmailDeliveryProcessor(
@@ -142,7 +142,7 @@ function buildProcessor(options: {
     new EmailRetryPolicy(),
     fakeLogger,
     timeline,
-    alerts,
+    alerts as unknown as EngineeringAlertService | undefined,
   );
 
   return { processor, attemptRepository, publisher, provider, timeline, alerts };

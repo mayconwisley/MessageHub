@@ -9,7 +9,8 @@ export class SmtpConfigService {
 
   get defaultSettings(): SmtpConnectionSettings | null {
     const enabled =
-      this.configService.get<boolean>('smtp.defaultEnabled', { infer: true }) ?? false;
+      (this.configService.get<boolean>('smtp.defaultEnabled', { infer: true }) as
+        boolean | undefined) ?? false;
     if (!enabled) return null;
 
     const host = this.configService.get<string>('smtp.host', { infer: true });
@@ -20,8 +21,11 @@ export class SmtpConfigService {
 
     return {
       host,
-      port: this.configService.get<number>('smtp.port', { infer: true }) ?? 587,
-      secure: this.configService.get<boolean>('smtp.secure', { infer: true }) ?? false,
+      port:
+        (this.configService.get<number>('smtp.port', { infer: true }) as number | undefined) ?? 587,
+      secure:
+        (this.configService.get<boolean>('smtp.secure', { infer: true }) as boolean | undefined) ??
+        false,
       username: user,
       password,
       fromEmail,

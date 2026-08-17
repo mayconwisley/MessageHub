@@ -3,7 +3,6 @@ import * as amqp from 'amqp-connection-manager';
 import type { Channel } from 'amqplib';
 import { RABBITMQ_CONNECTION } from '@infrastructure/messaging/rabbitmq/rabbitmq.constants';
 import {
-  EMAIL_PUBLISHER,
   EmailRequestedPayload,
   IEmailPublisher,
 } from '../../application/ports/email-publisher.interface';

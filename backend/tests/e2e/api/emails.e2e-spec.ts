@@ -68,18 +68,16 @@ describe('Emails flow (e2e)', () => {
   };
   const emailTimelineRepository = {
     record: jest.fn().mockResolvedValue(undefined),
-    listByEmailMessageId: jest
-      .fn()
-      .mockResolvedValue([
-        {
-          id: 'event-1',
-          emailMessageId: 'unused',
-          eventType: 'DELIVERY_ATTEMPT_STARTED',
-          status: 'PENDING',
-          source: 'WORKER',
-          occurredAt: new Date(),
-        },
-      ]),
+    listByEmailMessageId: jest.fn().mockResolvedValue([
+      {
+        id: 'event-1',
+        emailMessageId: 'unused',
+        eventType: 'DELIVERY_ATTEMPT_STARTED',
+        status: 'PENDING',
+        source: 'WORKER',
+        occurredAt: new Date(),
+      },
+    ]),
   };
   const adminSession = 'mh_session_e2e-test-token';
 
