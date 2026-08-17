@@ -39,6 +39,7 @@ import {
   ThemeProvider,
   Toolbar,
   Tooltip,
+  Typography,
   useMediaQuery,
   type Theme,
 } from '@mui/material';
@@ -349,7 +350,12 @@ function Layout() {
           },
         }}
       >
-        {navList}
+        <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+          <Box sx={{ flexGrow: 1 }}>{navList}</Box>
+          <Typography variant="caption" align="center" sx={{ py: 1.5, color: 'text.disabled' }}>
+            v{__APP_VERSION__}
+          </Typography>
+        </Box>
       </Drawer>
       <Box
         component="main"
