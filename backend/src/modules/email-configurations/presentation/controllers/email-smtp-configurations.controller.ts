@@ -11,7 +11,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { IMediator, MEDIATOR } from '@shared/mediator';
 import { AuthContextDto } from '@modules/applications/application/dto/api-key.dto';
 import { AuthenticatedUserDto } from '@modules/identity/application/dto/authenticated-user.dto';
@@ -33,7 +33,23 @@ export class EmailSmtpConfigurationsController {
   constructor(@Inject(MEDIATOR) private readonly mediator: IMediator) {}
 
   @Get()
+  @ApiOperation({
+    summary: 'Consulta a configuração de SMTP',
+    description:
+      'Retorna a configuração de SMTP em uso para o tenant: a própria configuração do tenant, ' +
+      'se existir, ou a configuração padrão da plataforma como fallback (campo `source`).',
+  })
+  @ApiQuery({
+    name: 'tenantId',
+    required: false,
+    description:
+      'Obrigatório apenas para requisições autenticadas por sessão de administração da plataforma.',
+  })
   @ApiResponse({ status: HttpStatus.OK, type: EmailSmtpConfigurationResponseDto })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'tenantId não informado nem resolvível pelo contexto de autenticação.',
+  })
   async get(
     @Query('tenantId') tenantId?: string,
     @CurrentOptionalAuthContext() auth?: AuthContextDto,
@@ -47,7 +63,19 @@ export class EmailSmtpConfigurationsController {
   }
 
   @Put()
-  @ApiResponse({ status: HttpStatus.OK, type: EmailSmtpConfigurationResponseDto })
+  @ApiOperation({
+    summary: 'Cria ou atualiza a configuração de SMTP do tenant',
+    description: 'Substitui integralmente a configuração de SMTP atual do tenant (upsert).',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Configuração salva com sucesso.',
+    type: EmailSmtpConfigurationResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Dados de SMTP inválidos ou tenantId não resolvível.',
+  })
   async configure(
     @Body() dto: ConfigureEmailSmtpRequestDto,
     @CurrentOptionalAuthContext() auth?: AuthContextDto,
@@ -71,6 +99,21 @@ export class EmailSmtpConfigurationsController {
 
   @Delete()
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Remove a configuração de SMTP do tenant',
+    description: 'Após a remoção, o tenant volta a utilizar a configuração padrão da plataforma.',
+  })
+  @ApiQuery({
+    name: 'tenantId',
+    required: false,
+    description:
+      'Obrigatório apenas para requisições autenticadas por sessão de administração da plataforma.',
+  })
+  @ApiResponse({ status: HttpStatus.NO_CONTENT, description: 'Configuração removida com sucesso.' })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'tenantId não informado nem resolvível pelo contexto de autenticação.',
+  })
   async remove(
     @Query('tenantId') tenantId?: string,
     @CurrentOptionalAuthContext() auth?: AuthContextDto,

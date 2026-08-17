@@ -30,7 +30,6 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Docker%20Compose-2496ED?logo=docker&logoColor=white" alt="Docker Compose" />
   <img src="https://img.shields.io/badge/GitHub%20Actions-CI-2088FF?logo=githubactions&logoColor=white" alt="GitHub Actions CI" />
-  <img src="https://img.shields.io/badge/CodeQL-Security-4B32C3?logo=github&logoColor=white" alt="CodeQL security scanning" />
   <img src="https://img.shields.io/badge/ESLint-9-4B32C3?logo=eslint&logoColor=white" alt="ESLint 9" />
   <img src="https://img.shields.io/badge/Prettier-3-F7B93E?logo=prettier&logoColor=black" alt="Prettier 3" />
   <img src="https://img.shields.io/badge/Helmet-8-000000?logo=helm&logoColor=white" alt="Helmet 8" />
@@ -50,9 +49,10 @@ Result Pattern.
 ## Estrutura
 
 Organização por Bounded Context (`src/modules/*`), cada um com `domain/ → application/ →
-infrastructure/ → presentation/`. Módulos com fluxo de negócio completo nesta entrega:
-`tenants`, `applications` (inclui `api-keys`), `whatsapp-accounts`, `phone-numbers`, `messages`,
-`templates` e `webhooks`.
+infrastructure/ → presentation/`. Módulos com fluxo de negócio completo: `tenants`,
+`applications` (inclui `api-keys`), `whatsapp-accounts`, `phone-numbers`, `messages`, `templates`,
+`webhooks`, `email-configurations` e `emails`. Módulos de suporte: `identity` (autenticação e
+usuários), `audit`, `dashboard`, `monitoring`, `notifications` e `system-logs`.
 
 ## Setup
 
@@ -89,10 +89,11 @@ administrativa (`POST /v1/auth/sessions`); veja as credenciais iniciais em
 [Autenticação administrativa](#autenticação-administrativa).
 
 Dentro do próprio console, a tela **Manual do usuário** (`/help`, no menu lateral) explica em
-português, tela por tela, como cadastrar tenants, aplicações, contas WhatsApp, números, API keys e
-templates, e como enviar e acompanhar mensagens — é a referência recomendada para quem opera o
-Hub pela interface web. Para quem vai integrar sistemas via API, use a tela **Documentação da
-API** (`/api-docs`) ou o Swagger em `/docs`.
+português, tela por tela, como cadastrar tenants, aplicações, contas WhatsApp, números, SMTP de
+e-mail, API keys e templates, e como enviar e acompanhar mensagens e e-mails, além de operar
+webhooks, o monitor de integrações, alertas de engenharia e o sandbox — é a referência
+recomendada para quem opera o Hub pela interface web. Para quem vai integrar sistemas via API,
+use a tela **Documentação da API** (`/api-docs`) ou o Swagger em `/docs`.
 
 ## Docker
 
@@ -140,17 +141,25 @@ real da plataforma — foram preparados para quando essa etapa for iniciada.
 5. `POST /v1/phone-numbers` — registra um Phone Number da Meta vinculado à WABA.
 6. `PUT /v1/applications/:applicationId/phone-numbers` — vincula um ou mais Phone Numbers à
    Application (cadastro inicial, feito uma única vez pela sessão administrativa).
-7. `POST /v1/messages` com `Authorization: Bearer wh_live_...` — envia uma mensagem. O envio é
-   assíncrono: a Message é criada com status `PENDING`, publicada no RabbitMQ e processada pelo
-   `MessageWorker`, que chama a Graph API através do `MetaWhatsAppProvider`. `phoneNumberId` no
-   corpo da requisição é opcional: quando omitido, o Hub usa o único Phone Number vinculado à
-   Application no passo anterior — só é obrigatório informá-lo se a Application tiver mais de um
-   número vinculado, ou nenhum.
-8. `POST /v1/templates`, `GET /v1/templates`, `GET/PUT/DELETE /v1/templates/:id`,
+7. `POST /v1/messages` com `Authorization: Bearer wh_live_...` — envia uma mensagem de texto livre.
+   O envio é assíncrono: a Message é criada com status `PENDING`, publicada no RabbitMQ e
+   processada pelo `MessageWorker`, que chama a Graph API através do `MetaWhatsAppProvider`.
+   `phoneNumberId` no corpo da requisição é opcional: quando omitido, o Hub usa o único Phone
+   Number vinculado à Application no passo anterior — só é obrigatório informá-lo se a Application
+   tiver mais de um número vinculado, ou nenhum. `POST /v1/messages/templates` segue o mesmo fluxo
+   assíncrono, mas envia um template aprovado da Meta: informe `templateId` ou `templateName` e,
+   se o `BODY` tiver placeholders posicionais, o array `parameters` na mesma ordem de `{{1}}`,
+   `{{2}}`, etc.
+8. `GET /v1/messages/:id` — consulta o status atual (`PENDING → PROCESSING → SENT`, ou
+   `FAILED → RETRY → PROCESSING` em caso de falha). `GET /v1/messages/:id/timeline` retorna, em
+   ordem cronológica, os eventos registrados durante o processamento (tentativas, aceite pelo
+   provedor, falhas, reagendamentos, envio para DLQ) — é a fonte de dados do diálogo de linha do
+   tempo no console.
+9. `POST /v1/templates`, `GET /v1/templates`, `GET/PUT/DELETE /v1/templates/:id`,
    `POST /v1/templates/sync` e `POST /v1/templates/publish-pending` — administram o catálogo
    local de templates da Meta no escopo da WABA do tenant, incluindo rascunhos e sincronização.
-9. `GET /webhooks/meta` realiza o handshake da Meta e `POST /webhooks/meta` valida
-   `X-Hub-Signature-256` antes de atualizar o status da mensagem (`SENT → DELIVERED → READ`).
+10. `GET /webhooks/meta` realiza o handshake da Meta e `POST /webhooks/meta` valida
+    `X-Hub-Signature-256` antes de atualizar o status da mensagem (`SENT → DELIVERED → READ`).
 
 ## Destinatários, usernames e BSUID
 
@@ -192,7 +201,9 @@ Quando `META_DEFAULT_CHANNEL_ENABLED=true`, informe também `META_DEFAULT_CHANNE
 O Hub também aceita `POST /v1/emails`, autenticado pela API Key da Application. O envio é
 assíncrono, idempotente por `Idempotency-Key` e passa por RabbitMQ, tentativas com backoff e DLQ,
 da mesma forma que o canal WhatsApp. O payload contém `to`, `subject` e ao menos um entre
-`textBody` e `htmlBody`.
+`textBody` e `htmlBody`. `GET /v1/emails/:id/timeline` retorna, em ordem cronológica, os mesmos
+tipos de evento operacional expostos para mensagens WhatsApp (tentativa iniciada, aceite pelo
+provedor SMTP, falha, reagendamento, envio para DLQ).
 
 O SMTP padrão da plataforma é configurado no ambiente com `SMTP_DEFAULT_ENABLED`, `SMTP_HOST`,
 `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL` e
@@ -231,7 +242,7 @@ alterados após a publicação retornam para análise da Meta; nome e idioma per
 
 ## Autenticação administrativa
 
-Os endpoints de cadastro e gestão exigem uma sessão de usuário com papel `platform_admin`, enviada em `Authorization: Bearer mh_session_...`. As API keys de aplicações são usadas pelos endpoints de mensagens e templates. Webhooks da Meta são anônimos apenas porque possuem validação criptográfica obrigatória.
+Os endpoints de cadastro e gestão exigem uma sessão de usuário com papel `platform_admin`, enviada em `Authorization: Bearer mh_session_...`. As API keys de aplicações são usadas pelos endpoints de mensagens, e-mails e templates. Webhooks da Meta são anônimos apenas porque possuem validação criptográfica obrigatória.
 
 No primeiro boot, quando ainda não há usuários, o Hub cria o administrador inicial com `INITIAL_PLATFORM_ADMIN_EMAIL` e `INITIAL_PLATFORM_ADMIN_PASSWORD`. Depois, faça login em `POST /v1/auth/sessions` e use a sessão retornada para criar outros usuários em `POST /v1/users`. Senhas são armazenadas com bcrypt; sessões são tokens opacos, persistidos apenas como hash e expiram em 12 horas.
 
@@ -241,15 +252,15 @@ No primeiro boot, quando ainda não há usuários, o Hub cria o administrador in
 - `audit`: trilha persistida de operações mutáveis autenticadas, sem payloads ou secrets;
 - `events`: outbox transacional preparado para publicação confiável de eventos de domínio.
 
-Execute as migrations antes da implantação. As tabelas atuais são movidas de `public` para `app` pela migration versionada. 7. `GET /v1/messages/:id` — consulta o status atual (`PENDING → PROCESSING → SENT`, ou
-`FAILED → RETRY → PROCESSING` em caso de falha).
+Execute as migrations antes da implantação. As tabelas atuais são movidas de `public` para `app`
+pela migration versionada.
 
 As coleções administrativas possuem listagem paginada: `GET /v1/tenants`,
 `GET /v1/applications?tenantId=:tenantId`, `GET /v1/whatsapp-accounts?tenantId=:tenantId` e
 `GET /v1/phone-numbers?tenantId=:tenantId`. Todas aceitam `page` e `pageSize` (máximo 100).
 
-Envie `Idempotency-Key: <chave>` no `POST /v1/messages` para evitar duplicidade em caso de retry
-do cliente.
+Envie `Idempotency-Key: <chave>` no `POST /v1/messages` ou no `POST /v1/emails` para evitar
+duplicidade em caso de retry do cliente.
 
 ## Testes
 

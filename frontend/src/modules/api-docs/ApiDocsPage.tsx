@@ -228,6 +228,37 @@ const templateEndpoints: Endpoint[] = [
   },
 ];
 
+const emailEndpoints: Endpoint[] = [
+  {
+    method: 'POST',
+    path: '/v1/emails',
+    title: 'Enviar e-mail',
+    description:
+      'Envia um e-mail via SMTP configurado para o tenant/aplicação. Informe textBody, htmlBody ou ambos.',
+    curl: buildCurl(
+      'POST',
+      '/v1/emails',
+      {
+        to: 'cliente@exemplo.com',
+        subject: 'Pedido confirmado',
+        textBody: 'Seu pedido foi confirmado.',
+        htmlBody: '<p>Seu pedido foi confirmado.</p>',
+      },
+      ['Idempotency-Key: 5e28f2f0-9a3c-4c34-9b7a-2f2f4d0a9d11'],
+    ),
+    notes:
+      'O header Idempotency-Key é opcional, mas recomendado: reenviar a mesma chave retorna o e-mail já registrado em vez de enviar novamente. O envio é assíncrono — a resposta traz o e-mail com status PENDING; acompanhe a entrega pelo endpoint de linha do tempo abaixo.',
+  },
+  {
+    method: 'GET',
+    path: '/v1/emails/{id}/timeline',
+    title: 'Consultar linha do tempo de um e-mail',
+    description:
+      'Retorna, em ordem cronológica, os eventos registrados durante o processamento do e-mail (tentativas de entrega, aceite pelo provedor, falhas, reagendamentos, envio para fila de erro), útil para depurar falhas de envio.',
+    curl: buildCurl('GET', '/v1/emails/6f1c2e6a-2222-4b3a-9a11-3d0a4f0a1234/timeline'),
+  },
+];
+
 function EndpointAccordion({ endpoint }: { endpoint: Endpoint }) {
   return (
     <Accordion variant="outlined" disableGutters>
@@ -269,7 +300,7 @@ export function ApiDocsPage() {
     <Stack spacing={3}>
       <PageHeader
         title="Documentação da API"
-        description="Endpoints públicos para enviar mensagens e gerenciar modelos de mensagem a partir de outras aplicações."
+        description="Endpoints públicos para enviar mensagens via WhatsApp ou e-mail e gerenciar modelos de mensagem a partir de outras aplicações."
       />
 
       <Card variant="outlined">
@@ -325,6 +356,15 @@ export function ApiDocsPage() {
         <Typography variant="h6">Mensagens</Typography>
         <Stack spacing={1}>
           {messageEndpoints.map((endpoint) => (
+            <EndpointAccordion key={`${endpoint.method}-${endpoint.path}`} endpoint={endpoint} />
+          ))}
+        </Stack>
+      </Stack>
+
+      <Stack spacing={1.5}>
+        <Typography variant="h6">E-mails</Typography>
+        <Stack spacing={1}>
+          {emailEndpoints.map((endpoint) => (
             <EndpointAccordion key={`${endpoint.method}-${endpoint.path}`} endpoint={endpoint} />
           ))}
         </Stack>

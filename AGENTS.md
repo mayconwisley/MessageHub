@@ -303,8 +303,10 @@ backend/src/
     ├── applications/            # Application + ApiKey (contexto Identity)
     ├── audit/                    # trilha de auditoria administrativa
     ├── dashboard/                # queries agregadas para o painel operacional
+    ├── email-configurations/     # configuração SMTP por tenant (override do fallback global)
+    ├── emails/                   # EmailMessage, EmailAttempt, timeline, worker de envio SMTP
     ├── identity/                 # User, autenticação, sessão
-    ├── messages/                 # Message, MessageAttempt, worker de envio
+    ├── messages/                 # Message, MessageAttempt, timeline, worker de envio
     ├── monitoring/                # monitor de integrações (quotas, saúde de credenciais)
     ├── notifications/             # alertas de engenharia (Slack/Teams/E-mail)
     ├── phone-numbers/
@@ -407,11 +409,17 @@ Messaging
     └── Messages
     └── MessageAttempts
 
+Email
+    └── EmailMessages
+    └── EmailAttempts
+    └── EmailSmtpConfigurations
+
 Webhook
     └── WebhookEvents
 
 Infrastructure
     └── Meta
+    └── SMTP
     └── RabbitMQ
     └── Redis
 ```
@@ -1831,7 +1839,7 @@ O Hub deve ser tratado como uma **plataforma de mensageria interna**, e não com
 
 # 54. Integração Contínua (CI/CD)
 
-O repositório possui dois workflows do GitHub Actions em `.github/workflows/`:
+O repositório possui um workflow do GitHub Actions em `.github/workflows/ci.yml`:
 
 ```text
 ci.yml
@@ -1854,10 +1862,6 @@ ci.yml
     └── frontend-audit        # npm audit --audit-level=high (non-blocking)
 
     └── ci-success             # gate final: falha se algum job obrigatório não passou
-
-codeql.yml
-    └── análise de segurança estática (CodeQL, queries security-extended) em push/PR
-        para main e semanalmente (segunda-feira); resultados vão para a aba Security do GitHub.
 ```
 
 Novas funcionalidades devem manter os jobs de qualidade passando (format/lint/typecheck,
@@ -1888,6 +1892,7 @@ frontend/src/
 │   ├── audit-logs/                # EventsTab + SystemLogsTab
 │   ├── auth/
 │   ├── dashboard/
+│   ├── email-configurations/
 │   ├── engineering-alerts/
 │   ├── help/
 │   ├── messages/

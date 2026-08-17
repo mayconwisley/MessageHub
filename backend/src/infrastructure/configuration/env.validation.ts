@@ -10,6 +10,7 @@ import {
   MinLength,
   Max,
   Min,
+  ValidateIf,
   validateSync,
 } from 'class-validator';
 
@@ -99,7 +100,7 @@ class EnvironmentVariables {
   @IsString()
   SMTP_PASSWORD?: string;
 
-  @IsOptional()
+  @ValidateIf((o: EnvironmentVariables) => !!o.SMTP_FROM_EMAIL)
   @IsEmail()
   SMTP_FROM_EMAIL?: string;
 

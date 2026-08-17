@@ -5,13 +5,19 @@ import {
   AppsOutlined,
   ChatOutlined,
   DashboardOutlined,
+  EmailOutlined,
   ForumOutlined,
+  HistoryOutlined,
   IntegrationInstructionsOutlined,
+  MonitorHeartOutlined,
+  NotificationsActiveOutlined,
   PeopleOutlined,
   PhoneOutlined,
+  ScienceOutlined,
   SettingsOutlined,
   SmartToyOutlined,
   VpnKeyOutlined,
+  WebhookOutlined,
 } from '@mui/icons-material';
 import {
   Accordion,
@@ -149,6 +155,24 @@ const sections: Section[] = [
     ],
   },
   {
+    icon: <EmailOutlined />,
+    title: 'E-mail SMTP',
+    purpose:
+      'Configura o SMTP próprio de um tenant para o envio de e-mails via API. Sem essa configuração, o tenant usa o SMTP padrão da plataforma (quando habilitado no ambiente do Hub).',
+    steps: [
+      'Selecione um "Tenant" para ver a origem atual em uso: "SMTP do tenant", "SMTP padrão da plataforma" ou "Não configurado".',
+      'Informe "Servidor SMTP", "Porta", "Usuário SMTP" e "Senha SMTP", além de "E-mail remetente" e "Nome remetente", e confirme em "Salvar SMTP do tenant".',
+      'Ative "SMTPS direto" apenas para a porta 465; para a porta 587 (STARTTLS), deixe desativado.',
+      'Se o tenant já tiver uma configuração própria, use "Usar SMTP padrão" para removê-la e voltar a depender do fallback global.',
+    ],
+    notes: [
+      {
+        severity: 'info',
+        text: 'A senha SMTP é cifrada no banco e nunca é exibida novamente após salva — para trocá-la, informe uma nova senha e salve outra vez.',
+      },
+    ],
+  },
+  {
     icon: <VpnKeyOutlined />,
     title: 'Chaves de API',
     purpose:
@@ -184,20 +208,47 @@ const sections: Section[] = [
     ],
   },
   {
+    icon: <HistoryOutlined />,
+    title: 'Eventos e logs',
+    purpose:
+      'Reúne a trilha de auditoria das ações administrativas ("Eventos") e os logs técnicos de execução capturados pela ferramenta ("Logs"), ambos somente leitura.',
+    steps: [
+      'Na aba "Eventos", filtre por "Método" (POST, PUT, PATCH, DELETE) ou pelo "Tipo de recurso" (ex.: tenants, users) e clique em "Ver detalhes" para consultar ator, rota, status HTTP e metadados da requisição.',
+      'Na aba "Logs", filtre por "Nível" (Trace a Fatal) ou busque um trecho no campo "Buscar na mensagem"; use "Ver detalhes" para o contexto completo e os metadados técnicos do registro.',
+    ],
+    notes: [
+      {
+        severity: 'info',
+        text: 'Nenhuma das duas abas expõe payloads de negócio ou secrets — apenas metadados operacionais. Ambas atualizam automaticamente a cada 30 segundos.',
+      },
+    ],
+  },
+  {
     icon: <ChatOutlined />,
     title: 'Mensagens',
     purpose:
-      'Envia mensagens de texto avulsas a partir de um número cadastrado e acompanha, em uma linha do tempo, o processamento, as tentativas, erros, entrega e leitura.',
+      'Envia mensagens avulsas — texto livre, modelo aprovado da Meta ou e-mail — a partir de um número ou configuração cadastrados, e acompanha, em uma linha do tempo, o processamento, as tentativas, erros, entrega e leitura.',
     steps: [
       'Selecione "Tenant" e "Aplicação" no topo da tela — esses filtros definem de onde as mensagens são listadas e em nome de qual aplicação uma nova mensagem é enviada. Quando só existe uma opção, ela é selecionada automaticamente.',
       'Use o filtro "Status" para navegar pela lista (Pendente, Processando, Enviada, Entregue, Lida, Falhou, Repetindo).',
-      'Clique em "Enviar mensagem", escolha o número de origem, informe o "Destinatário" (telefone E.164 ou BSUID recebido em um webhook da Meta) e o texto em "Mensagem" (até 4096 caracteres).',
+      'Clique em "Enviar mensagem" e escolha o tipo de envio no topo do formulário: "Texto livre", "Modelo" ou "E-mail".',
+      'Em "Texto livre", escolha o número de origem, informe o "Destinatário" (telefone E.164 ou BSUID recebido em um webhook da Meta) e o texto em "Mensagem" (até 4096 caracteres).',
+      'Em "Modelo", escolha a "Conta WhatsApp" para listar os modelos aprovados dessa conta, selecione o modelo, o número de origem e o "Destinatário"; preencha os "Parâmetros" na mesma ordem dos placeholders {{1}}, {{2}} etc. do corpo do modelo, quando existirem.',
+      'Em "E-mail", informe o "Destinatário" (endereço de e-mail), o "Assunto" e a "Mensagem". O envio usa o SMTP do tenant configurado em "E-mail SMTP" ou, na ausência de override, o SMTP padrão da plataforma.',
       'Na linha da mensagem, abra o menu de ações e clique em "Ver linha do tempo". O painel mostra o conteúdo, o status atual e todos os eventos disponíveis em ordem cronológica.',
       'Em cada tentativa, verifique se o provedor aceitou o envio ou se ocorreu falha. Quando houver falha, o painel mostra a mensagem e o código técnico retornado pelo provedor.',
       'Para mensagens entregues ou lidas, a linha do tempo é atualizada a partir dos webhooks da Meta. O evento "Entregue" indica que a mensagem chegou ao destinatário; "Lida" indica a confirmação de leitura.',
       'Quando o status for "Repetindo", aguarde a próxima tentativa automática. Se terminar em "Falha", corrija a causa indicada antes de realizar um novo envio.',
     ],
     notes: [
+      {
+        severity: 'info',
+        text: 'Somente modelos com status "Aprovado" aparecem no seletor de "Modelo" — sincronize com a Meta na tela "Modelos de mensagem" se um modelo recém-aprovado ainda não aparecer.',
+      },
+      {
+        severity: 'info',
+        text: 'O e-mail enviado por aqui não aparece na lista desta tela, que mostra apenas mensagens WhatsApp — acompanhe o e-mail pelo endpoint de linha do tempo em "Documentação da API" ou pelos "Eventos e logs".',
+      },
       {
         severity: 'info',
         text: 'Quando o usuário usar username e ocultar o telefone, o webhook traz sender.id como BSUID e sender.displayName como nome informativo. Responda usando exatamente o sender.id; não use o texto do @username.',
@@ -232,12 +283,70 @@ const sections: Section[] = [
     icon: <IntegrationInstructionsOutlined />,
     title: 'Documentação da API',
     purpose:
-      'Referência de endpoints para times que vão integrar sistemas externos ao Hub via API (envio de mensagens e gestão de templates), com exemplos de requisição prontos para copiar.',
+      'Referência de endpoints para times que vão integrar sistemas externos ao Hub via API (envio de mensagens WhatsApp e e-mail, e gestão de templates), com exemplos de requisição prontos para copiar.',
     steps: [
       'Gere ou copie uma chave de API na tela "Chaves de API" antes de testar os exemplos.',
       'Use o botão "Copiar" em cada bloco de código para copiar o comando de exemplo.',
-      'A página separa os endpoints de Mensagens e Modelos de mensagem. Nos envios de mensagem, informe uma Idempotency-Key para evitar duplicidade em retries.',
+      'A página separa os endpoints de Mensagens, E-mails e Modelos de mensagem. Nos envios de mensagem e de e-mail, informe uma Idempotency-Key para evitar duplicidade em retries.',
       'Para o contrato completo de todos os endpoints, use o botão "Referência completa (Swagger)".',
+    ],
+  },
+  {
+    icon: <WebhookOutlined />,
+    title: 'Webhooks e DLQ',
+    purpose:
+      'Mostra os eventos recebidos da Meta (payload mascarado), seu processamento e permite reenviar manualmente os que esgotaram as tentativas automáticas.',
+    steps: [
+      'Use o filtro "Status" (Pendente, Processado, Falhou / DLQ) para localizar um evento.',
+      'Clique em "Ver payload mascarado" para inspecionar o conteúdo recebido da Meta.',
+      'Para eventos com status "Falhou / DLQ", use "Reprocessar" para tentar novamente — a ação é registrada na auditoria técnica.',
+    ],
+    notes: [
+      {
+        severity: 'info',
+        text: '"Reprocessar" só fica disponível para eventos que já esgotaram todas as tentativas automáticas.',
+      },
+    ],
+  },
+  {
+    icon: <MonitorHeartOutlined />,
+    title: 'Monitor de integrações',
+    purpose:
+      'Acompanha a saúde e a capacidade de uma aplicação: quotas de envio, taxa de entrega das últimas 24 horas, saúde das chaves de API e dos números/credenciais Meta vinculados.',
+    steps: [
+      'Selecione "Tenant" e depois a "Aplicação" para carregar o monitor — sem uma aplicação selecionada, nada é exibido.',
+      'Em "Quotas", verifique o consumo por minuto e por dia frente ao limite configurado para a aplicação.',
+      'Em "Entrega (24h)", acompanhe a taxa de falha; um alerta aparece automaticamente quando ela atinge 10% ou mais.',
+      'Consulte as tabelas "Credenciais de API" e "Números e credenciais Meta" para ver expiração e saúde de cada credencial.',
+    ],
+  },
+  {
+    icon: <NotificationsActiveOutlined />,
+    title: 'Alertas de engenharia',
+    purpose:
+      'Lista falhas persistentes, envios para DLQ e degradações técnicas relevantes para a equipe de engenharia, incluindo se o alerta foi entregue a um canal externo (Slack, Teams ou e-mail).',
+    steps: [
+      'Use o filtro "Severidade" (Crítica ou Alerta) para priorizar a análise.',
+      'Clique em "Ver dados técnicos" para consultar a mensagem completa e os metadados do alerta (ex.: IDs de mensagem, aplicação ou tenant envolvidos).',
+      'A coluna "Entrega externa" indica se o alerta foi enviado a um canal configurado (`ENGINEERING_SLACK_WEBHOOK_URL`, `ENGINEERING_TEAMS_WEBHOOK_URL` ou `ENGINEERING_EMAIL_WEBHOOK_URL`) ou se ficou pendente por falta de canal.',
+    ],
+    notes: [
+      {
+        severity: 'info',
+        text: 'A lista atualiza automaticamente a cada 30 segundos.',
+      },
+    ],
+  },
+  {
+    icon: <ScienceOutlined />,
+    title: 'Ambiente sandbox',
+    purpose:
+      'Permite simular callbacks de status (entrega, leitura ou falha) de uma mensagem sem depender da Meta — útil para testar integrações e o fluxo de webhooks localmente.',
+    steps: [
+      'Verifique o alerta no topo da tela: o sandbox só fica disponível quando o provider ativo é "sandbox" (`MESSAGE_PROVIDER=sandbox` e `SANDBOX_ENABLED=true` no ambiente do Hub).',
+      'Selecione "Tenant", "Aplicação" e a mensagem já enviada pelo fluxo normal que terá o status simulado.',
+      'Escolha o "Webhook simulado" (DELIVERED, READ ou FAILED) e clique em "Simular webhook".',
+      'Use os números finais informados nos chips (0000 para rejeição permanente, 0001 para falha transitória) ao registrar números de telefone de teste, para exercitar os fluxos de erro.',
     ],
   },
 ];

@@ -11,6 +11,9 @@ import {
   Snackbar,
   Stack,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
+  Typography,
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
@@ -22,17 +25,23 @@ import { PaginatedTable } from '../../components/shared/PaginatedTable';
 import { TableActionsMenu } from '../../components/shared/TableActionsMenu';
 import { ApplicationAutocomplete } from '../../components/shared/ApplicationAutocomplete';
 import { PhoneNumberAutocomplete } from '../../components/shared/PhoneNumberAutocomplete';
+import { TemplateAutocomplete } from '../../components/shared/TemplateAutocomplete';
 import { TenantAutocomplete } from '../../components/shared/TenantAutocomplete';
+import { WhatsAppAccountAutocomplete } from '../../components/shared/WhatsAppAccountAutocomplete';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { usePagination } from '../../hooks/usePagination';
 import { applicationsApi } from '../applications/applications.api';
 import { tenantsApi } from '../tenants/tenants.api';
+import type { Template } from '../templates/templates.api';
+import { emailsApi } from './emails.api';
 import { messagesApi, type Message } from './messages.api';
 import { ApiError } from '../../services/http-client';
 import { toPresentationValue } from '../../lib/presentation';
 import { MessageTimelineDialog } from './MessageTimelineDialog';
 
-const schema = z.object({
+type SendMode = 'text' | 'template' | 'email';
+
+const textSchema = z.object({
   phoneNumberId: z.string().uuid('Informe um UUID válido.'),
   to: z.string().min(8, 'Informe um número de telefone válido.'),
   content: z
@@ -40,7 +49,31 @@ const schema = z.object({
     .min(1, 'Informe o conteúdo da mensagem.')
     .max(4096, 'A mensagem deve ter no máximo 4096 caracteres.'),
 });
-type FormData = z.infer<typeof schema>;
+type TextFormData = z.infer<typeof textSchema>;
+
+const templateSchema = z.object({
+  phoneNumberId: z.string().uuid('Informe um UUID válido.'),
+  to: z.string().min(8, 'Informe um número de telefone válido.'),
+  templateId: z.string().uuid('Selecione um modelo aprovado.'),
+});
+type TemplateFormData = z.infer<typeof templateSchema>;
+
+const emailSchema = z.object({
+  to: z.string().email('Informe um e-mail válido.'),
+  subject: z
+    .string()
+    .min(1, 'Informe o assunto.')
+    .max(255, 'O assunto deve ter no máximo 255 caracteres.'),
+  textBody: z.string().min(1, 'Informe o conteúdo do e-mail.'),
+});
+type EmailFormData = z.infer<typeof emailSchema>;
+
+function countTemplateParameters(template: Template | null): number {
+  const body = template?.components.find((component) => component.type === 'BODY');
+  if (!body?.text) return 0;
+  const matches = body.text.match(/\{\{\d+\}\}/g) ?? [];
+  return new Set(matches).size;
+}
 
 const statusLabels: Record<string, string> = {
   PENDING: 'Pendente',
@@ -60,14 +93,22 @@ export function MessagesPage() {
   const [search, setSearch] = useState('');
   const [timelineMessageId, setTimelineMessageId] = useState<string | null>(null);
   const [sendOpen, setSendOpen] = useState(false);
+  const [sendMode, setSendMode] = useState<SendMode>('text');
+  const [templateAccountId, setTemplateAccountId] = useState('');
+  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
+  const [parameterValues, setParameterValues] = useState<string[]>([]);
   const [feedback, setFeedback] = useState<{
     severity: 'success' | 'error';
     message: string;
   } | null>(null);
   const client = useQueryClient();
-  const form = useForm<FormData>({ resolver: zodResolver(schema) });
-  const send = useMutation({
-    mutationFn: (data: FormData) => messagesApi.send({ ...data, applicationId }),
+
+  const textForm = useForm<TextFormData>({ resolver: zodResolver(textSchema) });
+  const templateForm = useForm<TemplateFormData>({ resolver: zodResolver(templateSchema) });
+  const emailForm = useForm<EmailFormData>({ resolver: zodResolver(emailSchema) });
+
+  const sendText = useMutation({
+    mutationFn: (data: TextFormData) => messagesApi.send({ ...data, applicationId }),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ['messages', applicationId] });
       setFeedback({
@@ -81,6 +122,44 @@ export function MessagesPage() {
       setFeedback({
         severity: 'error',
         message: `Não foi possível enviar a mensagem. ${error.message}${requestId}`,
+      });
+    },
+  });
+
+  const sendTemplate = useMutation({
+    mutationFn: (data: TemplateFormData) =>
+      messagesApi.sendTemplate({ ...data, applicationId, parameters: parameterValues }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['messages', applicationId] });
+      setFeedback({
+        severity: 'success',
+        message: 'Mensagem de modelo enfileirada para envio. Acompanhe o status na lista abaixo.',
+      });
+    },
+    onError: (error) => {
+      const requestId =
+        error instanceof ApiError && error.requestId ? ` Protocolo: ${error.requestId}.` : '';
+      setFeedback({
+        severity: 'error',
+        message: `Não foi possível enviar a mensagem de modelo. ${error.message}${requestId}`,
+      });
+    },
+  });
+
+  const sendEmail = useMutation({
+    mutationFn: (data: EmailFormData) => emailsApi.send({ ...data, applicationId }),
+    onSuccess: () => {
+      setFeedback({
+        severity: 'success',
+        message: 'E-mail enfileirado para envio.',
+      });
+    },
+    onError: (error) => {
+      const requestId =
+        error instanceof ApiError && error.requestId ? ` Protocolo: ${error.requestId}.` : '';
+      setFeedback({
+        severity: 'error',
+        message: `Não foi possível enviar o e-mail. ${error.message}${requestId}`,
       });
     },
   });
@@ -118,6 +197,16 @@ export function MessagesPage() {
     }
   }, [validTenantId, applicationId, applications.data]);
 
+  // Redimensiona os campos de parâmetro conforme o modelo selecionado muda.
+  useEffect(() => {
+    setParameterValues((current) => {
+      const count = countTemplateParameters(selectedTemplate);
+      const next = current.slice(0, count);
+      while (next.length < count) next.push('');
+      return next;
+    });
+  }, [selectedTemplate]);
+
   const list = useQuery({
     queryKey: ['messages', applicationId, page, pageSize, status, search],
     queryFn: () =>
@@ -147,17 +236,29 @@ export function MessagesPage() {
   });
 
   const openSend = () => {
-    form.reset();
-    send.reset();
+    setSendMode('text');
+    setTemplateAccountId('');
+    setSelectedTemplate(null);
+    setParameterValues([]);
+    textForm.reset();
+    templateForm.reset();
+    emailForm.reset();
+    sendText.reset();
+    sendTemplate.reset();
+    sendEmail.reset();
     setSendOpen(true);
   };
   const closeSend = () => setSendOpen(false);
+
+  const templateParametersInvalid =
+    countTemplateParameters(selectedTemplate) > 0 &&
+    parameterValues.some((value) => value.trim().length === 0);
 
   return (
     <Stack spacing={3}>
       <PageHeader
         title="Mensagens"
-        description="Envie uma mensagem de texto e acompanhe o estado assíncrono do processamento."
+        description="Envie uma mensagem de texto, um modelo aprovado ou um e-mail, e acompanhe o estado assíncrono do processamento."
         action={
           <Button
             variant="contained"
@@ -288,58 +389,216 @@ export function MessagesPage() {
 
       <FormDialog open={sendOpen} onClose={closeSend} title="Enviar mensagem">
         <Stack spacing={2} sx={{ mt: 1 }}>
-          {send.isSuccess ? (
-            <>
-              <Alert severity="success">Mensagem enviada com sucesso.</Alert>
-              <Button variant="contained" onClick={closeSend}>
-                Fechar
-              </Button>
-            </>
-          ) : (
-            <Stack
-              component="form"
-              spacing={2}
-              onSubmit={form.handleSubmit((data) => send.mutate(data))}
-            >
-              {send.error && <Alert severity="error">{send.error.message}</Alert>}
-              <Controller
-                name="phoneNumberId"
-                control={form.control}
-                render={({ field }) => (
-                  <PhoneNumberAutocomplete
-                    tenantId={tenantId}
-                    value={field.value ?? ''}
-                    onChange={field.onChange}
-                    error={!!form.formState.errors.phoneNumberId}
-                    helperText={form.formState.errors.phoneNumberId?.message}
-                  />
+          <ToggleButtonGroup
+            value={sendMode}
+            exclusive
+            fullWidth
+            size="small"
+            onChange={(_, value: SendMode | null) => value && setSendMode(value)}
+          >
+            <ToggleButton value="text">Texto livre</ToggleButton>
+            <ToggleButton value="template">Modelo</ToggleButton>
+            <ToggleButton value="email">E-mail</ToggleButton>
+          </ToggleButtonGroup>
+
+          {sendMode === 'text' &&
+            (sendText.isSuccess ? (
+              <>
+                <Alert severity="success">Mensagem enviada com sucesso.</Alert>
+                <Button variant="contained" onClick={closeSend}>
+                  Fechar
+                </Button>
+              </>
+            ) : (
+              <Stack
+                component="form"
+                spacing={2}
+                onSubmit={textForm.handleSubmit((data) => sendText.mutate(data))}
+              >
+                {sendText.error && <Alert severity="error">{sendText.error.message}</Alert>}
+                <Controller
+                  name="phoneNumberId"
+                  control={textForm.control}
+                  render={({ field }) => (
+                    <PhoneNumberAutocomplete
+                      tenantId={tenantId}
+                      value={field.value ?? ''}
+                      onChange={field.onChange}
+                      error={!!textForm.formState.errors.phoneNumberId}
+                      helperText={textForm.formState.errors.phoneNumberId?.message}
+                    />
+                  )}
+                />
+                <TextField
+                  label="Destinatário"
+                  placeholder="+5511999999999 ou BSUID"
+                  {...textForm.register('to')}
+                  error={!!textForm.formState.errors.to}
+                  helperText={
+                    textForm.formState.errors.to?.message ??
+                    'Informe o telefone ou o identificador BSUID retornado pela Meta.'
+                  }
+                  fullWidth
+                />
+                <TextField
+                  label="Mensagem"
+                  multiline
+                  minRows={4}
+                  {...textForm.register('content')}
+                  error={!!textForm.formState.errors.content}
+                  helperText={textForm.formState.errors.content?.message}
+                  fullWidth
+                />
+                <Button type="submit" variant="contained" disabled={sendText.isPending}>
+                  {sendText.isPending ? 'Enviando...' : 'Enviar mensagem'}
+                </Button>
+              </Stack>
+            ))}
+
+          {sendMode === 'template' &&
+            (sendTemplate.isSuccess ? (
+              <>
+                <Alert severity="success">Mensagem de modelo enviada com sucesso.</Alert>
+                <Button variant="contained" onClick={closeSend}>
+                  Fechar
+                </Button>
+              </>
+            ) : (
+              <Stack
+                component="form"
+                spacing={2}
+                onSubmit={templateForm.handleSubmit((data) => sendTemplate.mutate(data))}
+              >
+                {sendTemplate.error && (
+                  <Alert severity="error">{sendTemplate.error.message}</Alert>
                 )}
-              />
-              <TextField
-                label="Destinatário"
-                placeholder="+5511999999999 ou BSUID"
-                {...form.register('to')}
-                error={!!form.formState.errors.to}
-                helperText={
-                  form.formState.errors.to?.message ??
-                  'Informe o telefone ou o identificador BSUID retornado pela Meta.'
-                }
-                fullWidth
-              />
-              <TextField
-                label="Mensagem"
-                multiline
-                minRows={4}
-                {...form.register('content')}
-                error={!!form.formState.errors.content}
-                helperText={form.formState.errors.content?.message}
-                fullWidth
-              />
-              <Button type="submit" variant="contained" disabled={send.isPending}>
-                {send.isPending ? 'Enviando...' : 'Enviar mensagem'}
-              </Button>
-            </Stack>
-          )}
+                <WhatsAppAccountAutocomplete
+                  tenantId={tenantId}
+                  value={templateAccountId}
+                  onChange={(id) => {
+                    setTemplateAccountId(id);
+                    templateForm.setValue('templateId', '');
+                    setSelectedTemplate(null);
+                  }}
+                />
+                <Controller
+                  name="templateId"
+                  control={templateForm.control}
+                  render={({ field }) => (
+                    <TemplateAutocomplete
+                      tenantId={tenantId}
+                      whatsAppAccountId={templateAccountId}
+                      value={field.value ?? ''}
+                      onChange={(id, template) => {
+                        field.onChange(id);
+                        setSelectedTemplate(template);
+                      }}
+                      error={!!templateForm.formState.errors.templateId}
+                      helperText={templateForm.formState.errors.templateId?.message}
+                    />
+                  )}
+                />
+                <Controller
+                  name="phoneNumberId"
+                  control={templateForm.control}
+                  render={({ field }) => (
+                    <PhoneNumberAutocomplete
+                      tenantId={tenantId}
+                      value={field.value ?? ''}
+                      onChange={field.onChange}
+                      error={!!templateForm.formState.errors.phoneNumberId}
+                      helperText={templateForm.formState.errors.phoneNumberId?.message}
+                    />
+                  )}
+                />
+                <TextField
+                  label="Destinatário"
+                  placeholder="+5511999999999 ou BSUID"
+                  {...templateForm.register('to')}
+                  error={!!templateForm.formState.errors.to}
+                  helperText={
+                    templateForm.formState.errors.to?.message ??
+                    'Informe o telefone ou o identificador BSUID retornado pela Meta.'
+                  }
+                  fullWidth
+                />
+                {parameterValues.length > 0 && (
+                  <Stack spacing={2}>
+                    <Typography variant="body2" color="text.secondary">
+                      Valores dos parâmetros do corpo do modelo, na ordem {'{{1}}, {{2}}, ...'}
+                    </Typography>
+                    {parameterValues.map((paramValue, index) => (
+                      <TextField
+                        key={index}
+                        label={`Parâmetro ${index + 1}`}
+                        value={paramValue}
+                        onChange={(event) => {
+                          const next = [...parameterValues];
+                          next[index] = event.target.value;
+                          setParameterValues(next);
+                        }}
+                        fullWidth
+                      />
+                    ))}
+                  </Stack>
+                )}
+                <Button
+                  type="submit"
+                  variant="contained"
+                  disabled={sendTemplate.isPending || templateParametersInvalid}
+                >
+                  {sendTemplate.isPending ? 'Enviando...' : 'Enviar modelo'}
+                </Button>
+              </Stack>
+            ))}
+
+          {sendMode === 'email' &&
+            (sendEmail.isSuccess ? (
+              <>
+                <Alert severity="success">E-mail enviado com sucesso.</Alert>
+                <Button variant="contained" onClick={closeSend}>
+                  Fechar
+                </Button>
+              </>
+            ) : (
+              <Stack
+                component="form"
+                spacing={2}
+                onSubmit={emailForm.handleSubmit((data) => sendEmail.mutate(data))}
+              >
+                {sendEmail.error && <Alert severity="error">{sendEmail.error.message}</Alert>}
+                <TextField
+                  label="Destinatário"
+                  placeholder="cliente@exemplo.com"
+                  {...emailForm.register('to')}
+                  error={!!emailForm.formState.errors.to}
+                  helperText={emailForm.formState.errors.to?.message}
+                  fullWidth
+                />
+                <TextField
+                  label="Assunto"
+                  {...emailForm.register('subject')}
+                  error={!!emailForm.formState.errors.subject}
+                  helperText={emailForm.formState.errors.subject?.message}
+                  fullWidth
+                />
+                <TextField
+                  label="Mensagem"
+                  multiline
+                  minRows={4}
+                  {...emailForm.register('textBody')}
+                  error={!!emailForm.formState.errors.textBody}
+                  helperText={
+                    emailForm.formState.errors.textBody?.message ??
+                    'Usa o SMTP configurado para o tenant, ou o SMTP padrão da plataforma.'
+                  }
+                  fullWidth
+                />
+                <Button type="submit" variant="contained" disabled={sendEmail.isPending}>
+                  {sendEmail.isPending ? 'Enviando...' : 'Enviar e-mail'}
+                </Button>
+              </Stack>
+            ))}
         </Stack>
       </FormDialog>
 

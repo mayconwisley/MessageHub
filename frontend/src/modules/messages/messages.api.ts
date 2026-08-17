@@ -49,6 +49,18 @@ export const messagesApi = {
       body: data,
       headers: { 'Idempotency-Key': crypto.randomUUID() },
     }),
+  sendTemplate: (data: {
+    applicationId: string;
+    phoneNumberId?: string;
+    to: string;
+    templateId: string;
+    parameters: string[];
+  }) =>
+    request<Message>('/v1/messages/templates', {
+      method: 'POST',
+      body: data,
+      headers: { 'Idempotency-Key': crypto.randomUUID() },
+    }),
   get: (id: string, applicationId: string) =>
     request<Message>(`/v1/messages/${id}${toQueryString({ applicationId })}`),
   list: (params: {
