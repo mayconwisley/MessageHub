@@ -58,8 +58,7 @@ describe('SmtpPasswordCipherService', () => {
   it('throws when decrypting a tampered ciphertext', () => {
     const encrypted = buildCipher(key).encrypt('super-secret-password');
     const [version, iv, authTag, cipherText] = encrypted.split('.');
-    const tamperedCipherText =
-      cipherText.slice(0, -1) + (cipherText.at(-1) === 'A' ? 'B' : 'A');
+    const tamperedCipherText = cipherText.slice(0, -1) + (cipherText.at(-1) === 'A' ? 'B' : 'A');
     const tampered = [version, iv, authTag, tamperedCipherText].join('.');
 
     expect(() => buildCipher(key).decrypt(tampered)).toThrow();

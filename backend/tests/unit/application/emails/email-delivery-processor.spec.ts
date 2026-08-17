@@ -182,7 +182,10 @@ describe('EmailDeliveryProcessor', () => {
     expect(attemptRepository.saved[0].status).toBe(EmailAttemptStatus.SUCCEEDED);
     expect(publisher.deadLettered).toHaveLength(0);
     expect(publisher.published).toHaveLength(0);
-    expect(eventTypes(timeline!)).toEqual(['DELIVERY_ATTEMPT_STARTED', 'PROVIDER_ACCEPTED_MESSAGE']);
+    expect(eventTypes(timeline!)).toEqual([
+      'DELIVERY_ATTEMPT_STARTED',
+      'PROVIDER_ACCEPTED_MESSAGE',
+    ]);
     expect(alerts!.notify).not.toHaveBeenCalled();
   });
 

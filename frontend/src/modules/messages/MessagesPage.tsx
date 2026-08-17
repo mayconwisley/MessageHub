@@ -469,9 +469,7 @@ export function MessagesPage() {
                 spacing={2}
                 onSubmit={templateForm.handleSubmit((data) => sendTemplate.mutate(data))}
               >
-                {sendTemplate.error && (
-                  <Alert severity="error">{sendTemplate.error.message}</Alert>
-                )}
+                {sendTemplate.error && <Alert severity="error">{sendTemplate.error.message}</Alert>}
                 <WhatsAppAccountAutocomplete
                   tenantId={tenantId}
                   value={templateAccountId}

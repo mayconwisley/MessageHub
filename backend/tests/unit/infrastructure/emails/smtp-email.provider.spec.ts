@@ -79,9 +79,9 @@ describe('SmtpEmailProvider', () => {
   });
 
   it('returns a retryable failure when the transport reports a connection error', async () => {
-    const sendMail = jest.fn().mockRejectedValue(
-      Object.assign(new Error('connect ECONNREFUSED'), { code: 'ECONNECTION' }),
-    );
+    const sendMail = jest
+      .fn()
+      .mockRejectedValue(Object.assign(new Error('connect ECONNREFUSED'), { code: 'ECONNECTION' }));
     createTransportMock.mockReturnValue({ sendMail });
 
     const provider = new SmtpEmailProvider();

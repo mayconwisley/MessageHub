@@ -73,7 +73,9 @@ export function TemplateAutocomplete({
           {...params}
           label={label}
           error={error}
-          helperText={helperText ?? (!validScope ? 'Selecione a conta WhatsApp primeiro.' : undefined)}
+          helperText={
+            helperText ?? (!validScope ? 'Selecione a conta WhatsApp primeiro.' : undefined)
+          }
           slotProps={{
             input: {
               ...params.InputProps,
