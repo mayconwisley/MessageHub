@@ -2,8 +2,7 @@
   "name": "message-hub-console",
   "version": "1.0.0",
   "description": "Console web para administração da plataforma Message Hub de integração com a Meta WhatsApp Business Platform.",
-  "license": "UNLICENSED",
-  "private": true,
+  "license": "MIT",
   "type": "module",
   "engines": {
     "node": ">=22.0.0",

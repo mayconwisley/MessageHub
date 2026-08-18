@@ -172,7 +172,6 @@ jobs:
     needs: changes
     if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
-    continue-on-error: true
     defaults:
       run:
         working-directory: backend
@@ -261,7 +260,6 @@ jobs:
     needs: changes
     if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
-    continue-on-error: true
     defaults:
       run:
         working-directory: frontend
@@ -286,9 +284,11 @@ jobs:
       - backend-e2e-tests
       - backend-migrations
       - backend-build
+      - backend-audit
       - frontend-quality
       - frontend-tests
       - frontend-build
+      - frontend-audit
     runs-on: ubuntu-latest
     steps:
       - name: Check all required jobs succeeded or were skipped
