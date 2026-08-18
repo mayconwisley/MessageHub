@@ -2,8 +2,7 @@
   "name": "message-hub",
   "version": "1.0.0",
   "description": "Hub centralizado de mensageria para integração com a Meta WhatsApp Business Platform.",
-  "license": "UNLICENSED",
-  "private": true,
+  "license": "MIT",
   "engines": {
     "node": ">=22.0.0",
     "npm": ">=10.0.0"

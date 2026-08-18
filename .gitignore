@@ -20,6 +20,9 @@ lint-output.txt
 .env.test
 .env.production
 
+# Claude Code local configuration
+.claude/
+
 # temp directory
 .temp
 .tmp
