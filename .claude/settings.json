@@ -1,8 +1,0 @@
-{
-  "autoMode": {
-    "soft_deny": [
-      "$defaults",
-      "Bash(docker-compose -f docker-compose.prod.yml:*)"
-    ]
-  }
-}
