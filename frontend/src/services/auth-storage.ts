@@ -1,4 +1,14 @@
 let sessionToken: string | null = null;
+export type UserRole = 'platform_admin' | 'tenant_admin' | 'operator';
+
+export interface SessionUser {
+  id: string;
+  email: string;
+  role: UserRole;
+  tenantId?: string | null;
+}
+
+let sessionUser: SessionUser | null = null;
 
 export const authStorage = {
   /**
@@ -9,7 +19,13 @@ export const authStorage = {
   setSessionToken: (token: string) => {
     sessionToken = token;
   },
+  getSessionUser: () => sessionUser,
+  setSession: (token: string, user: SessionUser) => {
+    sessionToken = token;
+    sessionUser = user;
+  },
   removeSessionToken: () => {
     sessionToken = null;
+    sessionUser = null;
   },
 };

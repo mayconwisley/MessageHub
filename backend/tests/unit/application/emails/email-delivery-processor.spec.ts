@@ -82,6 +82,9 @@ class FakeEmailMessageRepository implements IEmailMessageRepository {
   async findByIdempotencyKey(): Promise<EmailMessage | null> {
     return null;
   }
+  async listByApplicationId(): Promise<import('@shared/types').PaginatedResult<EmailMessage>> {
+    return { items: [], total: 0, page: 1, pageSize: 20 };
+  }
 }
 
 class FakeEmailAttemptRepository implements IEmailAttemptRepository {

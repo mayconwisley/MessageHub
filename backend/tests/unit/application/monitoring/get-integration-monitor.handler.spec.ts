@@ -3,6 +3,7 @@ import { ApplicationNotFoundError } from '@modules/applications/domain/errors/ap
 import {
   IMonitoringReadRepository,
   IntegrationMonitorDto,
+  OperationalSummaryDto,
 } from '@modules/monitoring/application/ports/monitoring-read.repository.interface';
 import { GetIntegrationMonitorQuery } from '@modules/monitoring/application/queries/get-integration-monitor.query';
 import { GetIntegrationMonitorHandler } from '@modules/monitoring/application/handlers/get-integration-monitor.handler';
@@ -22,6 +23,15 @@ class FakeMonitoringReadRepository implements IMonitoringReadRepository {
 
   async getIntegrationMonitor(applicationId: string): Promise<IntegrationMonitorDto | null> {
     return this.byApplicationId.get(applicationId) ?? null;
+  }
+
+  async getOperationalSummary(): Promise<OperationalSummaryDto> {
+    return {
+      generatedAt: new Date(),
+      messages: { pending: 0, failedLast24Hours: 0 },
+      emails: { pending: 0, failedLast24Hours: 0 },
+      outbox: { pending: 0, failed: 0, oldestPendingAt: null },
+    };
   }
 }
 

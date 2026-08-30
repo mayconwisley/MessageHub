@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { authStorage } from '../../src/services/auth-storage';
-import { request, toQueryString } from '../../src/services/http-client';
+import { request, SESSION_EXPIRED_EVENT, toQueryString } from '../../src/services/http-client';
 
 describe('toQueryString', () => {
   it('serializa apenas valores definidos e não vazios', () => {
@@ -76,6 +76,25 @@ describe('request', () => {
       code: 'VALIDATION_ERROR',
       requestId: 'req-1',
     });
+  });
+
+  it('notifica a aplicação quando uma sessão autenticada expira', async () => {
+    authStorage.setSessionToken('token-expirado');
+    const onSessionExpired = vi.fn();
+    window.addEventListener(SESSION_EXPIRED_EVENT, onSessionExpired);
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(JSON.stringify({ message: 'Sessão expirada' }), { status: 401 }),
+        ),
+    );
+
+    await expect(request('/v1/messages')).rejects.toMatchObject({ status: 401 });
+
+    expect(onSessionExpired).toHaveBeenCalledTimes(1);
+    window.removeEventListener(SESSION_EXPIRED_EVENT, onSessionExpired);
   });
 
   it('retorna undefined para respostas sem conteúdo', async () => {

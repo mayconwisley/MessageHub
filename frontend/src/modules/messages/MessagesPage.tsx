@@ -10,6 +10,8 @@ import {
   Select,
   Snackbar,
   Stack,
+  Tab,
+  Tabs,
   TextField,
   ToggleButton,
   ToggleButtonGroup,
@@ -34,12 +36,15 @@ import { applicationsApi } from '../applications/applications.api';
 import { tenantsApi } from '../tenants/tenants.api';
 import type { Template } from '../templates/templates.api';
 import { emailsApi } from './emails.api';
+import type { EmailMessage } from './emails.api';
 import { messagesApi, type Message } from './messages.api';
 import { ApiError } from '../../services/http-client';
 import { toPresentationValue } from '../../lib/presentation';
 import { MessageTimelineDialog } from './MessageTimelineDialog';
+import { EmailTimelineDialog } from './EmailTimelineDialog';
 
 type SendMode = 'text' | 'template' | 'email';
+type CommunicationChannel = 'whatsapp' | 'email';
 
 const textSchema = z.object({
   phoneNumberId: z.string().uuid('Informe um UUID válido.'),
@@ -92,6 +97,8 @@ export function MessagesPage() {
   const [status, setStatus] = useState('');
   const [search, setSearch] = useState('');
   const [timelineMessageId, setTimelineMessageId] = useState<string | null>(null);
+  const [timelineEmailId, setTimelineEmailId] = useState<string | null>(null);
+  const [channel, setChannel] = useState<CommunicationChannel>('whatsapp');
   const [sendOpen, setSendOpen] = useState(false);
   const [sendMode, setSendMode] = useState<SendMode>('text');
   const [templateAccountId, setTemplateAccountId] = useState('');
@@ -149,6 +156,8 @@ export function MessagesPage() {
   const sendEmail = useMutation({
     mutationFn: (data: EmailFormData) => emailsApi.send({ ...data, applicationId }),
     onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['emails', applicationId] });
+      setChannel('email');
       setFeedback({
         severity: 'success',
         message: 'E-mail enfileirado para envio.',
@@ -219,6 +228,18 @@ export function MessagesPage() {
       }),
     enabled: validApplicationId,
   });
+  const emails = useQuery({
+    queryKey: ['emails', applicationId, page, pageSize, status, search],
+    queryFn: () =>
+      emailsApi.list({
+        applicationId,
+        page,
+        pageSize,
+        status: status || undefined,
+        search: search || undefined,
+      }),
+    enabled: validApplicationId && channel === 'email',
+  });
   const details = useQuery({
     queryKey: ['message', timelineMessageId, applicationId],
     queryFn: () => messagesApi.get(timelineMessageId as string, applicationId),
@@ -233,6 +254,11 @@ export function MessagesPage() {
     queryKey: ['message-timeline', timelineMessageId, applicationId],
     queryFn: () => messagesApi.listTimeline(timelineMessageId as string, applicationId),
     enabled: !!timelineMessageId && validApplicationId,
+  });
+  const emailTimeline = useQuery({
+    queryKey: ['email-timeline', timelineEmailId, applicationId],
+    queryFn: () => emailsApi.listTimeline(timelineEmailId as string, applicationId),
+    enabled: !!timelineEmailId && validApplicationId,
   });
 
   const openSend = () => {
@@ -298,6 +324,19 @@ export function MessagesPage() {
         </Alert>
       )}
       <Stack spacing={2}>
+        <Tabs
+          value={channel}
+          onChange={(_, value: CommunicationChannel) => {
+            setChannel(value);
+            setStatus('');
+            setSearch('');
+            setPage(1);
+          }}
+          aria-label="Canal de comunicação"
+        >
+          <Tab value="whatsapp" label="WhatsApp" />
+          <Tab value="email" label="E-mails" />
+        </Tabs>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
           <FormControl size="small" sx={{ width: 220 }}>
             <InputLabel id="message-status-filter">Status</InputLabel>
@@ -311,19 +350,24 @@ export function MessagesPage() {
               }}
             >
               <MenuItem value="">Todos</MenuItem>
-              {['PENDING', 'PROCESSING', 'SENT', 'DELIVERED', 'READ', 'FAILED', 'RETRY'].map(
-                (value) => (
-                  <MenuItem key={value} value={value}>
-                    {statusLabels[value] ?? value}
-                  </MenuItem>
-                ),
-              )}
+              {(channel === 'email'
+                ? ['PENDING', 'PROCESSING', 'SENT', 'FAILED', 'RETRY']
+                : ['PENDING', 'PROCESSING', 'SENT', 'DELIVERED', 'READ', 'FAILED', 'RETRY']
+              ).map((value) => (
+                <MenuItem key={value} value={value}>
+                  {statusLabels[value] ?? value}
+                </MenuItem>
+              ))}
             </Select>
           </FormControl>
           <TextField
             size="small"
-            label="Rastrear mensagem"
-            placeholder="ID, provider ID, request ID, chave ou destinatário"
+            label={channel === 'email' ? 'Rastrear e-mail' : 'Rastrear mensagem'}
+            placeholder={
+              channel === 'email'
+                ? 'ID, provider ID, request ID, chave, assunto ou destinatário'
+                : 'ID, provider ID, request ID, chave ou destinatário'
+            }
             value={search}
             onChange={(event) => {
               setSearch(event.target.value);
@@ -333,57 +377,101 @@ export function MessagesPage() {
           />
         </Stack>
         <AsyncState
-          isLoading={validApplicationId && list.isLoading}
-          error={list.error}
+          isLoading={
+            validApplicationId && (channel === 'email' ? emails.isLoading : list.isLoading)
+          }
+          error={channel === 'email' ? emails.error : list.error}
           emptyMessage={
             validApplicationId
               ? undefined
-              : 'Selecione um tenant e uma aplicação para listar as mensagens.'
+              : 'Selecione um tenant e uma aplicação para listar as comunicações.'
           }
         >
-          <PaginatedTable<Message>
-            columns={[
-              { key: 'to', label: 'Destinatário' },
-              {
-                key: 'type',
-                label: 'Tipo',
-                render: (row) => toPresentationValue('type', row.type),
-              },
-              {
-                key: 'status',
-                label: 'Status',
-                render: (row) => (
-                  <Chip label={toPresentationValue('status', row.status)} size="small" />
-                ),
-              },
-              { key: 'attemptCount', label: 'Tentativas' },
-              {
-                key: 'createdAt',
-                label: 'Criado em',
-                render: (row) => new Date(row.createdAt).toLocaleString('pt-BR'),
-              },
-            ]}
-            rows={list.data?.items ?? []}
-            total={list.data?.total ?? 0}
-            page={list.data?.page ?? page}
-            pageSize={list.data?.pageSize ?? pageSize}
-            onPageChange={setPage}
-            onPageSizeChange={(size) => {
-              setPageSize(size);
-              setPage(1);
-            }}
-            rowActions={(row) => (
-              <TableActionsMenu
-                actions={[
-                  {
-                    label: 'Ver linha do tempo',
-                    icon: <History fontSize="small" />,
-                    onClick: () => setTimelineMessageId(row.id),
-                  },
-                ]}
-              />
-            )}
-          />
+          {channel === 'whatsapp' ? (
+            <PaginatedTable<Message>
+              columns={[
+                { key: 'to', label: 'Destinatário' },
+                {
+                  key: 'type',
+                  label: 'Tipo',
+                  render: (row) => toPresentationValue('type', row.type),
+                },
+                {
+                  key: 'status',
+                  label: 'Status',
+                  render: (row) => (
+                    <Chip label={toPresentationValue('status', row.status)} size="small" />
+                  ),
+                },
+                { key: 'attemptCount', label: 'Tentativas' },
+                {
+                  key: 'createdAt',
+                  label: 'Criado em',
+                  render: (row) => new Date(row.createdAt).toLocaleString('pt-BR'),
+                },
+              ]}
+              rows={list.data?.items ?? []}
+              total={list.data?.total ?? 0}
+              page={list.data?.page ?? page}
+              pageSize={list.data?.pageSize ?? pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setPage(1);
+              }}
+              rowActions={(row) => (
+                <TableActionsMenu
+                  actions={[
+                    {
+                      label: 'Ver linha do tempo',
+                      icon: <History fontSize="small" />,
+                      onClick: () => setTimelineMessageId(row.id),
+                    },
+                  ]}
+                />
+              )}
+            />
+          ) : (
+            <PaginatedTable<EmailMessage>
+              columns={[
+                { key: 'to', label: 'Destinatário' },
+                { key: 'subject', label: 'Assunto' },
+                {
+                  key: 'status',
+                  label: 'Status',
+                  render: (row) => (
+                    <Chip label={toPresentationValue('status', row.status)} size="small" />
+                  ),
+                },
+                { key: 'attemptCount', label: 'Tentativas' },
+                {
+                  key: 'createdAt',
+                  label: 'Criado em',
+                  render: (row) => new Date(row.createdAt).toLocaleString('pt-BR'),
+                },
+              ]}
+              rows={emails.data?.items ?? []}
+              total={emails.data?.total ?? 0}
+              page={emails.data?.page ?? page}
+              pageSize={emails.data?.pageSize ?? pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setPage(1);
+              }}
+              rowActions={(row) => (
+                <TableActionsMenu
+                  actions={[
+                    {
+                      label: 'Ver linha do tempo',
+                      icon: <History fontSize="small" />,
+                      onClick: () => setTimelineEmailId(row.id),
+                    },
+                  ]}
+                />
+              )}
+            />
+          )}
         </AsyncState>
       </Stack>
 
@@ -608,6 +696,14 @@ export function MessagesPage() {
         isLoading={details.isLoading || attempts.isLoading || timeline.isLoading}
         error={details.error ?? attempts.error ?? timeline.error}
         onClose={() => setTimelineMessageId(null)}
+      />
+      <EmailTimelineDialog
+        open={!!timelineEmailId}
+        email={emails.data?.items.find((email) => email.id === timelineEmailId) ?? null}
+        timeline={emailTimeline.data}
+        isLoading={emailTimeline.isLoading}
+        error={emailTimeline.error}
+        onClose={() => setTimelineEmailId(null)}
       />
 
       <Snackbar

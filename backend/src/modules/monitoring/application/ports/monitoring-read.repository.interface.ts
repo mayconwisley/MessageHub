@@ -31,7 +31,15 @@ export interface IntegrationMonitorDto {
   }>;
   delivery: { sentLast24Hours: number; failedLast24Hours: number; failureRate: number };
 }
+
+export interface OperationalSummaryDto {
+  generatedAt: Date;
+  messages: { pending: number; failedLast24Hours: number };
+  emails: { pending: number; failedLast24Hours: number };
+  outbox: { pending: number; failed: number; oldestPendingAt: Date | null };
+}
 export interface IMonitoringReadRepository {
   getIntegrationMonitor(applicationId: string): Promise<IntegrationMonitorDto | null>;
+  getOperationalSummary(): Promise<OperationalSummaryDto>;
 }
 export const MONITORING_READ_REPOSITORY = Symbol('MONITORING_READ_REPOSITORY');

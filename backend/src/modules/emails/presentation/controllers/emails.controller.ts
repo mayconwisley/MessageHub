@@ -22,7 +22,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { IsOptional, IsUUID } from 'class-validator';
+import { IsEnum, IsOptional, IsUUID } from 'class-validator';
 import { IDEMPOTENCY_KEY_HEADER } from '@shared/constants';
 import { IMediator, MEDIATOR } from '@shared/mediator';
 import { AuthContextDto } from '@modules/applications/application/dto/api-key.dto';
@@ -33,13 +33,38 @@ import { CurrentAuthenticatedUser } from '@presentation/http/decorators/current-
 import { CurrentOptionalAuthContext } from '@presentation/http/decorators/current-optional-auth-context.decorator';
 import { PlatformAdminOrApiKeyGuard } from '@presentation/http/guards/platform-admin-or-api-key.guard';
 import { toHttpException } from '@presentation/http/result-http.mapper';
+import { PaginationQueryDto } from '@presentation/http/dto/pagination-query.dto';
+import { PaginatedResult } from '@shared/types';
 import { SendEmailCommand } from '../../application/commands/send-email.command';
+import { ListEmailsQuery } from '../../application/queries/list-emails.query';
 import { ListEmailTimelineQuery } from '../../application/queries/list-email-timeline.query';
+import { EmailStatus } from '../../domain/enums/email-status.enum';
 import { EmailMessageResponseDto } from '../dto/email-message-response.dto';
 import { EmailTimelineEventResponseDto } from '../dto/email-timeline-event-response.dto';
 import { SendEmailRequestDto } from '../dto/send-email-request.dto';
 
 class ApplicationScopedQueryDto {
+  @ApiPropertyOptional({
+    description: 'Obrigatório apenas para requisições autenticadas por sessão administrativa.',
+  })
+  @IsOptional()
+  @IsUUID()
+  applicationId?: string;
+}
+
+class ListEmailsRequestDto extends PaginationQueryDto {
+  @ApiPropertyOptional({ enum: EmailStatus })
+  @IsOptional()
+  @IsEnum(EmailStatus)
+  status?: EmailStatus;
+
+  @ApiPropertyOptional({
+    description:
+      'Busca por e-mail ID, provider ID, request ID, Idempotency-Key, assunto ou destinatário.',
+  })
+  @IsOptional()
+  search?: string;
+
   @ApiPropertyOptional({
     description: 'Obrigatório apenas para requisições autenticadas por sessão administrativa.',
   })
@@ -100,6 +125,32 @@ export class EmailsController {
     );
     if (result.isFailure) throw toHttpException(result.error);
     return EmailMessageResponseDto.fromDto(result.value);
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Lista e-mails de uma aplicação' })
+  @ApiResponse({ status: HttpStatus.OK, type: EmailMessageResponseDto, isArray: true })
+  async list(
+    @Query() query: ListEmailsRequestDto,
+    @CurrentOptionalAuthContext() authContext?: AuthContextDto,
+    @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
+  ): Promise<PaginatedResult<EmailMessageResponseDto>> {
+    const applicationId = resolveRequiredApplicationId(authContext, query.applicationId);
+    const result = await this.mediator.query(
+      new ListEmailsQuery(
+        applicationId,
+        query.page,
+        query.pageSize,
+        query.status,
+        query.search,
+        resolveRequestingTenantId(user),
+      ),
+    );
+    if (result.isFailure) throw toHttpException(result.error);
+    return {
+      ...result.value,
+      items: result.value.items.map((email) => EmailMessageResponseDto.fromDto(email)),
+    };
   }
 
   @Get(':id/timeline')

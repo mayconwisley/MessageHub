@@ -19,4 +19,19 @@ describe('authStorage', () => {
 
     expect(authStorage.getSessionToken()).toBeNull();
   });
+
+  it('mantém o perfil apenas em memória e o remove ao encerrar a sessão', () => {
+    authStorage.setSession('sessao-segura', {
+      id: 'user-1',
+      email: 'operator@example.com',
+      role: 'operator',
+      tenantId: null,
+    });
+
+    expect(authStorage.getSessionUser()).toMatchObject({ role: 'operator' });
+
+    authStorage.removeSessionToken();
+
+    expect(authStorage.getSessionUser()).toBeNull();
+  });
 });

@@ -23,6 +23,7 @@ import { CreateTenantHandler } from '@modules/tenants/application/handlers/creat
 import { TENANT_REPOSITORY } from '@modules/tenants/domain/repositories/tenant.repository.interface';
 import { TenantsController } from '@modules/tenants/presentation/controllers/tenants.controller';
 import { SendEmailHandler } from '@modules/emails/application/handlers/send-email.handler';
+import { ListEmailsHandler } from '@modules/emails/application/handlers/list-emails.handler';
 import { ListEmailTimelineHandler } from '@modules/emails/application/handlers/list-email-timeline.handler';
 import { EMAIL_PUBLISHER } from '@modules/emails/application/ports/email-publisher.interface';
 import { EMAIL_TIMELINE_REPOSITORY } from '@modules/emails/application/ports/email-timeline.repository.interface';
@@ -53,6 +54,35 @@ function createInMemoryRepository<TEntity extends { id: { value: string } }>() {
         }
       }
       return null;
+    },
+    async listByApplicationId(
+      applicationId: { value: string },
+      page: number,
+      pageSize: number,
+      filter?: { status?: string; search?: string },
+    ) {
+      const items = [...store.values()].filter((entity) => {
+        const candidate = entity as unknown as {
+          applicationId?: { value: string };
+          status?: string;
+          to?: string;
+          subject?: string;
+        };
+        if (candidate.applicationId?.value !== applicationId.value) return false;
+        if (filter?.status && candidate.status !== filter.status) return false;
+        const search = filter?.search?.toLowerCase();
+        return (
+          !search ||
+          candidate.to?.toLowerCase().includes(search) ||
+          candidate.subject?.toLowerCase().includes(search)
+        );
+      });
+      return {
+        items: items.slice((page - 1) * pageSize, page * pageSize),
+        total: items.length,
+        page,
+        pageSize,
+      };
     },
     async recordUsage(): Promise<void> {
       return undefined;
@@ -119,6 +149,7 @@ describe('Emails flow (e2e)', () => {
         CreateApiKeyHandler,
         ValidateApiKeyHandler,
         SendEmailHandler,
+        ListEmailsHandler,
         ListEmailTimelineHandler,
       ],
     }).compile();
@@ -195,6 +226,30 @@ describe('Emails flow (e2e)', () => {
       .set('Authorization', `Bearer ${apiKey.body.plainTextKey}`)
       .send({ to: 'cliente@example.com', subject: 'Sem corpo' })
       .expect(400);
+  });
+
+  it('lists e-mails only from the authenticated application', async () => {
+    const server = app.getHttpServer();
+    const { apiKey } = await setupApplicationWithApiKey('Stark Industries');
+
+    await request(server)
+      .post('/v1/emails')
+      .set('Authorization', `Bearer ${apiKey.body.plainTextKey}`)
+      .send({
+        to: 'cliente@example.com',
+        subject: 'Atualização do pedido',
+        textBody: 'Pedido em processamento.',
+      })
+      .expect(201);
+
+    const response = await request(server)
+      .get('/v1/emails?page=1&pageSize=20&search=atualização')
+      .set('Authorization', `Bearer ${apiKey.body.plainTextKey}`)
+      .expect(200);
+
+    expect(response.body).toMatchObject({ total: 1, page: 1, pageSize: 20 });
+    expect(response.body.items).toHaveLength(1);
+    expect(response.body.items[0]).toMatchObject({ subject: 'Atualização do pedido' });
   });
 
   it('rejects sending an e-mail without a valid API key', async () => {

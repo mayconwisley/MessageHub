@@ -1,6 +1,7 @@
 import { authStorage } from './auth-storage';
 
 const baseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+export const SESSION_EXPIRED_EVENT = 'message-hub:session-expired';
 
 export class ApiError extends Error {
   constructor(
@@ -55,6 +56,9 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     const message = Array.isArray(payload?.message)
       ? payload.message.join(' ')
       : (payload?.message ?? `A requisição falhou (${response.status}).`);
+    if (response.status === 401 && authorization === 'session' && token) {
+      window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+    }
     throw new ApiError(message, response.status, payload?.code, payload?.requestId);
   }
   if (response.status === 204) return undefined as T;

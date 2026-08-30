@@ -22,7 +22,7 @@ export function LoginPage() {
   const mutation = useMutation({
     mutationFn: login,
     onSuccess: (session) => {
-      authStorage.setSessionToken(session.accessToken);
+      authStorage.setSession(session.accessToken, session.user);
       void navigate('/');
     },
   });

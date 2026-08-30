@@ -1,7 +1,15 @@
 import { UniqueId } from '@shared/domain';
+import { PaginatedResult } from '@shared/types';
 import { EmailMessage } from '../entities/email-message.entity';
 import { EmailAttempt } from '../entities/email-attempt.entity';
+import { EmailStatus } from '../enums/email-status.enum';
 import { NewOutboxEvent } from '@shared/outbox';
+
+export interface ListEmailsFilter {
+  status?: EmailStatus;
+  /** Busca por identificadores de rastreio, assunto ou destinatário. */
+  search?: string;
+}
 
 export interface IEmailMessageRepository {
   save(message: EmailMessage): Promise<void>;
@@ -18,5 +26,11 @@ export interface IEmailMessageRepository {
     applicationId: UniqueId,
     idempotencyKey: string,
   ): Promise<EmailMessage | null>;
+  listByApplicationId(
+    applicationId: UniqueId,
+    page: number,
+    pageSize: number,
+    filter?: ListEmailsFilter,
+  ): Promise<PaginatedResult<EmailMessage>>;
 }
 export const EMAIL_MESSAGE_REPOSITORY = Symbol('EMAIL_MESSAGE_REPOSITORY');
