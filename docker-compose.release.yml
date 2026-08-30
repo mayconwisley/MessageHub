@@ -1,0 +1,12 @@
+# Overlay usado exclusivamente pelo workflow de release para executar imagens imutáveis do GHCR.
+# Exige BACKEND_IMAGE, FRONTEND_IMAGE e IMAGE_TAG definidos no ambiente de deploy.
+
+services:
+  migrate:
+    image: "${BACKEND_IMAGE:?Defina BACKEND_IMAGE}:${IMAGE_TAG:?Defina IMAGE_TAG}"
+
+  backend:
+    image: "${BACKEND_IMAGE:?Defina BACKEND_IMAGE}:${IMAGE_TAG:?Defina IMAGE_TAG}"
+
+  frontend:
+    image: "${FRONTEND_IMAGE:?Defina FRONTEND_IMAGE}:${IMAGE_TAG:?Defina IMAGE_TAG}"

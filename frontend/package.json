@@ -3,9 +3,18 @@
   "version": "1.0.0",
   "description": "Console web para administração da plataforma Message Hub de integração com a Meta WhatsApp Business Platform.",
   "license": "MIT",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mayconwisley/MessageHub.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mayconwisley/MessageHub/issues"
+  },
+  "homepage": "https://github.com/mayconwisley/MessageHub#readme",
   "type": "module",
   "engines": {
-    "node": ">=22.0.0",
+    "node": ">=24.0.0",
     "npm": ">=10.0.0"
   },
   "packageManager": "npm@10.9.2",
@@ -29,6 +38,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "validate": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build",
+    "verify": "npm run validate",
     "preview": "vite preview"
   },
   "dependencies": {

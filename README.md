@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Node.js-22%2B-339933?logo=node.js&logoColor=white" alt="Node.js 22+" />
+  <img src="https://img.shields.io/badge/Node.js-24-339933?logo=node.js&logoColor=white" alt="Node.js 24" />
   <img src="https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white" alt="TypeScript 5.7" />
   <img src="https://img.shields.io/badge/NestJS-11-E0234E?logo=nestjs&logoColor=white" alt="NestJS 11" />
   <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL 16" />
@@ -126,6 +126,51 @@ ver os comentários em `docker-compose.prod.yml` e `.env.example`:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+```
+
+Use [.env.production.example](./.env.production.example) como ponto de partida para o .env do
+servidor. Antes de subir, gere a chave de cifragem com o comando
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))", preencha os
+segredos reais e configure o reverse proxy para terminar TLS e encaminhar os hosts públicos do
+console e da API. A API bloqueia o boot em produção caso o CORS esteja vazio, sejam usados os
+segredos de teste, o Swagger esteja ativo ou o provider Meta/webhooks não estejam configurados.
+
+Após o deploy, valide apenas pelos endpoints públicos HTTPS:
+
+    curl --fail https://api.seu-dominio.com.br/health
+    docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
+    docker compose -f docker-compose.yml -f docker-compose.prod.yml logs --tail=100 backend migrate
+
+O webhook da Meta deve apontar para https://api.seu-dominio.com.br/webhooks/meta; conclua o
+handshake e faça um envio controlado com uma API key de produção antes de liberar os consumidores.
+
+### Releases e deploy por tag
+
+Cada release é imutável e é disparado ao enviar uma tag estável no formato `vX.Y.Z`. A versão da
+tag deve ser idêntica aos campos `version` de `backend/package.json` e `frontend/package.json`;
+o workflow bloqueia versões divergentes. A tag publica imagens multi-arquitetura (`linux/amd64` e
+`linux/arm64`) no GHCR, cria a Release no GitHub e executa o deploy pela environment `production`.
+
+Antes da primeira tag, configure no repositório:
+
+- variável `PRODUCTION_API_URL`, com a URL HTTPS pública da API;
+- variável opcional `PRODUCTION_CONSOLE_URL`, com a URL pública do console;
+- secrets `PRODUCTION_DEPLOY_HOST`, `PRODUCTION_DEPLOY_USER`, `PRODUCTION_DEPLOY_PATH`,
+  `PRODUCTION_DEPLOY_SSH_PRIVATE_KEY` e `PRODUCTION_DEPLOY_KNOWN_HOSTS`;
+- secret opcional `PRODUCTION_DEPLOY_PORT` (o padrão é `22`);
+- no servidor, o checkout com o `.env` de produção preenchido, Docker Compose v2 e autenticação de
+  leitura no GHCR.
+
+No servidor, mantenha os arquivos `docker-compose.yml`, `docker-compose.prod.yml` e
+`docker-compose.release.yml` presentes no diretório configurado em `PRODUCTION_DEPLOY_PATH`.
+O workflow usa imagens versionadas no GHCR e executa o Compose com `--no-build`, impedindo que o
+servidor reconstrua artefatos locais.
+
+Exemplo de publicação:
+
+```bash
+git tag -a v1.0.0 -m "Release v1.0.0"
+git push origin v1.0.0
 ```
 
 Esses artefatos de containerização não são usados hoje nem no desenvolvimento nem na operação

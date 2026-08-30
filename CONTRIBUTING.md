@@ -14,7 +14,7 @@ o isolamento multi-tenant e a segurança do contrato público.
 
 ## Ambiente local
 
-Use Node.js 22+ e npm 10+. Copie apenas os exemplos de ambiente e configure valores locais:
+Use Node.js 24 e npm 10+. Copie apenas os exemplos de ambiente e configure valores locais:
 
 ```bash
 cp .env.example .env

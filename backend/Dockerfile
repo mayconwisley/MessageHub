@@ -12,7 +12,7 @@
 # src/ - não é possível "podar" para node_modules só de produção sem reescrever
 # esse mecanismo de migrations.
 
-ARG NODE_VERSION=22-alpine
+ARG NODE_VERSION=24-alpine
 
 FROM node:${NODE_VERSION} AS deps
 WORKDIR /app

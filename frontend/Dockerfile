@@ -9,7 +9,7 @@
 # build, não uma variável de runtime do container Nginx. Para apontar para outra
 # API, é necessário reconstruir a imagem com --build-arg VITE_API_URL=...
 
-FROM node:22-alpine AS build
+FROM node:24-alpine AS build
 WORKDIR /app
 
 COPY package.json package-lock.json ./

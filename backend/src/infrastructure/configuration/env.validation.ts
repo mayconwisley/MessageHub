@@ -14,6 +14,9 @@ import {
   validateSync,
 } from 'class-validator';
 
+const LOCAL_TEST_ADMIN_PASSWORD = 'ChangeMe123!Hub';
+const LOCAL_TEST_CREDENTIALS_ENCRYPTION_KEY = 'YdY22vFhvdlUKe4gEPrAJ9rxxJh4M6vI1ZHjjkRGtPk=';
+
 class EnvironmentVariables {
   @IsOptional()
   @IsIn(['development', 'production', 'test'])
@@ -128,6 +131,10 @@ class EnvironmentVariables {
   SWAGGER_ENABLED?: string;
 
   @IsOptional()
+  @IsIn(['true', 'false'])
+  TRUST_PROXY?: string;
+
+  @IsOptional()
   @IsIn(['meta', 'sandbox'])
   MESSAGE_PROVIDER?: string;
 
@@ -164,6 +171,13 @@ export function validateEnv(config: Record<string, unknown>): EnvironmentVariabl
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
+
+  if (validatedConfig.NODE_ENV === 'production' && corsOrigins.length === 0) {
+    throw new Error(
+      'CORS_ORIGINS e obrigatorio em producao e deve conter ao menos um origin HTTPS.',
+    );
+  }
+
   for (const origin of corsOrigins) {
     let parsed: URL;
     try {
@@ -187,6 +201,30 @@ export function validateEnv(config: Record<string, unknown>): EnvironmentVariabl
 
   if (validatedConfig.NODE_ENV === 'production' && validatedConfig.SWAGGER_ENABLED === 'true') {
     throw new Error('SWAGGER_ENABLED não pode ser true em produção.');
+  }
+
+  if (validatedConfig.NODE_ENV === 'production') {
+    if (validatedConfig.INITIAL_PLATFORM_ADMIN_PASSWORD === LOCAL_TEST_ADMIN_PASSWORD) {
+      throw new Error(
+        'INITIAL_PLATFORM_ADMIN_PASSWORD nao pode usar a senha de teste em producao.',
+      );
+    }
+
+    if (validatedConfig.META_CREDENTIALS_ENCRYPTION_KEY === LOCAL_TEST_CREDENTIALS_ENCRYPTION_KEY) {
+      throw new Error(
+        'META_CREDENTIALS_ENCRYPTION_KEY nao pode usar a chave de teste em producao.',
+      );
+    }
+
+    if (validatedConfig.MESSAGE_PROVIDER !== 'meta' || validatedConfig.SANDBOX_ENABLED === 'true') {
+      throw new Error('Producao exige MESSAGE_PROVIDER=meta e SANDBOX_ENABLED=false.');
+    }
+
+    if (!validatedConfig.META_WEBHOOK_VERIFY_TOKEN || !validatedConfig.META_APP_SECRET) {
+      throw new Error(
+        'META_WEBHOOK_VERIFY_TOKEN e META_APP_SECRET sao obrigatorios para operar a Meta em producao.',
+      );
+    }
   }
 
   for (const endpoint of [
