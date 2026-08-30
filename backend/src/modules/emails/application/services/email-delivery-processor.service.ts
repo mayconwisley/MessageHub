@@ -9,7 +9,6 @@ import {
 import { EmailMessage } from '../../domain/entities/email-message.entity';
 import { EmailAttempt } from '../../domain/entities/email-attempt.entity';
 import { EmailAttemptStatus } from '../../domain/enums/email-attempt-status.enum';
-import { EmailStatus } from '../../domain/enums/email-status.enum';
 import {
   EMAIL_ATTEMPT_REPOSITORY,
   IEmailAttemptRepository,
@@ -29,6 +28,7 @@ import {
   IEmailTimelineRepository,
 } from '../ports/email-timeline.repository.interface';
 import { EmailRetryPolicy } from './email-retry-policy';
+import { OutboxEventType } from '@shared/outbox';
 
 @Injectable()
 export class EmailDeliveryProcessor {
@@ -48,10 +48,10 @@ export class EmailDeliveryProcessor {
   }
 
   async process(emailMessageId: string): Promise<void> {
-    const email = await this.emails.findById(UniqueId.create(emailMessageId));
-    if (!email || ![EmailStatus.PENDING, EmailStatus.RETRY].includes(email.status)) return;
-    email.markProcessing();
-    await this.emails.save(email);
+    const email = this.emails.claimForProcessing
+      ? await this.emails.claimForProcessing(UniqueId.create(emailMessageId))
+      : await this.claimForLegacyRepository(emailMessageId);
+    if (!email) return;
     await this.timeline?.record({
       emailMessageId: email.id.value,
       eventType: 'DELIVERY_ATTEMPT_STARTED',
@@ -89,7 +89,6 @@ export class EmailDeliveryProcessor {
       }),
     );
     email.markSent(result.value.providerMessageId);
-    await this.emails.save(email);
     await this.timeline?.record({
       emailMessageId: email.id.value,
       eventType: 'PROVIDER_ACCEPTED_MESSAGE',
@@ -114,7 +113,6 @@ export class EmailDeliveryProcessor {
       }),
     );
     email.markFailed();
-    await this.emails.save(email);
     await this.timeline?.record({
       emailMessageId: email.id.value,
       eventType: 'DELIVERY_ATTEMPT_FAILED',
@@ -127,8 +125,15 @@ export class EmailDeliveryProcessor {
 
     if (error.retryable && this.retryPolicy.shouldRetry(email.attemptCount)) {
       email.scheduleRetry();
-      await this.emails.save(email);
       const delayMs = this.retryPolicy.nextDelayMs(email.attemptCount);
+      await this.saveWithOutbox(email, {
+        eventType: OutboxEventType.EMAIL_REQUESTED,
+        aggregateType: 'EmailMessage',
+        aggregateId: email.id.value,
+        tenantId: email.tenantId.value,
+        payload: { emailMessageId: email.id.value },
+        availableAt: new Date(Date.now() + delayMs),
+      });
       await this.timeline?.record({
         emailMessageId: email.id.value,
         eventType: 'RETRY_SCHEDULED',
@@ -137,19 +142,21 @@ export class EmailDeliveryProcessor {
         attemptNumber: email.attemptCount,
         metadata: { delayMs, errorCode: error.code, errorMessage: error.message },
       });
-      setTimeout(() => {
-        this.publisher
-          .publishEmailRequested({ emailMessageId: email.id.value })
-          .catch((publishError: unknown) =>
-            this.logger.error(
-              { err: publishError, emailMessageId: email.id.value },
-              'Failed to requeue email.',
-            ),
-          );
-      }, delayMs);
+      if (!this.emails.saveWithOutbox) {
+        const emailMessageId = email.id.value;
+        setTimeout(() => {
+          void this.publisher.publishEmailRequested({ emailMessageId });
+        }, delayMs);
+      }
       return;
     }
-    await this.publisher.publishToDeadLetterQueue({ emailMessageId: email.id.value });
+    await this.saveWithOutbox(email, {
+      eventType: OutboxEventType.EMAIL_REQUESTED_DLQ,
+      aggregateType: 'EmailMessage',
+      aggregateId: email.id.value,
+      tenantId: email.tenantId.value,
+      payload: { emailMessageId: email.id.value },
+    });
     await this.timeline?.record({
       emailMessageId: email.id.value,
       eventType: 'DELIVERY_SENT_TO_DLQ',
@@ -159,6 +166,9 @@ export class EmailDeliveryProcessor {
       errorCode: error.code,
       errorMessage: error.message,
     });
+    if (!this.emails.saveWithOutbox) {
+      await this.publisher.publishToDeadLetterQueue({ emailMessageId: email.id.value });
+    }
     await this.alerts?.notify({
       type: 'EMAIL_DLQ',
       severity: 'CRITICAL',
@@ -170,5 +180,28 @@ export class EmailDeliveryProcessor {
         errorCode: error.code,
       },
     });
+  }
+
+  private async claimForLegacyRepository(emailMessageId: string): Promise<EmailMessage | null> {
+    const email = await this.emails.findById(UniqueId.create(emailMessageId));
+    if (!email) return null;
+    try {
+      email.markProcessing();
+    } catch {
+      return null;
+    }
+    await this.emails.save(email);
+    return email;
+  }
+
+  private async saveWithOutbox(
+    email: EmailMessage,
+    events: Parameters<NonNullable<IEmailMessageRepository['saveWithOutbox']>>[1],
+  ): Promise<void> {
+    if (this.emails.saveWithOutbox) {
+      await this.emails.saveWithOutbox(email, events);
+      return;
+    }
+    await this.emails.save(email);
   }
 }

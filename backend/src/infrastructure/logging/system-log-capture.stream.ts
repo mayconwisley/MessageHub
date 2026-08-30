@@ -21,6 +21,20 @@ const LEVEL_LABELS: Record<number, string> = {
  * operacional para quem está investigando um problema.
  */
 const NOISY_CONTEXTS = new Set(['RouterExplorer', 'RoutesResolver', 'InstanceLoader']);
+const PERSISTED_METADATA_KEYS = new Set([
+  'tenantId',
+  'applicationId',
+  'messageId',
+  'emailMessageId',
+  'eventId',
+  'providerMessageId',
+  'outboxEventId',
+  'attempt',
+  'attemptNumber',
+  'delayMs',
+  'errorCode',
+  'status',
+]);
 
 interface BufferedRow {
   id: string;
@@ -108,7 +122,7 @@ export class SystemLogCaptureStream extends Writable {
       context: typeof context === 'string' ? context : null,
       message: typeof msg === 'string' ? msg : '',
       requestId,
-      metadata,
+      metadata: sanitizeMetadata(metadata),
     });
   }
 
@@ -142,4 +156,15 @@ export class SystemLogCaptureStream extends Writable {
       // stdout continua sendo a fonte de verdade nesse cenário.
     }
   }
+}
+
+function sanitizeMetadata(metadata: Record<string, unknown>): Record<string, unknown> {
+  const sanitized: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(metadata)) {
+    if (!PERSISTED_METADATA_KEYS.has(key)) continue;
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      sanitized[key] = value;
+    }
+  }
+  return sanitized;
 }

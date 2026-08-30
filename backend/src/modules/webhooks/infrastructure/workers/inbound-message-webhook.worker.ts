@@ -12,6 +12,8 @@ import {
   IApplicationRepository,
 } from '@modules/applications/domain/repositories/application.repository.interface';
 import { WebhookRetryPolicy } from '../../application/services/webhook-retry-policy';
+import { OutboxRepository } from '@infrastructure/outbox/outbox.repository';
+import { OutboxEventType } from '@shared/outbox';
 import {
   INBOUND_MESSAGE_WEBHOOK_DLQ,
   INBOUND_MESSAGE_WEBHOOK_QUEUE,
@@ -41,6 +43,7 @@ export class InboundMessageWebhookWorker {
     @Inject(APPLICATION_REPOSITORY) private readonly applications: IApplicationRepository,
     private readonly retryPolicy: WebhookRetryPolicy,
     private readonly logger: PinoLogger,
+    private readonly outbox: OutboxRepository,
   ) {
     this.logger.setContext(InboundMessageWebhookWorker.name);
     this.channel = connection.createChannel({
@@ -48,6 +51,7 @@ export class InboundMessageWebhookWorker {
       setup: async (channel: Channel) => {
         await channel.assertQueue(INBOUND_MESSAGE_WEBHOOK_QUEUE, { durable: true });
         await channel.assertQueue(INBOUND_MESSAGE_WEBHOOK_DLQ, { durable: true });
+        await channel.prefetch(10);
         await channel.consume(INBOUND_MESSAGE_WEBHOOK_QUEUE, (message) => {
           void this.handle(message, channel);
         });
@@ -58,10 +62,12 @@ export class InboundMessageWebhookWorker {
   private async handle(message: ConsumeMessage | null, channel: Channel): Promise<void> {
     if (!message) return;
     let payload: InboundMessageWebhookQueuePayload | null = null;
+    let shouldAck = false;
     try {
       payload = this.parsePayload(message.content);
       const application = await this.applications.findById(UniqueId.create(payload.applicationId));
       if (!application?.webhookUrl || !application.webhookSecret) {
+        shouldAck = true;
         return;
       }
       await assertSafeWebhookUrl(application.webhookUrl);
@@ -88,6 +94,7 @@ export class InboundMessageWebhookWorker {
         maxRedirects: 0,
         validateStatus: (status) => status >= 200 && status < 300,
       });
+      shouldAck = true;
     } catch (error) {
       const reason = error instanceof Error ? error.message : 'Unknown error';
       const attempt = payload?.attempt ?? 1;
@@ -98,17 +105,14 @@ export class InboundMessageWebhookWorker {
           { payload, reason, delayMs },
           'Inbound message webhook delivery failed - scheduling retry.',
         );
-        const nextPayload = { ...payload, attempt: attempt + 1 };
-        setTimeout(() => {
-          this.channel
-            .sendToQueue(INBOUND_MESSAGE_WEBHOOK_QUEUE, nextPayload, { persistent: true })
-            .catch((publishError: unknown) => {
-              this.logger.error(
-                { err: publishError, payload: nextPayload },
-                'Failed to requeue inbound message webhook for retry.',
-              );
-            });
-        }, delayMs);
+        await this.outbox.add({
+          eventType: OutboxEventType.INBOUND_MESSAGE_WEBHOOK,
+          aggregateType: 'InboundMessageWebhook',
+          aggregateId: payload.applicationId,
+          payload: { ...payload, attempt: attempt + 1 },
+          availableAt: new Date(Date.now() + delayMs),
+        });
+        shouldAck = true;
       } else {
         this.logger.error(
           { payload, reason },
@@ -117,9 +121,11 @@ export class InboundMessageWebhookWorker {
         await this.channel.sendToQueue(INBOUND_MESSAGE_WEBHOOK_DLQ, message.content, {
           persistent: true,
         });
+        shouldAck = true;
       }
     } finally {
-      channel.ack(message);
+      if (shouldAck) channel.ack(message);
+      else channel.nack(message, false, true);
     }
   }
 

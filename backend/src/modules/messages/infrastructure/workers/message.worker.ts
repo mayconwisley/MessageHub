@@ -31,6 +31,7 @@ export class MessageWorker {
       setup: async (channel: Channel) => {
         await channel.assertQueue(MESSAGE_REQUESTED_DLQ, { durable: true });
         await channel.assertQueue(MESSAGE_REQUESTED_QUEUE, { durable: true });
+        await channel.prefetch(10);
         await channel.consume(MESSAGE_REQUESTED_QUEUE, (msg) => {
           void this.handleMessage(msg, channel);
         });
@@ -46,13 +47,13 @@ export class MessageWorker {
     try {
       const payload = JSON.parse(msg.content.toString()) as MessageRequestedPayload;
       await this.processor.process(payload.messageId);
+      channel.ack(msg);
     } catch (error: unknown) {
       this.logger.error(
         { err: error },
         'Unexpected failure while processing message.requested event.',
       );
-    } finally {
-      channel.ack(msg);
+      channel.nack(msg, false, true);
     }
   }
 }

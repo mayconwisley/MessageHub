@@ -3,9 +3,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { UniqueId } from '@shared/domain';
 import { Repository } from 'typeorm';
 import { EmailMessage, EmailMessageProps } from '../../domain/entities/email-message.entity';
-import { EmailStatus } from '../../domain/enums/email-status.enum';
 import { IEmailMessageRepository } from '../../domain/repositories/email-message.repository.interface';
 import { EmailMessageOrmEntity } from '../entities/email-message.orm-entity';
+import { EmailStatus } from '../../domain/enums/email-status.enum';
+import { NewOutboxEvent } from '@shared/outbox';
+import { OutboxEventOrmEntity } from '@infrastructure/database/entities/outbox-event.orm-entity';
+import { OutboxRepository } from '@infrastructure/outbox/outbox.repository';
 
 @Injectable()
 export class PostgresEmailMessageRepository implements IEmailMessageRepository {
@@ -15,6 +18,32 @@ export class PostgresEmailMessageRepository implements IEmailMessageRepository {
   ) {}
   async save(message: EmailMessage): Promise<void> {
     await this.repository.save(this.toOrm(message));
+  }
+  async saveWithOutbox(
+    message: EmailMessage,
+    events: NewOutboxEvent | NewOutboxEvent[],
+  ): Promise<void> {
+    await this.repository.manager.transaction(async (manager) => {
+      await manager.save(this.toOrm(message));
+      await manager
+        .getRepository(OutboxEventOrmEntity)
+        .save((Array.isArray(events) ? events : [events]).map(OutboxRepository.createEntity));
+    });
+  }
+  async claimForProcessing(id: UniqueId): Promise<EmailMessage | null> {
+    const result = await this.repository
+      .createQueryBuilder()
+      .update(EmailMessageOrmEntity)
+      .set({
+        status: EmailStatus.PROCESSING,
+        attemptCount: () => '"attempt_count" + 1',
+        updatedAt: new Date(),
+      })
+      .where('id = :id', { id: id.value })
+      .andWhere('status IN (:...statuses)', { statuses: [EmailStatus.PENDING, EmailStatus.RETRY] })
+      .execute();
+    if (!result.affected) return null;
+    return this.findById(id);
   }
   async findById(id: UniqueId): Promise<EmailMessage | null> {
     const row = await this.repository.findOne({ where: { id: id.value } });

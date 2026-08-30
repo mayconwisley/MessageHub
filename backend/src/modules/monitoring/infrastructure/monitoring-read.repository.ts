@@ -40,7 +40,7 @@ export class MonitoringReadRepository implements IMonitoringReadRepository {
     const now = Date.now();
     const minute = new Date(now - 60_000);
     const day = new Date(now - 86_400_000);
-    const [usedLastMinute, usedLastDay, keys, messages, phoneRows] = await Promise.all([
+    const [usedLastMinute, usedLastDay, keys, delivery, phoneRows] = await Promise.all([
       this.messages
         .createQueryBuilder('m')
         .where('m.application_id = :applicationId AND m.created_at >= :minute', {
@@ -53,7 +53,17 @@ export class MonitoringReadRepository implements IMonitoringReadRepository {
         .where('m.application_id = :applicationId AND m.created_at >= :day', { applicationId, day })
         .getCount(),
       this.apiKeys.find({ where: { applicationId } }),
-      this.messages.find({ where: { applicationId }, order: { createdAt: 'DESC' }, take: 10000 }),
+      this.messages
+        .createQueryBuilder('m')
+        .select('m.status', 'status')
+        .addSelect('COUNT(*)', 'total')
+        .where('m.application_id = :applicationId AND m.created_at >= :day', {
+          applicationId,
+          day,
+        })
+        .andWhere("m.status IN ('SENT', 'DELIVERED', 'READ', 'FAILED')")
+        .groupBy('m.status')
+        .getRawMany<{ status: string; total: string }>(),
       this.phones
         .createQueryBuilder('p')
         .innerJoin(WhatsAppAccountOrmEntity, 'a', 'a.id = p.whatsapp_account_id')
@@ -70,10 +80,10 @@ export class MonitoringReadRepository implements IMonitoringReadRepository {
         ])
         .getRawMany<PhoneMonitorRow>(),
     ]);
-    const final = messages.filter((message) =>
-      ['SENT', 'DELIVERED', 'READ', 'FAILED'].includes(message.status),
-    );
-    const failed = final.filter((message) => message.status === 'FAILED').length;
+    const final = delivery.reduce((total, item) => total + Number(item.total), 0);
+    const failed = delivery
+      .filter((item) => item.status === 'FAILED')
+      .reduce((total, item) => total + Number(item.total), 0);
     const quotaRatio = Math.max(
       usedLastMinute / application.quotaPerMinute,
       usedLastDay / application.quotaPerDay,
@@ -138,9 +148,9 @@ export class MonitoringReadRepository implements IMonitoringReadRepository {
         };
       }),
       delivery: {
-        sentLast24Hours: final.length - failed,
+        sentLast24Hours: final - failed,
         failedLast24Hours: failed,
-        failureRate: final.length ? Math.round((failed / final.length) * 1000) / 10 : 0,
+        failureRate: final ? Math.round((failed / final) * 1000) / 10 : 0,
       },
     };
   }

@@ -1,0 +1,46 @@
+name: Release verification
+
+on:
+  workflow_call:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: message_hub
+          POSTGRES_PASSWORD: message_hub
+          POSTGRES_DB: message_hub
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U message_hub"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      - run: npm ci && npm run verify
+        working-directory: backend
+      - run: npm run test:e2e -- --ci --runInBand
+        working-directory: backend
+      - name: Verify migration up and down paths
+        working-directory: backend
+        env:
+          DATABASE_URL: postgres://message_hub:message_hub@localhost:5432/message_hub
+        run: |
+          npm run migration:run
+          count=$(find src/infrastructure/database/migrations -maxdepth 1 -type f -name '*.ts' | wc -l)
+          for i in $(seq 1 "$count"); do npm run migration:revert; done
+          npm run migration:run
+      - run: npm ci && npm run verify
+        working-directory: frontend

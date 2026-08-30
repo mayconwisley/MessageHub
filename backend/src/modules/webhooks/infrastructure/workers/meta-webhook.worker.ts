@@ -14,6 +14,8 @@ import {
   META_WEBHOOK_RECEIVED_QUEUE,
 } from '../messaging/webhook-queues.constant';
 import { EngineeringAlertService } from '@modules/notifications/application/services/engineering-alert.service';
+import { OutboxRepository } from '@infrastructure/outbox/outbox.repository';
+import { OutboxEventType } from '@shared/outbox';
 
 interface MetaWebhookQueuePayload {
   eventId: string;
@@ -30,6 +32,7 @@ export class MetaWebhookWorker {
     private readonly retryPolicy: WebhookRetryPolicy,
     private readonly logger: PinoLogger,
     private readonly alerts?: EngineeringAlertService,
+    private readonly outbox?: OutboxRepository,
   ) {
     this.logger.setContext(MetaWebhookWorker.name);
     this.channel = connection.createChannel({
@@ -37,6 +40,7 @@ export class MetaWebhookWorker {
       setup: async (channel: Channel) => {
         await channel.assertQueue(META_WEBHOOK_RECEIVED_QUEUE, { durable: true });
         await channel.assertQueue(META_WEBHOOK_RECEIVED_DLQ, { durable: true });
+        await channel.prefetch(10);
         await channel.consume(META_WEBHOOK_RECEIVED_QUEUE, (message) => {
           void this.handle(message, channel);
         });
@@ -47,6 +51,7 @@ export class MetaWebhookWorker {
     if (!message) return;
     let eventId: string | null = null;
     let attempt = 1;
+    let shouldAck = false;
     try {
       const payload = this.parsePayload(message.content);
       eventId = payload.eventId;
@@ -58,6 +63,7 @@ export class MetaWebhookWorker {
         await this.processor.process(event.payload);
         await this.events.markProcessed(event.id);
       }
+      shouldAck = true;
     } catch (error) {
       const reason = error instanceof Error ? error.message : 'Unknown error';
 
@@ -67,22 +73,15 @@ export class MetaWebhookWorker {
           { eventId, attempt, reason, delayMs },
           'Meta webhook processing failed - scheduling retry.',
         );
-        const nextAttempt = attempt + 1;
-        const currentEventId = eventId;
-        setTimeout(() => {
-          this.channel
-            .sendToQueue(
-              META_WEBHOOK_RECEIVED_QUEUE,
-              { eventId: currentEventId, attempt: nextAttempt },
-              { persistent: true },
-            )
-            .catch((publishError: unknown) => {
-              this.logger.error(
-                { err: publishError, eventId: currentEventId },
-                'Failed to requeue meta webhook event for retry.',
-              );
-            });
-        }, delayMs);
+        if (!this.outbox) throw error;
+        await this.outbox.add({
+          eventType: OutboxEventType.META_WEBHOOK_RECEIVED,
+          aggregateType: 'WebhookEvent',
+          aggregateId: eventId,
+          payload: { eventId, attempt: attempt + 1 },
+          availableAt: new Date(Date.now() + delayMs),
+        });
+        shouldAck = true;
       } else {
         this.logger.error(
           { eventId, attempt, reason },
@@ -99,9 +98,11 @@ export class MetaWebhookWorker {
         await this.channel.sendToQueue(META_WEBHOOK_RECEIVED_DLQ, message.content, {
           persistent: true,
         });
+        shouldAck = true;
       }
     } finally {
-      channel.ack(message);
+      if (shouldAck) channel.ack(message);
+      else channel.nack(message, false, true);
     }
   }
 

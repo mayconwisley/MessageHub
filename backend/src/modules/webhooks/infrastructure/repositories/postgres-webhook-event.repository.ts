@@ -4,6 +4,9 @@ import { UniqueId } from '@shared/domain';
 import { PaginatedResult } from '@shared/types';
 import { QueryFailedError, Repository } from 'typeorm';
 import { WebhookEventOrmEntity } from '../entities/webhook-event.orm-entity';
+import { NewOutboxEvent } from '@shared/outbox';
+import { OutboxEventOrmEntity } from '@infrastructure/database/entities/outbox-event.orm-entity';
+import { OutboxRepository } from '@infrastructure/outbox/outbox.repository';
 import {
   IWebhookEventOperationsRepository,
   WebhookEventOperationDto,
@@ -14,6 +17,12 @@ export interface IWebhookEventRepository {
     provider: string,
     contentHash: string,
     payload: Record<string, unknown>,
+  ): Promise<WebhookEventOrmEntity | null>;
+  registerWithOutbox(
+    provider: string,
+    contentHash: string,
+    payload: Record<string, unknown>,
+    outboxEvent: NewOutboxEvent,
   ): Promise<WebhookEventOrmEntity | null>;
   markProcessed(id: string): Promise<void>;
   markFailed(id: string, reason: string): Promise<void>;
@@ -63,6 +72,46 @@ export class PostgresWebhookEventRepository
       throw error;
     }
   }
+  async registerWithOutbox(
+    provider: string,
+    contentHash: string,
+    payload: Record<string, unknown>,
+    outboxEvent: NewOutboxEvent,
+  ): Promise<WebhookEventOrmEntity | null> {
+    const event = Object.assign(new WebhookEventOrmEntity(), {
+      id: UniqueId.create().value,
+      provider,
+      contentHash,
+      payload,
+      status: 'PENDING',
+      receivedAt: new Date(),
+      processedAt: null,
+      failureReason: null,
+      attemptCount: 0,
+      lastAttemptAt: null,
+    });
+    try {
+      await this.repository.manager.transaction(async (manager) => {
+        await manager.getRepository(WebhookEventOrmEntity).save(event);
+        await manager.getRepository(OutboxEventOrmEntity).save(
+          OutboxRepository.createEntity({
+            ...outboxEvent,
+            aggregateId: event.id,
+            payload: { eventId: event.id },
+          }),
+        );
+      });
+      return event;
+    } catch (error: unknown) {
+      const driverCode =
+        error instanceof QueryFailedError
+          ? (error.driverError as { code?: string }).code
+          : undefined;
+      if (driverCode !== '23505') throw error;
+      const concurrent = await this.repository.findOne({ where: { contentHash } });
+      return concurrent?.status === 'PENDING' ? concurrent : null;
+    }
+  }
   async markProcessed(id: string): Promise<void> {
     await this.repository.update(id, {
       status: 'PROCESSED',
@@ -99,6 +148,23 @@ export class PostgresWebhookEventRepository
       failureReason: null,
     });
     return this.findById(id);
+  }
+  async requeueWithOutbox(
+    id: string,
+    outboxEvent: NewOutboxEvent,
+  ): Promise<WebhookEventOperationDto | null> {
+    return this.repository.manager.transaction(async (manager) => {
+      const event = await manager.findOne(WebhookEventOrmEntity, { where: { id } });
+      if (!event || event.status !== 'FAILED') return null;
+      event.status = 'PENDING';
+      event.processedAt = null;
+      event.failureReason = null;
+      await manager.save(event);
+      await manager
+        .getRepository(OutboxEventOrmEntity)
+        .save(OutboxRepository.createEntity(outboxEvent));
+      return event;
+    });
   }
   async findById(id: string): Promise<WebhookEventOrmEntity | null> {
     return this.repository.findOne({ where: { id } });

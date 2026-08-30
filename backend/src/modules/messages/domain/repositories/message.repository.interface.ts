@@ -2,6 +2,7 @@ import { UniqueId } from '@shared/domain';
 import { PaginatedResult } from '@shared/types';
 import { Message } from '../entities/message.entity';
 import { MessageStatus } from '../enums/message-status.enum';
+import { NewOutboxEvent } from '@shared/outbox';
 
 export interface ListMessagesFilter {
   status?: MessageStatus;
@@ -15,12 +16,13 @@ export interface MessageQuotaLimits {
 }
 
 export type SaveWithQuotaCheckResult =
-  | { outcome: 'saved' }
+  | { outcome: 'saved'; outboxPersisted?: boolean }
   | { outcome: 'rate_limited'; scope: 'minute' | 'day' }
   | { outcome: 'idempotent_conflict'; existing: Message };
 
 export interface IMessageRepository {
   save(message: Message): Promise<void>;
+  saveWithOutbox?(message: Message, events: NewOutboxEvent | NewOutboxEvent[]): Promise<void>;
   /**
    * Insere a mensagem só se a aplicação ainda estiver dentro da quota, checando e inserindo
    * atomicamente (trava por applicationId) para fechar a corrida entre requisições concorrentes
@@ -29,7 +31,9 @@ export interface IMessageRepository {
   saveWithQuotaCheck(
     message: Message,
     limits: MessageQuotaLimits,
+    outboxEvent?: NewOutboxEvent,
   ): Promise<SaveWithQuotaCheckResult>;
+  claimForProcessing?(id: UniqueId): Promise<Message | null>;
   findById(id: UniqueId): Promise<Message | null>;
   findByIdempotencyKey(applicationId: UniqueId, idempotencyKey: string): Promise<Message | null>;
   findByProviderMessageId(providerMessageId: string): Promise<Message | null>;

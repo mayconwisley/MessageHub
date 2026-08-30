@@ -46,9 +46,14 @@ jobs:
           set -euo pipefail
           [[ "$PRODUCTION_API_URL" =~ ^https://.+ ]]
 
+  verify-release:
+    name: Verify release source
+    needs: validate-release
+    uses: ./.github/workflows/release-verify.yml
+
   publish:
     name: Build and publish container images
-    needs: validate-release
+    needs: [validate-release, verify-release]
     runs-on: ubuntu-latest
     permissions:
       contents: write

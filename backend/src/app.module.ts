@@ -27,6 +27,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { SystemLogsModule } from './modules/system-logs/system-logs.module';
 import { EmailConfigurationsModule } from './modules/email-configurations/email-configurations.module';
 import { EmailsModule } from './modules/emails/emails.module';
+import { OutboxModule } from './infrastructure/outbox/outbox.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { EmailsModule } from './modules/emails/emails.module';
     LoggingModule,
     DatabaseModule,
     RabbitMqModule,
+    OutboxModule,
     TerminusModule,
     ThrottlerModule.forRoot({
       throttlers: [{ name: 'default', ttl: 60_000, limit: 100 }],

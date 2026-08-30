@@ -15,6 +15,9 @@ import { MessageContent } from '../../domain/value-objects/message-content.value
 import { MessageType } from '../../domain/enums/message-type.enum';
 import { TemplateMessage } from '../../domain/value-objects/template-message.value-object';
 import { MessageOrmEntity } from '../entities/message.orm-entity';
+import { NewOutboxEvent } from '@shared/outbox';
+import { OutboxEventOrmEntity } from '@infrastructure/database/entities/outbox-event.orm-entity';
+import { OutboxRepository } from '@infrastructure/outbox/outbox.repository';
 
 /** Namespace arbitrário para travas consultivas desta feature, evita colisão com outras travas futuras. */
 const MESSAGE_QUOTA_LOCK_NAMESPACE = 424_242;
@@ -31,9 +34,19 @@ export class PostgresMessageRepository implements IMessageRepository {
     await this.repository.save(this.toOrmEntity(message));
   }
 
+  async saveWithOutbox(message: Message, events: NewOutboxEvent | NewOutboxEvent[]): Promise<void> {
+    await this.repository.manager.transaction(async (manager) => {
+      await manager.save(this.toOrmEntity(message));
+      await manager
+        .getRepository(OutboxEventOrmEntity)
+        .save((Array.isArray(events) ? events : [events]).map(OutboxRepository.createEntity));
+    });
+  }
+
   async saveWithQuotaCheck(
     message: Message,
     limits: MessageQuotaLimits,
+    outboxEvent?: NewOutboxEvent,
   ): Promise<SaveWithQuotaCheckResult> {
     const queryRunner = this.repository.manager.connection.createQueryRunner();
     try {
@@ -74,8 +87,13 @@ export class PostgresMessageRepository implements IMessageRepository {
       }
 
       await queryRunner.manager.save(this.toOrmEntity(message));
+      if (outboxEvent) {
+        await queryRunner.manager
+          .getRepository(OutboxEventOrmEntity)
+          .save(OutboxRepository.createEntity(outboxEvent));
+      }
       await queryRunner.commitTransaction();
-      return { outcome: 'saved' };
+      return { outcome: 'saved', outboxPersisted: Boolean(outboxEvent) };
     } catch (error) {
       if (queryRunner.isTransactionActive) {
         await queryRunner.rollbackTransaction();
@@ -105,6 +123,25 @@ export class PostgresMessageRepository implements IMessageRepository {
   async findById(id: UniqueId): Promise<Message | null> {
     const row = await this.repository.findOne({ where: { id: id.value } });
     return row ? this.toDomain(row) : null;
+  }
+
+  async claimForProcessing(id: UniqueId): Promise<Message | null> {
+    const result = await this.repository
+      .createQueryBuilder()
+      .update(MessageOrmEntity)
+      .set({
+        status: MessageStatus.PROCESSING,
+        attemptCount: () => '"attempt_count" + 1',
+        updatedAt: new Date(),
+      })
+      .where('id = :id', { id: id.value })
+      .andWhere('status IN (:...statuses)', {
+        statuses: [MessageStatus.PENDING, MessageStatus.RETRY],
+      })
+      .returning('*')
+      .execute();
+    if (!result.affected) return null;
+    return this.findById(id);
   }
 
   async findByIdempotencyKey(
