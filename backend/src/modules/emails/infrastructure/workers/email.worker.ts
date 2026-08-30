@@ -36,9 +36,18 @@ export class EmailWorker {
     } catch (error: unknown) {
       this.logger.error(
         { err: error },
-        'Unexpected failure while processing email.requested event.',
+        'Unexpected failure while processing email.requested event; sending it to DLQ.',
       );
-      channel.nack(message, false, true);
+      try {
+        await this.channel.sendToQueue(EMAIL_REQUESTED_DLQ, message.content, { persistent: true });
+        channel.ack(message);
+      } catch (dlqError: unknown) {
+        this.logger.error(
+          { err: dlqError },
+          'Failed to publish email.requested event to DLQ; requeueing it.',
+        );
+        channel.nack(message, false, true);
+      }
     }
   }
 }

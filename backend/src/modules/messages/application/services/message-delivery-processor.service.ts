@@ -110,16 +110,13 @@ export class MessageDeliveryProcessor {
       return;
     }
 
-    await this.messageAttemptRepository.save(
-      MessageAttempt.create({
-        messageId: message.id,
-        attemptNumber: message.attemptCount,
-        status: MessageAttemptStatus.SUCCEEDED,
-      }),
-    );
-
+    const attempt = MessageAttempt.create({
+      messageId: message.id,
+      attemptNumber: message.attemptCount,
+      status: MessageAttemptStatus.SUCCEEDED,
+    });
     message.markSent(result.value.providerMessageId);
-    await this.saveWithOutbox(message, this.statusChangedEvent(message));
+    await this.saveDeliveryOutcome(message, attempt, this.statusChangedEvent(message));
     await this.timeline?.record({
       messageId: message.id.value,
       eventType: 'PROVIDER_ACCEPTED_MESSAGE',
@@ -139,16 +136,13 @@ export class MessageDeliveryProcessor {
   }
 
   private async handleFailure(message: Message, error: MessageDeliveryError): Promise<void> {
-    await this.messageAttemptRepository.save(
-      MessageAttempt.create({
-        messageId: message.id,
-        attemptNumber: message.attemptCount,
-        status: MessageAttemptStatus.FAILED,
-        errorCode: error.code,
-        errorMessage: error.message,
-      }),
-    );
-
+    const attempt = MessageAttempt.create({
+      messageId: message.id,
+      attemptNumber: message.attemptCount,
+      status: MessageAttemptStatus.FAILED,
+      errorCode: error.code,
+      errorMessage: error.message,
+    });
     message.markFailed();
     await this.timeline?.record({
       messageId: message.id.value,
@@ -161,10 +155,10 @@ export class MessageDeliveryProcessor {
     });
 
     if (error.retryable && this.retryPolicy.shouldRetry(message.attemptCount)) {
-      await this.scheduleRetry(message, error);
+      await this.scheduleRetry(message, attempt, error);
       return;
     }
-    await this.saveWithOutbox(message, [
+    await this.saveDeliveryOutcome(message, attempt, [
       {
         eventType: OutboxEventType.MESSAGE_REQUESTED_DLQ,
         aggregateType: 'Message',
@@ -177,10 +171,14 @@ export class MessageDeliveryProcessor {
     await this.sendToDeadLetterQueue(message, error);
   }
 
-  private async scheduleRetry(message: Message, error: MessageDeliveryError): Promise<void> {
+  private async scheduleRetry(
+    message: Message,
+    attempt: MessageAttempt,
+    error: MessageDeliveryError,
+  ): Promise<void> {
     message.scheduleRetry();
     const delayMs = this.retryPolicy.nextDelayMs(message.attemptCount);
-    await this.saveWithOutbox(message, {
+    await this.saveDeliveryOutcome(message, attempt, {
       eventType: OutboxEventType.MESSAGE_REQUESTED,
       aggregateType: 'Message',
       aggregateId: message.id.value,
@@ -279,6 +277,23 @@ export class MessageDeliveryProcessor {
   ): Promise<void> {
     if (this.messageRepository.saveWithOutbox) {
       await this.messageRepository.saveWithOutbox(message, events);
+      return;
+    }
+    await this.messageRepository.save(message);
+  }
+
+  private async saveDeliveryOutcome(
+    message: Message,
+    attempt: MessageAttempt,
+    events: Parameters<NonNullable<IMessageRepository['saveDeliveryOutcome']>>[2],
+  ): Promise<void> {
+    if (this.messageRepository.saveDeliveryOutcome) {
+      await this.messageRepository.saveDeliveryOutcome(message, attempt, events);
+      return;
+    }
+    await this.messageAttemptRepository.save(attempt);
+    if (events) {
+      await this.saveWithOutbox(message, events);
       return;
     }
     await this.messageRepository.save(message);

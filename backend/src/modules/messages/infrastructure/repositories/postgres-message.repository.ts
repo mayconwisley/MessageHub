@@ -15,6 +15,8 @@ import { MessageContent } from '../../domain/value-objects/message-content.value
 import { MessageType } from '../../domain/enums/message-type.enum';
 import { TemplateMessage } from '../../domain/value-objects/template-message.value-object';
 import { MessageOrmEntity } from '../entities/message.orm-entity';
+import { MessageAttemptOrmEntity } from '../entities/message-attempt.orm-entity';
+import { MessageAttempt } from '../../domain/entities/message-attempt.entity';
 import { NewOutboxEvent } from '@shared/outbox';
 import { OutboxEventOrmEntity } from '@infrastructure/database/entities/outbox-event.orm-entity';
 import { OutboxRepository } from '@infrastructure/outbox/outbox.repository';
@@ -39,7 +41,31 @@ export class PostgresMessageRepository implements IMessageRepository {
       await manager.save(this.toOrmEntity(message));
       await manager
         .getRepository(OutboxEventOrmEntity)
-        .save((Array.isArray(events) ? events : [events]).map(OutboxRepository.createEntity));
+        .save(
+          (Array.isArray(events) ? events : [events]).map((event) =>
+            OutboxRepository.createEntity(event),
+          ),
+        );
+    });
+  }
+
+  async saveDeliveryOutcome(
+    message: Message,
+    attempt: MessageAttempt,
+    events?: NewOutboxEvent | NewOutboxEvent[],
+  ): Promise<void> {
+    await this.repository.manager.transaction(async (manager) => {
+      await manager.save(this.toOrmEntity(message));
+      await manager.save(this.toAttemptOrmEntity(attempt));
+      if (events) {
+        await manager
+          .getRepository(OutboxEventOrmEntity)
+          .save(
+            (Array.isArray(events) ? events : [events]).map((event) =>
+              OutboxRepository.createEntity(event),
+            ),
+          );
+      }
     });
   }
 
@@ -220,6 +246,18 @@ export class PostgresMessageRepository implements IMessageRepository {
     orm.attemptCount = message.attemptCount;
     orm.createdAt = message.createdAt;
     orm.updatedAt = message.updatedAt;
+    return orm;
+  }
+
+  private toAttemptOrmEntity(attempt: MessageAttempt): MessageAttemptOrmEntity {
+    const orm = new MessageAttemptOrmEntity();
+    orm.id = attempt.id.value;
+    orm.messageId = attempt.messageId.value;
+    orm.attemptNumber = attempt.attemptNumber;
+    orm.status = attempt.status;
+    orm.errorCode = attempt.errorCode;
+    orm.errorMessage = attempt.errorMessage;
+    orm.occurredAt = attempt.occurredAt;
     return orm;
   }
 

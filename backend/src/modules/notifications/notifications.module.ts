@@ -5,6 +5,8 @@ import { ENGINEERING_ALERT_REPOSITORY } from './application/ports/engineering-al
 import { EngineeringAlertOrmEntity } from './infrastructure/entities/engineering-alert.orm-entity';
 import { PostgresEngineeringAlertRepository } from './infrastructure/repositories/postgres-engineering-alert.repository';
 import { EngineeringAlertService } from './application/services/engineering-alert.service';
+import { ENGINEERING_ALERT_DISPATCHER } from './application/ports/engineering-alert-dispatcher.interface';
+import { HttpEngineeringAlertDispatcherService } from './infrastructure/services/http-engineering-alert-dispatcher.service';
 import { ListEngineeringAlertsHandler } from './application/handlers/list-engineering-alerts.handler';
 import { EngineeringAlertsController } from './presentation/controllers/engineering-alerts.controller';
 
@@ -14,6 +16,7 @@ import { EngineeringAlertsController } from './presentation/controllers/engineer
   controllers: [EngineeringAlertsController],
   providers: [
     { provide: ENGINEERING_ALERT_REPOSITORY, useClass: PostgresEngineeringAlertRepository },
+    { provide: ENGINEERING_ALERT_DISPATCHER, useClass: HttpEngineeringAlertDispatcherService },
     EngineeringAlertService,
     ListEngineeringAlertsHandler,
   ],

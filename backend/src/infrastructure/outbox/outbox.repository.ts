@@ -69,7 +69,7 @@ export class OutboxRepository {
          event.failed_at AS "failedAt",
          event.failure_reason AS "failureReason"`,
       [limit, CLAIM_LEASE_SECONDS],
-    ) as Promise<OutboxEventOrmEntity[]>;
+    );
   }
 
   async markProcessed(id: string): Promise<void> {

@@ -22,6 +22,15 @@ import { OutboxRepository } from './outbox.repository';
 
 const DISPATCH_INTERVAL_MS = 1_000;
 const DISPATCH_BATCH_SIZE = 100;
+const QUEUE_BY_EVENT_TYPE: Readonly<Record<string, string>> = {
+  [OutboxEventType.MESSAGE_REQUESTED]: MESSAGE_REQUESTED_QUEUE,
+  [OutboxEventType.MESSAGE_REQUESTED_DLQ]: MESSAGE_REQUESTED_DLQ,
+  [OutboxEventType.EMAIL_REQUESTED]: EMAIL_REQUESTED_QUEUE,
+  [OutboxEventType.EMAIL_REQUESTED_DLQ]: EMAIL_REQUESTED_DLQ,
+  [OutboxEventType.META_WEBHOOK_RECEIVED]: META_WEBHOOK_RECEIVED_QUEUE,
+  [OutboxEventType.INBOUND_MESSAGE_WEBHOOK]: INBOUND_MESSAGE_WEBHOOK_QUEUE,
+  [OutboxEventType.MESSAGE_STATUS_CHANGED]: MESSAGE_STATUS_WEBHOOK_QUEUE,
+};
 
 @Injectable()
 export class OutboxDispatcherService implements OnModuleInit, OnApplicationShutdown {
@@ -68,7 +77,11 @@ export class OutboxDispatcherService implements OnModuleInit, OnApplicationShutd
     this.running = true;
     try {
       const events = await this.outbox.claimBatch(DISPATCH_BATCH_SIZE);
-      await Promise.all(events.map((event) => this.dispatchEvent(event)));
+      // A ordem de `occurredAt` é relevante para mudanças de estado do mesmo
+      // agregado. O dispatcher preserva a ordem observada dentro do lote.
+      for (const event of events) {
+        await this.dispatchEvent(event);
+      }
     } catch (error: unknown) {
       this.logger.error({ err: error }, 'Failed to claim outbox events.');
     } finally {
@@ -89,23 +102,8 @@ export class OutboxDispatcherService implements OnModuleInit, OnApplicationShutd
   }
 
   private resolveQueue(eventType: string): string {
-    switch (eventType) {
-      case OutboxEventType.MESSAGE_REQUESTED:
-        return MESSAGE_REQUESTED_QUEUE;
-      case OutboxEventType.MESSAGE_REQUESTED_DLQ:
-        return MESSAGE_REQUESTED_DLQ;
-      case OutboxEventType.EMAIL_REQUESTED:
-        return EMAIL_REQUESTED_QUEUE;
-      case OutboxEventType.EMAIL_REQUESTED_DLQ:
-        return EMAIL_REQUESTED_DLQ;
-      case OutboxEventType.META_WEBHOOK_RECEIVED:
-        return META_WEBHOOK_RECEIVED_QUEUE;
-      case OutboxEventType.INBOUND_MESSAGE_WEBHOOK:
-        return INBOUND_MESSAGE_WEBHOOK_QUEUE;
-      case OutboxEventType.MESSAGE_STATUS_CHANGED:
-        return MESSAGE_STATUS_WEBHOOK_QUEUE;
-      default:
-        throw new Error(`Unsupported outbox event type: ${eventType}`);
-    }
+    const queue = QUEUE_BY_EVENT_TYPE[eventType];
+    if (!queue) throw new Error(`Unsupported outbox event type: ${eventType}`);
+    return queue;
   }
 }

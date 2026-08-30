@@ -51,9 +51,20 @@ export class MessageWorker {
     } catch (error: unknown) {
       this.logger.error(
         { err: error },
-        'Unexpected failure while processing message.requested event.',
+        'Unexpected failure while processing message.requested event; sending it to DLQ.',
       );
-      channel.nack(msg, false, true);
+      try {
+        await this.channelWrapper.sendToQueue(MESSAGE_REQUESTED_DLQ, msg.content, {
+          persistent: true,
+        });
+        channel.ack(msg);
+      } catch (dlqError: unknown) {
+        this.logger.error(
+          { err: dlqError },
+          'Failed to publish message.requested event to DLQ; requeueing it.',
+        );
+        channel.nack(msg, false, true);
+      }
     }
   }
 }

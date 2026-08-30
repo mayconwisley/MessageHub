@@ -31,6 +31,7 @@ import {
 } from '@modules/emails/application/ports/email-timeline.repository.interface';
 import { EmailDeliveryProcessor } from '@modules/emails/application/services/email-delivery-processor.service';
 import { EmailRetryPolicy } from '@modules/emails/application/services/email-retry-policy';
+import { NewOutboxEvent } from '@shared/outbox';
 
 function expectOk<T>(result: Result<T, unknown>): T {
   if (result.isFailure) {
@@ -50,8 +51,31 @@ const sampleSmtpSettings: SmtpConnectionSettings = {
 };
 
 class FakeEmailMessageRepository implements IEmailMessageRepository {
-  constructor(private readonly email: EmailMessage | null) {}
-  async save(): Promise<void> {}
+  readonly saved: EmailMessage[] = [];
+  readonly deliveryOutcomes: Array<{
+    email: EmailMessage;
+    attempt: EmailAttempt;
+    events?: NewOutboxEvent | NewOutboxEvent[];
+  }> = [];
+  saveDeliveryOutcome?: (
+    email: EmailMessage,
+    attempt: EmailAttempt,
+    events?: NewOutboxEvent | NewOutboxEvent[],
+  ) => Promise<void>;
+
+  constructor(
+    private readonly email: EmailMessage | null,
+    persistDeliveryOutcomesAtomically = false,
+  ) {
+    if (persistDeliveryOutcomesAtomically) {
+      this.saveDeliveryOutcome = async (entity, attempt, events) => {
+        this.deliveryOutcomes.push({ email: entity, attempt, events });
+      };
+    }
+  }
+  async save(email: EmailMessage): Promise<void> {
+    this.saved.push(email);
+  }
   async findById(): Promise<EmailMessage | null> {
     return this.email;
   }
@@ -117,12 +141,14 @@ function buildProcessor(options: {
   configurationResult?: Result<ResolvedSmtpConfiguration, SmtpConfigurationNotFoundError>;
   providerResult?: Result<EmailProviderResult, EmailDeliveryError>;
   includeOptionalDeps?: boolean;
+  persistDeliveryOutcomesAtomically?: boolean;
 }) {
   const {
     email,
     configurationResult = Result.ok({ settings: sampleSmtpSettings, source: 'tenant' }),
     providerResult = Result.ok({ providerMessageId: 'provider-message-1' }),
     includeOptionalDeps = true,
+    persistDeliveryOutcomesAtomically = false,
   } = options;
 
   const attemptRepository = new FakeEmailAttemptRepository();
@@ -133,8 +159,9 @@ function buildProcessor(options: {
     ? { notify: jest.fn().mockResolvedValue(undefined) }
     : undefined;
 
+  const emailRepository = new FakeEmailMessageRepository(email, persistDeliveryOutcomesAtomically);
   const processor = new EmailDeliveryProcessor(
-    new FakeEmailMessageRepository(email),
+    emailRepository,
     attemptRepository,
     new FakeSmtpConfigurationResolver(configurationResult),
     provider,
@@ -145,7 +172,7 @@ function buildProcessor(options: {
     alerts as unknown as EngineeringAlertService | undefined,
   );
 
-  return { processor, attemptRepository, publisher, provider, timeline, alerts };
+  return { processor, emailRepository, attemptRepository, publisher, provider, timeline, alerts };
 }
 
 describe('EmailDeliveryProcessor', () => {
@@ -170,14 +197,16 @@ describe('EmailDeliveryProcessor', () => {
 
   it('marks the email as SENT, saves a SUCCEEDED attempt and records timeline events on success', async () => {
     const email = buildPendingEmail();
-    const { processor, attemptRepository, publisher, timeline, alerts } = buildProcessor({
-      email,
-    });
+    const { processor, emailRepository, attemptRepository, publisher, timeline, alerts } =
+      buildProcessor({
+        email,
+      });
 
     await processor.process(email.id.value);
 
     expect(email.status).toBe(EmailStatus.SENT);
     expect(email.providerMessageId).toBe('provider-message-1');
+    expect(emailRepository.saved).toContain(email);
     expect(attemptRepository.saved).toHaveLength(1);
     expect(attemptRepository.saved[0].status).toBe(EmailAttemptStatus.SUCCEEDED);
     expect(publisher.deadLettered).toHaveLength(0);
@@ -187,6 +216,24 @@ describe('EmailDeliveryProcessor', () => {
       'PROVIDER_ACCEPTED_MESSAGE',
     ]);
     expect(alerts!.notify).not.toHaveBeenCalled();
+  });
+
+  it('persiste mensagem e tentativa pelo contrato atômico quando o repositório o suporta', async () => {
+    const email = buildPendingEmail();
+    const { processor, emailRepository, attemptRepository } = buildProcessor({
+      email,
+      persistDeliveryOutcomesAtomically: true,
+    });
+
+    await processor.process(email.id.value);
+
+    expect(emailRepository.deliveryOutcomes).toEqual([
+      expect.objectContaining({
+        email,
+        attempt: expect.objectContaining({ status: EmailAttemptStatus.SUCCEEDED }),
+      }),
+    ]);
+    expect(attemptRepository.saved).toHaveLength(0);
   });
 
   it('sends the email straight to the DLQ when SMTP configuration resolution fails (non-retryable)', async () => {

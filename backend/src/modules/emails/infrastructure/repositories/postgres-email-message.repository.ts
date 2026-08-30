@@ -5,6 +5,8 @@ import { Repository } from 'typeorm';
 import { EmailMessage, EmailMessageProps } from '../../domain/entities/email-message.entity';
 import { IEmailMessageRepository } from '../../domain/repositories/email-message.repository.interface';
 import { EmailMessageOrmEntity } from '../entities/email-message.orm-entity';
+import { EmailAttemptOrmEntity } from '../entities/email-attempt.orm-entity';
+import { EmailAttempt } from '../../domain/entities/email-attempt.entity';
 import { EmailStatus } from '../../domain/enums/email-status.enum';
 import { NewOutboxEvent } from '@shared/outbox';
 import { OutboxEventOrmEntity } from '@infrastructure/database/entities/outbox-event.orm-entity';
@@ -27,7 +29,30 @@ export class PostgresEmailMessageRepository implements IEmailMessageRepository {
       await manager.save(this.toOrm(message));
       await manager
         .getRepository(OutboxEventOrmEntity)
-        .save((Array.isArray(events) ? events : [events]).map(OutboxRepository.createEntity));
+        .save(
+          (Array.isArray(events) ? events : [events]).map((event) =>
+            OutboxRepository.createEntity(event),
+          ),
+        );
+    });
+  }
+  async saveDeliveryOutcome(
+    message: EmailMessage,
+    attempt: EmailAttempt,
+    events?: NewOutboxEvent | NewOutboxEvent[],
+  ): Promise<void> {
+    await this.repository.manager.transaction(async (manager) => {
+      await manager.save(this.toOrm(message));
+      await manager.save(this.toAttemptOrm(attempt));
+      if (events) {
+        await manager
+          .getRepository(OutboxEventOrmEntity)
+          .save(
+            (Array.isArray(events) ? events : [events]).map((event) =>
+              OutboxRepository.createEntity(event),
+            ),
+          );
+      }
     });
   }
   async claimForProcessing(id: UniqueId): Promise<EmailMessage | null> {
@@ -93,5 +118,17 @@ export class PostgresEmailMessageRepository implements IEmailMessageRepository {
       updatedAt: row.updatedAt,
     };
     return EmailMessage.reconstitute(props, UniqueId.create(row.id));
+  }
+
+  private toAttemptOrm(attempt: EmailAttempt): EmailAttemptOrmEntity {
+    const row = new EmailAttemptOrmEntity();
+    row.id = attempt.id.value;
+    row.emailMessageId = attempt.emailMessageId.value;
+    row.attemptNumber = attempt.attemptNumber;
+    row.status = attempt.status;
+    row.errorCode = attempt.errorCode;
+    row.errorMessage = attempt.errorMessage;
+    row.occurredAt = attempt.occurredAt;
+    return row;
   }
 }

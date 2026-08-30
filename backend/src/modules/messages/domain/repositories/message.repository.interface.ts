@@ -1,6 +1,7 @@
 import { UniqueId } from '@shared/domain';
 import { PaginatedResult } from '@shared/types';
 import { Message } from '../entities/message.entity';
+import { MessageAttempt } from '../entities/message-attempt.entity';
 import { MessageStatus } from '../enums/message-status.enum';
 import { NewOutboxEvent } from '@shared/outbox';
 
@@ -23,6 +24,12 @@ export type SaveWithQuotaCheckResult =
 export interface IMessageRepository {
   save(message: Message): Promise<void>;
   saveWithOutbox?(message: Message, events: NewOutboxEvent | NewOutboxEvent[]): Promise<void>;
+  /** Persiste, em uma única transação, o estado final da tentativa e os eventos derivados. */
+  saveDeliveryOutcome?(
+    message: Message,
+    attempt: MessageAttempt,
+    events?: NewOutboxEvent | NewOutboxEvent[],
+  ): Promise<void>;
   /**
    * Insere a mensagem só se a aplicação ainda estiver dentro da quota, checando e inserindo
    * atomicamente (trava por applicationId) para fechar a corrida entre requisições concorrentes

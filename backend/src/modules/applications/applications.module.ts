@@ -22,6 +22,7 @@ import { ApiKeyOrmEntity } from './infrastructure/entities/api-key.orm-entity';
 import { ApplicationOrmEntity } from './infrastructure/entities/application.orm-entity';
 import { ApplicationPhoneNumberLinkOrmEntity } from './infrastructure/entities/application-phone-number-link.orm-entity';
 import { PostgresApiKeyRepository } from './infrastructure/repositories/postgres-api-key.repository';
+import { WebhookSecretCipherService } from './infrastructure/security/webhook-secret-cipher.service';
 import { PostgresApplicationRepository } from './infrastructure/repositories/postgres-application.repository';
 import { PostgresApplicationPhoneNumberLinkRepository } from './infrastructure/repositories/postgres-application-phone-number-link.repository';
 import { ApiKeysController } from './presentation/controllers/api-keys.controller';
@@ -42,6 +43,7 @@ import { ApplicationsController } from './presentation/controllers/applications.
   controllers: [ApplicationsController, ApiKeysController],
   providers: [
     { provide: APPLICATION_REPOSITORY, useClass: PostgresApplicationRepository },
+    WebhookSecretCipherService,
     { provide: API_KEY_REPOSITORY, useClass: PostgresApiKeyRepository },
     {
       provide: APPLICATION_PHONE_NUMBER_LINK_REPOSITORY,
