@@ -37,7 +37,7 @@ export class OutboxRepository {
   }
 
   async claimBatch(limit: number): Promise<OutboxEventOrmEntity[]> {
-    return this.events.query(
+    const [rows] = await this.events.query(
       `WITH candidates AS (
          SELECT id
          FROM events.outbox_events
@@ -70,6 +70,7 @@ export class OutboxRepository {
          event.failure_reason AS "failureReason"`,
       [limit, CLAIM_LEASE_SECONDS],
     );
+    return rows;
   }
 
   async markProcessed(id: string): Promise<void> {
