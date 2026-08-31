@@ -1,10 +1,6 @@
-import axios from 'axios';
 import { EngineeringAlertService } from '@modules/notifications/application/services/engineering-alert.service';
 
-jest.mock('axios');
-
 describe('EngineeringAlertService', () => {
-  const post = jest.spyOn(axios, 'post');
   const repository = {
     create: jest.fn().mockResolvedValue({
       id: 'alert-1',
@@ -19,20 +15,15 @@ describe('EngineeringAlertService', () => {
     markDispatched: jest.fn().mockResolvedValue(undefined),
     list: jest.fn(),
   };
-  const config = {
-    slackWebhookUrl: 'https://hooks.slack.test/x',
-    teamsWebhookUrl: 'https://teams.test/x',
-    emailWebhookUrl: 'https://mail-gateway.test/x',
-  };
-  const logger = { setContext: jest.fn(), error: jest.fn() };
+  const dispatcher = { dispatch: jest.fn().mockResolvedValue(true) };
 
   beforeEach(() => {
     jest.clearAllMocks();
-    post.mockResolvedValue({ status: 200 });
+    dispatcher.dispatch.mockResolvedValue(true);
   });
 
-  it('persiste e entrega o alerta nos três canais sem payload de conteúdo de mensagem', async () => {
-    const service = new EngineeringAlertService(repository, config as never, logger as never);
+  it('persiste e marca o alerta como entregue quando o dispatcher confirma a entrega', async () => {
+    const service = new EngineeringAlertService(repository, dispatcher);
     await service.notify({
       type: 'MESSAGE_DLQ',
       severity: 'CRITICAL',
@@ -41,8 +32,7 @@ describe('EngineeringAlertService', () => {
       metadata: { messageId: 'message-1' },
     });
     expect(repository.create).toHaveBeenCalledTimes(1);
-    expect(post).toHaveBeenCalledTimes(3);
-    expect(JSON.stringify(post.mock.calls)).not.toContain('accessToken');
+    expect(dispatcher.dispatch).toHaveBeenCalledWith(expect.objectContaining({ id: 'alert-1' }));
     expect(repository.markDispatched).toHaveBeenCalledWith('alert-1');
   });
 });

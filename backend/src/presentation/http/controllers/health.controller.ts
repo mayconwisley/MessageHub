@@ -20,4 +20,15 @@ export class HealthController {
       () => this.rabbitmq.check('rabbitmq'),
     ]);
   }
+
+  @Get('live')
+  live() {
+    return { status: 'ok' };
+  }
+
+  @Get('ready')
+  @HealthCheck()
+  ready() {
+    return this.check();
+  }
 }

@@ -1,4 +1,5 @@
 import { PaginatedResult } from '@shared/types';
+import { NewOutboxEvent } from '@shared/outbox';
 
 export interface WebhookEventOperationDto {
   id: string;
@@ -19,6 +20,7 @@ export interface IWebhookEventOperationsRepository {
     status?: string,
   ): Promise<PaginatedResult<WebhookEventOperationDto>>;
   requeue(id: string): Promise<WebhookEventOperationDto | null>;
+  requeueWithOutbox?(id: string, event: NewOutboxEvent): Promise<WebhookEventOperationDto | null>;
 }
 
 export const WEBHOOK_EVENT_OPERATIONS_REPOSITORY = Symbol('WEBHOOK_EVENT_OPERATIONS_REPOSITORY');

@@ -4,6 +4,7 @@ import { MediatorModule } from '@shared/mediator';
 import { ApplicationsModule } from '@modules/applications/applications.module';
 import { EmailConfigurationsModule } from '@modules/email-configurations/email-configurations.module';
 import { ListEmailTimelineHandler } from './application/handlers/list-email-timeline.handler';
+import { ListEmailsHandler } from './application/handlers/list-emails.handler';
 import { SendEmailHandler } from './application/handlers/send-email.handler';
 import { EMAIL_PROVIDER } from './application/ports/email-provider.interface';
 import { EMAIL_PUBLISHER } from './application/ports/email-publisher.interface';
@@ -44,6 +45,7 @@ import { EmailsController } from './presentation/controllers/emails.controller';
     EmailRetryPolicy,
     EmailDeliveryProcessor,
     SendEmailHandler,
+    ListEmailsHandler,
     ListEmailTimelineHandler,
     EmailWorker,
   ],

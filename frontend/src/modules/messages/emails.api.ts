@@ -1,4 +1,5 @@
-import { request } from '../../services/http-client';
+import { request, toQueryString } from '../../services/http-client';
+import type { PaginatedResult } from '../../services/pagination';
 
 export interface EmailMessage {
   id: string;
@@ -13,7 +14,18 @@ export interface EmailMessage {
   attemptCount: number;
   createdAt: string;
   updatedAt: string;
-  [key: string]: unknown;
+}
+
+export interface EmailTimelineEvent {
+  id: string;
+  eventType: string;
+  status: string;
+  source: 'API' | 'WORKER' | 'OPERATOR';
+  attemptNumber?: number | null;
+  errorCode?: string | null;
+  errorMessage?: string | null;
+  metadata?: Record<string, unknown>;
+  occurredAt: string;
 }
 
 export const emailsApi = {
@@ -23,4 +35,13 @@ export const emailsApi = {
       body: data,
       headers: { 'Idempotency-Key': crypto.randomUUID() },
     }),
+  list: (params: {
+    applicationId: string;
+    page: number;
+    pageSize: number;
+    status?: string;
+    search?: string;
+  }) => request<PaginatedResult<EmailMessage>>(`/v1/emails${toQueryString(params)}`),
+  listTimeline: (id: string, applicationId: string) =>
+    request<EmailTimelineEvent[]>(`/v1/emails/${id}/timeline${toQueryString({ applicationId })}`),
 };

@@ -17,12 +17,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           react: ['react', 'react-dom', 'react-router-dom'],
-          mui: [
-            '@emotion/react',
-            '@emotion/styled',
-            '@mui/icons-material',
-            '@mui/material',
-          ],
+          mui: ['@emotion/react', '@emotion/styled', '@mui/icons-material', '@mui/material'],
           'react-query': ['@tanstack/react-query'],
           'react-hook-form': ['react-hook-form', '@hookform/resolvers', 'zod'],
           charts: ['@mui/x-charts'],
@@ -34,5 +29,19 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./tests/setup.ts'],
     clearMocks: true,
+    coverage: {
+      include: [
+        'src/lib/presentation.ts',
+        'src/services/http-client.ts',
+        'src/services/auth-storage.ts',
+        'src/modules/templates/template-*.ts',
+      ],
+      thresholds: {
+        statements: 80,
+        branches: 75,
+        functions: 75,
+        lines: 80,
+      },
+    },
   },
 });

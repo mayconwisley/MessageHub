@@ -13,7 +13,6 @@ import {
 import { Message } from '../../domain/entities/message.entity';
 import { MessageAttempt } from '../../domain/entities/message-attempt.entity';
 import { MessageAttemptStatus } from '../../domain/enums/message-attempt-status.enum';
-import { MessageStatus } from '../../domain/enums/message-status.enum';
 import { MessageDeliveryRejectedError } from '../../domain/errors/message-delivery-rejected.error';
 import {
   IMessageAttemptRepository,
@@ -38,6 +37,7 @@ import {
   MESSAGE_TIMELINE_REPOSITORY,
 } from '../ports/message-timeline.repository.interface';
 import { MessageRetryPolicy } from './message-retry-policy';
+import { OutboxEventType } from '@shared/outbox';
 
 /**
  * Processa a entrega de uma mensagem `PENDING`/`RETRY` (secao 21/22/51): resolve o canal,
@@ -66,18 +66,13 @@ export class MessageDeliveryProcessor {
   }
 
   async process(messageId: string): Promise<void> {
-    const message = await this.messageRepository.findById(UniqueId.create(messageId));
+    const message = this.messageRepository.claimForProcessing
+      ? await this.messageRepository.claimForProcessing(UniqueId.create(messageId))
+      : await this.claimForLegacyRepository(messageId);
     if (!message) {
-      this.logger.warn({ messageId }, 'Message not found - skipping.');
+      this.logger.warn({ messageId }, 'Message is not pending for delivery - skipping.');
       return;
     }
-
-    if (message.status !== MessageStatus.PENDING && message.status !== MessageStatus.RETRY) {
-      return;
-    }
-
-    message.markProcessing();
-    await this.messageRepository.save(message);
     await this.timeline?.record({
       messageId: message.id.value,
       eventType: 'DELIVERY_ATTEMPT_STARTED',
@@ -115,16 +110,13 @@ export class MessageDeliveryProcessor {
       return;
     }
 
-    await this.messageAttemptRepository.save(
-      MessageAttempt.create({
-        messageId: message.id,
-        attemptNumber: message.attemptCount,
-        status: MessageAttemptStatus.SUCCEEDED,
-      }),
-    );
-
+    const attempt = MessageAttempt.create({
+      messageId: message.id,
+      attemptNumber: message.attemptCount,
+      status: MessageAttemptStatus.SUCCEEDED,
+    });
     message.markSent(result.value.providerMessageId);
-    await this.messageRepository.save(message);
+    await this.saveDeliveryOutcome(message, attempt, this.statusChangedEvent(message));
     await this.timeline?.record({
       messageId: message.id.value,
       eventType: 'PROVIDER_ACCEPTED_MESSAGE',
@@ -133,22 +125,25 @@ export class MessageDeliveryProcessor {
       attemptNumber: message.attemptCount,
       metadata: { providerMessageId: result.value.providerMessageId },
     });
-    await this.notifyStatusChanged(message);
+    if (!this.messageRepository.saveWithOutbox) {
+      await this.statusWebhookPublisher.publishMessageStatusChanged({
+        applicationId: message.applicationId.value,
+        messageId: message.id.value,
+        status: message.status,
+        occurredAt: message.updatedAt.toISOString(),
+      });
+    }
   }
 
   private async handleFailure(message: Message, error: MessageDeliveryError): Promise<void> {
-    await this.messageAttemptRepository.save(
-      MessageAttempt.create({
-        messageId: message.id,
-        attemptNumber: message.attemptCount,
-        status: MessageAttemptStatus.FAILED,
-        errorCode: error.code,
-        errorMessage: error.message,
-      }),
-    );
-
+    const attempt = MessageAttempt.create({
+      messageId: message.id,
+      attemptNumber: message.attemptCount,
+      status: MessageAttemptStatus.FAILED,
+      errorCode: error.code,
+      errorMessage: error.message,
+    });
     message.markFailed();
-    await this.messageRepository.save(message);
     await this.timeline?.record({
       messageId: message.id.value,
       eventType: 'DELIVERY_ATTEMPT_FAILED',
@@ -160,17 +155,37 @@ export class MessageDeliveryProcessor {
     });
 
     if (error.retryable && this.retryPolicy.shouldRetry(message.attemptCount)) {
-      await this.scheduleRetry(message, error);
+      await this.scheduleRetry(message, attempt, error);
       return;
     }
-
+    await this.saveDeliveryOutcome(message, attempt, [
+      {
+        eventType: OutboxEventType.MESSAGE_REQUESTED_DLQ,
+        aggregateType: 'Message',
+        aggregateId: message.id.value,
+        tenantId: message.tenantId.value,
+        payload: { messageId: message.id.value },
+      },
+      this.statusChangedEvent(message),
+    ]);
     await this.sendToDeadLetterQueue(message, error);
   }
 
-  private async scheduleRetry(message: Message, error: MessageDeliveryError): Promise<void> {
+  private async scheduleRetry(
+    message: Message,
+    attempt: MessageAttempt,
+    error: MessageDeliveryError,
+  ): Promise<void> {
     message.scheduleRetry();
-    await this.messageRepository.save(message);
     const delayMs = this.retryPolicy.nextDelayMs(message.attemptCount);
+    await this.saveDeliveryOutcome(message, attempt, {
+      eventType: OutboxEventType.MESSAGE_REQUESTED,
+      aggregateType: 'Message',
+      aggregateId: message.id.value,
+      tenantId: message.tenantId.value,
+      payload: { messageId: message.id.value },
+      availableAt: new Date(Date.now() + delayMs),
+    });
     await this.timeline?.record({
       messageId: message.id.value,
       eventType: 'RETRY_SCHEDULED',
@@ -179,25 +194,27 @@ export class MessageDeliveryProcessor {
       attemptNumber: message.attemptCount,
       metadata: { delayMs, errorCode: error.code, errorMessage: error.message },
     });
-
-    const messageId = message.id.value;
-    setTimeout(() => {
-      this.messagePublisher
-        .publishMessageRequested({ messageId })
-        .catch((publishError: unknown) => {
-          this.logger.error(
-            { err: publishError, messageId },
-            'Failed to requeue message for retry.',
-          );
-        });
-    }, delayMs);
+    if (!this.messageRepository.saveWithOutbox) {
+      const messageId = message.id.value;
+      setTimeout(() => {
+        void this.messagePublisher.publishMessageRequested({ messageId });
+      }, delayMs);
+    }
   }
 
   private async sendToDeadLetterQueue(
     message: Message,
     error: MessageDeliveryError,
   ): Promise<void> {
-    await this.messagePublisher.publishToDeadLetterQueue({ messageId: message.id.value });
+    if (!this.messageRepository.saveWithOutbox) {
+      await this.messagePublisher.publishToDeadLetterQueue({ messageId: message.id.value });
+      await this.statusWebhookPublisher.publishMessageStatusChanged({
+        applicationId: message.applicationId.value,
+        messageId: message.id.value,
+        status: message.status,
+        occurredAt: message.updatedAt.toISOString(),
+      });
+    }
     await this.timeline?.record({
       messageId: message.id.value,
       eventType: 'DELIVERY_SENT_TO_DLQ',
@@ -218,22 +235,67 @@ export class MessageDeliveryProcessor {
         errorCode: error.code,
       },
     });
-    await this.notifyStatusChanged(message);
   }
 
-  private async notifyStatusChanged(message: Message): Promise<void> {
-    try {
-      await this.statusWebhookPublisher.publishMessageStatusChanged({
+  private statusChangedEvent(message: Message): {
+    eventType: OutboxEventType.MESSAGE_STATUS_CHANGED;
+    aggregateType: string;
+    aggregateId: string;
+    tenantId: string;
+    payload: Record<string, unknown>;
+  } {
+    return {
+      eventType: OutboxEventType.MESSAGE_STATUS_CHANGED,
+      aggregateType: 'Message',
+      aggregateId: message.id.value,
+      tenantId: message.tenantId.value,
+      payload: {
         applicationId: message.applicationId.value,
         messageId: message.id.value,
         status: message.status,
         occurredAt: message.updatedAt.toISOString(),
-      });
-    } catch (error: unknown) {
-      this.logger.error(
-        { err: error, messageId: message.id.value },
-        'Failed to publish outbound message status webhook event.',
-      );
+        attempt: 1,
+      },
+    };
+  }
+
+  private async claimForLegacyRepository(messageId: string): Promise<Message | null> {
+    const message = await this.messageRepository.findById(UniqueId.create(messageId));
+    if (!message) return null;
+    try {
+      message.markProcessing();
+    } catch {
+      return null;
     }
+    await this.messageRepository.save(message);
+    return message;
+  }
+
+  private async saveWithOutbox(
+    message: Message,
+    events: Parameters<NonNullable<IMessageRepository['saveWithOutbox']>>[1],
+  ): Promise<void> {
+    if (this.messageRepository.saveWithOutbox) {
+      await this.messageRepository.saveWithOutbox(message, events);
+      return;
+    }
+    await this.messageRepository.save(message);
+  }
+
+  private async saveDeliveryOutcome(
+    message: Message,
+    attempt: MessageAttempt,
+    events: Parameters<NonNullable<IMessageRepository['saveDeliveryOutcome']>>[2],
+  ): Promise<void> {
+    if (this.messageRepository.saveDeliveryOutcome) {
+      await this.messageRepository.saveDeliveryOutcome(message, attempt, events);
+      return;
+    }
+    await this.messageAttemptRepository.save(attempt);
+    if (events) {
+      await this.saveWithOutbox(message, events);
+      return;
+    }
+    await this.messageRepository.save(message);
   }
 }

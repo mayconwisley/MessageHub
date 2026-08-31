@@ -7,9 +7,12 @@ import { ApplicationPhoneNumberLinkOrmEntity } from '@modules/applications/infra
 import { MessageOrmEntity } from '@modules/messages/infrastructure/entities/message.orm-entity';
 import { PhoneNumberOrmEntity } from '@modules/phone-numbers/infrastructure/entities/phone-number.orm-entity';
 import { WhatsAppAccountOrmEntity } from '@modules/whatsapp-accounts/infrastructure/entities/whatsapp-account.orm-entity';
+import { EmailMessageOrmEntity } from '@modules/emails/infrastructure/entities/email-message.orm-entity';
+import { OutboxEventOrmEntity } from '@infrastructure/database/entities/outbox-event.orm-entity';
 import {
   IMonitoringReadRepository,
   IntegrationMonitorDto,
+  OperationalSummaryDto,
 } from '../application/ports/monitoring-read.repository.interface';
 
 interface PhoneMonitorRow {
@@ -33,14 +36,49 @@ export class MonitoringReadRepository implements IMonitoringReadRepository {
     private readonly phones: Repository<PhoneNumberOrmEntity>,
     @InjectRepository(WhatsAppAccountOrmEntity)
     private readonly accounts: Repository<WhatsAppAccountOrmEntity>,
+    @InjectRepository(EmailMessageOrmEntity)
+    private readonly emails: Repository<EmailMessageOrmEntity>,
+    @InjectRepository(OutboxEventOrmEntity)
+    private readonly outbox: Repository<OutboxEventOrmEntity>,
   ) {}
+  async getOperationalSummary(): Promise<OperationalSummaryDto> {
+    const since = new Date(Date.now() - 86_400_000);
+    const pendingOutbox = this.outbox
+      .createQueryBuilder('event')
+      .where('event.processed_at IS NULL')
+      .andWhere('event.failed_at IS NULL');
+    const [pendingMessages, failedMessages, pendingEmails, failedEmails, pending, failed, oldest] =
+      await Promise.all([
+        this.messages.count({ where: { status: 'PENDING' } }),
+        this.messages
+          .createQueryBuilder('message')
+          .where("message.status = 'FAILED'")
+          .andWhere('message.updated_at >= :since', { since })
+          .getCount(),
+        this.emails.count({ where: { status: 'PENDING' } }),
+        this.emails
+          .createQueryBuilder('email')
+          .where("email.status = 'FAILED'")
+          .andWhere('email.updated_at >= :since', { since })
+          .getCount(),
+        pendingOutbox.clone().getCount(),
+        this.outbox.createQueryBuilder('event').where('event.failed_at IS NOT NULL').getCount(),
+        pendingOutbox.orderBy('event.occurred_at', 'ASC').getOne(),
+      ]);
+    return {
+      generatedAt: new Date(),
+      messages: { pending: pendingMessages, failedLast24Hours: failedMessages },
+      emails: { pending: pendingEmails, failedLast24Hours: failedEmails },
+      outbox: { pending, failed, oldestPendingAt: oldest?.occurredAt ?? null },
+    };
+  }
   async getIntegrationMonitor(applicationId: string): Promise<IntegrationMonitorDto | null> {
     const application = await this.applications.findOne({ where: { id: applicationId } });
     if (!application) return null;
     const now = Date.now();
     const minute = new Date(now - 60_000);
     const day = new Date(now - 86_400_000);
-    const [usedLastMinute, usedLastDay, keys, messages, phoneRows] = await Promise.all([
+    const [usedLastMinute, usedLastDay, keys, delivery, phoneRows] = await Promise.all([
       this.messages
         .createQueryBuilder('m')
         .where('m.application_id = :applicationId AND m.created_at >= :minute', {
@@ -53,7 +91,17 @@ export class MonitoringReadRepository implements IMonitoringReadRepository {
         .where('m.application_id = :applicationId AND m.created_at >= :day', { applicationId, day })
         .getCount(),
       this.apiKeys.find({ where: { applicationId } }),
-      this.messages.find({ where: { applicationId }, order: { createdAt: 'DESC' }, take: 10000 }),
+      this.messages
+        .createQueryBuilder('m')
+        .select('m.status', 'status')
+        .addSelect('COUNT(*)', 'total')
+        .where('m.application_id = :applicationId AND m.created_at >= :day', {
+          applicationId,
+          day,
+        })
+        .andWhere("m.status IN ('SENT', 'DELIVERED', 'READ', 'FAILED')")
+        .groupBy('m.status')
+        .getRawMany<{ status: string; total: string }>(),
       this.phones
         .createQueryBuilder('p')
         .innerJoin(WhatsAppAccountOrmEntity, 'a', 'a.id = p.whatsapp_account_id')
@@ -70,10 +118,10 @@ export class MonitoringReadRepository implements IMonitoringReadRepository {
         ])
         .getRawMany<PhoneMonitorRow>(),
     ]);
-    const final = messages.filter((message) =>
-      ['SENT', 'DELIVERED', 'READ', 'FAILED'].includes(message.status),
-    );
-    const failed = final.filter((message) => message.status === 'FAILED').length;
+    const final = delivery.reduce((total, item) => total + Number(item.total), 0);
+    const failed = delivery
+      .filter((item) => item.status === 'FAILED')
+      .reduce((total, item) => total + Number(item.total), 0);
     const quotaRatio = Math.max(
       usedLastMinute / application.quotaPerMinute,
       usedLastDay / application.quotaPerDay,
@@ -138,9 +186,9 @@ export class MonitoringReadRepository implements IMonitoringReadRepository {
         };
       }),
       delivery: {
-        sentLast24Hours: final.length - failed,
+        sentLast24Hours: final - failed,
         failedLast24Hours: failed,
-        failureRate: final.length ? Math.round((failed / final.length) * 1000) / 10 : 0,
+        failureRate: final ? Math.round((failed / final) * 1000) / 10 : 0,
       },
     };
   }

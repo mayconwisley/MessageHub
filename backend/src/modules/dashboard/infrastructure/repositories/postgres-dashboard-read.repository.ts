@@ -92,6 +92,7 @@ export class PostgresDashboardReadRepository implements IDashboardReadRepository
         .andWhere('message.status IN (:...statuses)', {
           statuses: ['SENT', 'DELIVERED', 'READ', 'FAILED'],
         })
+        .andWhere('message.updated_at >= :failedSince', { failedSince })
         .groupBy('message.status')
         .getRawMany<{ status: string; total: string }>(),
     ]);

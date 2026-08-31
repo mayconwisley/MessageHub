@@ -12,7 +12,7 @@
 # src/ - não é possível "podar" para node_modules só de produção sem reescrever
 # esse mecanismo de migrations.
 
-ARG NODE_VERSION=22-alpine
+ARG NODE_VERSION=24-alpine
 
 FROM node:${NODE_VERSION} AS deps
 WORKDIR /app
@@ -41,6 +41,6 @@ USER messagehub
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD node -e "require('http').get('http://127.0.0.1:'+(process.env.PORT||3000)+'/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+  CMD node -e "require('http').get('http://127.0.0.1:'+(process.env.PORT||3000)+'/health/live',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
 
 CMD ["node", "dist/main"]

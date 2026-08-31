@@ -20,6 +20,7 @@ export class EmailWorker {
       setup: async (channel: Channel) => {
         await channel.assertQueue(EMAIL_REQUESTED_QUEUE, { durable: true });
         await channel.assertQueue(EMAIL_REQUESTED_DLQ, { durable: true });
+        await channel.prefetch(10);
         await channel.consume(EMAIL_REQUESTED_QUEUE, (message) => {
           void this.handle(message, channel);
         });
@@ -31,13 +32,22 @@ export class EmailWorker {
     try {
       const payload = JSON.parse(message.content.toString()) as EmailRequestedPayload;
       await this.processor.process(payload.emailMessageId);
+      channel.ack(message);
     } catch (error: unknown) {
       this.logger.error(
         { err: error },
-        'Unexpected failure while processing email.requested event.',
+        'Unexpected failure while processing email.requested event; sending it to DLQ.',
       );
-    } finally {
-      channel.ack(message);
+      try {
+        await this.channel.sendToQueue(EMAIL_REQUESTED_DLQ, message.content, { persistent: true });
+        channel.ack(message);
+      } catch (dlqError: unknown) {
+        this.logger.error(
+          { err: dlqError },
+          'Failed to publish email.requested event to DLQ; requeueing it.',
+        );
+        channel.nack(message, false, true);
+      }
     }
   }
 }

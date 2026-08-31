@@ -24,6 +24,8 @@ import {
   IMessageTimelineRepository,
   MESSAGE_TIMELINE_REPOSITORY,
 } from '@modules/messages/application/ports/message-timeline.repository.interface';
+import { OutboxRepository } from '@infrastructure/outbox/outbox.repository';
+import { OutboxEventType } from '@shared/outbox';
 
 interface MetaStatus {
   id?: string;
@@ -60,6 +62,7 @@ export class MetaWebhookProcessor {
     private readonly inboundMessageWebhookPublisher: IInboundMessageWebhookPublisher,
     private readonly logger: PinoLogger,
     @Inject(MESSAGE_TIMELINE_REPOSITORY) private readonly timeline?: IMessageTimelineRepository,
+    private readonly outbox?: OutboxRepository,
   ) {
     this.logger.setContext(MetaWebhookProcessor.name);
   }
@@ -92,7 +95,24 @@ export class MetaWebhookProcessor {
     const senderId = typeof message.from === 'string' ? message.from : '';
     const contact = contacts.find((item) => item.wa_id === senderId);
     for (const applicationId of applicationIds) {
-      try {
+      if (this.outbox) {
+        await this.outbox.add({
+          eventType: OutboxEventType.INBOUND_MESSAGE_WEBHOOK,
+          aggregateType: 'InboundMessageWebhook',
+          aggregateId: applicationId.value,
+          payload: {
+            applicationId: applicationId.value,
+            phoneNumberId: providerPhoneNumberId,
+            sender: {
+              id: contact?.wa_id ?? senderId,
+              ...(contact?.profile?.name ? { displayName: contact.profile.name } : {}),
+            },
+            message,
+            receivedAt: new Date().toISOString(),
+            attempt: 1,
+          },
+        });
+      } else {
         await this.inboundMessageWebhookPublisher.publishInboundMessageReceived({
           applicationId: applicationId.value,
           phoneNumberId: providerPhoneNumberId,
@@ -103,11 +123,6 @@ export class MetaWebhookProcessor {
           message,
           receivedAt: new Date().toISOString(),
         });
-      } catch (error: unknown) {
-        this.logger.error(
-          { err: error, applicationId: applicationId.value },
-          'Failed to publish inbound message webhook event.',
-        );
       }
     }
   }
@@ -115,7 +130,24 @@ export class MetaWebhookProcessor {
     if (!status.id || !status.status) return;
     const message = await this.messages.findByProviderMessageId(status.id);
     if (!message?.applyProviderStatus(status.status)) return;
-    await this.messages.save(message);
+    const statusEvent = {
+      eventType: OutboxEventType.MESSAGE_STATUS_CHANGED,
+      aggregateType: 'Message',
+      aggregateId: message.id.value,
+      tenantId: message.tenantId.value,
+      payload: {
+        applicationId: message.applicationId.value,
+        messageId: message.id.value,
+        status: message.status,
+        occurredAt: message.updatedAt.toISOString(),
+        attempt: 1,
+      },
+    };
+    if (this.messages.saveWithOutbox) {
+      await this.messages.saveWithOutbox(message, statusEvent);
+    } else {
+      await this.messages.save(message);
+    }
     await this.timeline?.record({
       messageId: message.id.value,
       eventType: 'PROVIDER_STATUS_RECEIVED',
@@ -123,18 +155,13 @@ export class MetaWebhookProcessor {
       source: 'META_WEBHOOK',
       metadata: { providerMessageId: status.id, providerStatus: status.status },
     });
-    try {
+    if (!this.messages.saveWithOutbox) {
       await this.statusWebhookPublisher.publishMessageStatusChanged({
         applicationId: message.applicationId.value,
         messageId: message.id.value,
         status: message.status,
         occurredAt: message.updatedAt.toISOString(),
       });
-    } catch (error: unknown) {
-      this.logger.error(
-        { err: error, messageId: message.id.value },
-        'Failed to publish outbound message status webhook event.',
-      );
     }
   }
 }

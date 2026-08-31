@@ -26,6 +26,7 @@ import {
 } from '@modules/messages/application/ports/message-status-webhook-publisher.interface';
 import { MessageDeliveryProcessor } from '@modules/messages/application/services/message-delivery-processor.service';
 import { MessageRetryPolicy } from '@modules/messages/application/services/message-retry-policy';
+import { NewOutboxEvent } from '@shared/outbox';
 
 function expectOk<T>(result: Result<T, unknown>): T {
   if (result.isFailure) {
@@ -35,7 +36,27 @@ function expectOk<T>(result: Result<T, unknown>): T {
 }
 
 class FakeMessageRepository implements IMessageRepository {
-  constructor(private readonly message: Message) {}
+  readonly deliveryOutcomes: Array<{
+    message: Message;
+    attempt: MessageAttempt;
+    events?: NewOutboxEvent | NewOutboxEvent[];
+  }> = [];
+  saveDeliveryOutcome?: (
+    message: Message,
+    attempt: MessageAttempt,
+    events?: NewOutboxEvent | NewOutboxEvent[],
+  ) => Promise<void>;
+
+  constructor(
+    private readonly message: Message,
+    persistDeliveryOutcomesAtomically = false,
+  ) {
+    if (persistDeliveryOutcomesAtomically) {
+      this.saveDeliveryOutcome = async (entity, attempt, events) => {
+        this.deliveryOutcomes.push({ message: entity, attempt, events });
+      };
+    }
+  }
   async save(): Promise<void> {}
   async saveWithQuotaCheck() {
     return { outcome: 'saved' as const };
@@ -137,12 +158,14 @@ function buildProcessor(
   phoneNumber: PhoneNumber | null,
   account: WhatsAppAccount | null,
   providerResult: Result<ProviderMessageResult, MessageDeliveryError>,
+  persistDeliveryOutcomesAtomically = false,
 ) {
   const messageAttemptRepository = new FakeMessageAttemptRepository();
   const messagePublisher = new FakeMessagePublisher();
   const statusWebhookPublisher = new FakeStatusWebhookPublisher();
+  const messageRepository = new FakeMessageRepository(message, persistDeliveryOutcomesAtomically);
   const processor = new MessageDeliveryProcessor(
-    new FakeMessageRepository(message),
+    messageRepository,
     messageAttemptRepository,
     new FakePhoneNumberRepository(phoneNumber),
     new FakeWhatsAppAccountRepository(account),
@@ -152,7 +175,13 @@ function buildProcessor(
     new MessageRetryPolicy(),
     fakeLogger,
   );
-  return { processor, messageAttemptRepository, messagePublisher, statusWebhookPublisher };
+  return {
+    processor,
+    messageRepository,
+    messageAttemptRepository,
+    messagePublisher,
+    statusWebhookPublisher,
+  };
 }
 
 describe('MessageDeliveryProcessor', () => {
@@ -196,6 +225,30 @@ describe('MessageDeliveryProcessor', () => {
     expect(messageAttemptRepository.saved).toHaveLength(1);
     expect(statusWebhookPublisher.notified).toHaveLength(1);
     expect(statusWebhookPublisher.notified[0].status).toBe(MessageStatus.SENT);
+  });
+
+  it('persiste mensagem, tentativa e evento de status pelo contrato atômico', async () => {
+    const { message, phoneNumber, whatsAppAccount } = buildMessageWithChannel();
+    const { processor, messageRepository, messageAttemptRepository, statusWebhookPublisher } =
+      buildProcessor(
+        message,
+        phoneNumber,
+        whatsAppAccount,
+        Result.ok({ providerMessageId: 'wamid-1' }),
+        true,
+      );
+
+    await processor.process(message.id.value);
+
+    expect(messageRepository.deliveryOutcomes).toEqual([
+      expect.objectContaining({
+        message,
+        attempt: expect.objectContaining({ status: 'SUCCEEDED' }),
+        events: expect.objectContaining({ eventType: 'MESSAGE_STATUS_CHANGED' }),
+      }),
+    ]);
+    expect(messageAttemptRepository.saved).toHaveLength(0);
+    expect(statusWebhookPublisher.notified).toHaveLength(1);
   });
 
   it('sends the message straight to the DLQ when the channel is not found (non-retryable)', async () => {

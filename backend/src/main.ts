@@ -12,6 +12,7 @@ import { DefaultChannelSeedService } from './modules/whatsapp-accounts/applicati
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { rawBody: true });
+  app.enableShutdownHooks();
   const logger = app.get(Logger);
   app.useLogger(logger);
 

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { TerminusModule } from '@nestjs/terminus';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { DataSource } from 'typeorm';
 import { ConfigurationModule } from './infrastructure/configuration/configuration.module';
 import { DatabaseModule } from './infrastructure/database/database.module';
 import { LoggingModule } from './infrastructure/logging/logging.module';
@@ -27,6 +28,8 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { SystemLogsModule } from './modules/system-logs/system-logs.module';
 import { EmailConfigurationsModule } from './modules/email-configurations/email-configurations.module';
 import { EmailsModule } from './modules/emails/emails.module';
+import { OutboxModule } from './infrastructure/outbox/outbox.module';
+import { PostgresThrottlerStorage } from './infrastructure/throttling/postgres-throttler.storage';
 
 @Module({
   imports: [
@@ -35,9 +38,15 @@ import { EmailsModule } from './modules/emails/emails.module';
     LoggingModule,
     DatabaseModule,
     RabbitMqModule,
+    OutboxModule,
     TerminusModule,
-    ThrottlerModule.forRoot({
-      throttlers: [{ name: 'default', ttl: 60_000, limit: 100 }],
+    ThrottlerModule.forRootAsync({
+      imports: [DatabaseModule],
+      inject: [DataSource],
+      useFactory: (dataSource: DataSource) => ({
+        storage: new PostgresThrottlerStorage(dataSource),
+        throttlers: [{ name: 'default', ttl: 60_000, limit: 100 }],
+      }),
     }),
     TenantsModule,
     IdentityModule,

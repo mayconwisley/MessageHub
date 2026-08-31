@@ -24,10 +24,12 @@ import {
   NotificationsActiveOutlined,
   ScienceOutlined,
   EmailOutlined,
+  RefreshOutlined,
 } from '@mui/icons-material';
 import {
   AppBar,
   Box,
+  CircularProgress,
   Collapse,
   CssBaseline,
   Drawer,
@@ -44,7 +46,16 @@ import {
   type Theme,
 } from '@mui/material';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { lazy, Suspense, useMemo, useState, type ReactNode } from 'react';
+import {
+  Component,
+  lazy,
+  Suspense,
+  useEffect,
+  useMemo,
+  useState,
+  type ErrorInfo,
+  type ReactNode,
+} from 'react';
 import {
   NavLink,
   Navigate,
@@ -56,6 +67,7 @@ import {
 } from 'react-router-dom';
 import { BrowserRouter } from 'react-router-dom';
 import { authStorage } from '../services/auth-storage';
+import { SESSION_EXPIRED_EVENT } from '../services/http-client';
 import { logout as logoutRequest } from '../modules/auth/auth.api';
 import { ThemeModeProvider } from './ThemeModeProvider';
 import { useThemeMode } from './useThemeMode';
@@ -144,6 +156,7 @@ interface NavLeaf {
   to: string;
   label: string;
   icon: ReactNode;
+  platformOnly?: boolean;
 }
 
 interface NavGroupConfig {
@@ -159,7 +172,7 @@ const navGroups: NavGroupConfig[] = [
     label: 'Administração',
     icon: <AdminPanelSettingsOutlined />,
     items: [
-      { to: '/tenants', label: 'Tenants', icon: <AccountTreeOutlined /> },
+      { to: '/tenants', label: 'Tenants', icon: <AccountTreeOutlined />, platformOnly: true },
       { to: '/applications', label: 'Aplicações', icon: <AppsOutlined /> },
       {
         to: '/whatsapp-accounts',
@@ -169,8 +182,8 @@ const navGroups: NavGroupConfig[] = [
       { to: '/phone-numbers', label: 'Números', icon: <PhoneOutlined /> },
       { to: '/email-configurations', label: 'E-mail SMTP', icon: <EmailOutlined /> },
       { to: '/api-keys', label: 'Chaves de API', icon: <VpnKeyOutlined /> },
-      { to: '/users', label: 'Usuários', icon: <PeopleOutlined /> },
-      { to: '/audit-logs', label: 'Eventos e logs', icon: <HistoryOutlined /> },
+      { to: '/users', label: 'Usuários', icon: <PeopleOutlined />, platformOnly: true },
+      { to: '/audit-logs', label: 'Eventos e logs', icon: <HistoryOutlined />, platformOnly: true },
     ],
   },
   {
@@ -188,14 +201,20 @@ const navGroups: NavGroupConfig[] = [
         label: 'Documentação da API',
         icon: <IntegrationInstructionsOutlined />,
       },
-      { to: '/webhooks', label: 'Webhooks e DLQ', icon: <WebhookOutlined /> },
-      { to: '/monitoring', label: 'Monitor de integrações', icon: <MonitorHeartOutlined /> },
+      { to: '/webhooks', label: 'Webhooks e DLQ', icon: <WebhookOutlined />, platformOnly: true },
+      {
+        to: '/monitoring',
+        label: 'Monitor de integrações',
+        icon: <MonitorHeartOutlined />,
+        platformOnly: true,
+      },
       {
         to: '/engineering-alerts',
         label: 'Alertas de engenharia',
         icon: <NotificationsActiveOutlined />,
+        platformOnly: true,
       },
-      { to: '/sandbox', label: 'Ambiente sandbox', icon: <ScienceOutlined /> },
+      { to: '/sandbox', label: 'Ambiente sandbox', icon: <ScienceOutlined />, platformOnly: true },
     ],
   },
 ];
@@ -264,6 +283,7 @@ function Layout() {
   const { mode, toggleMode } = useThemeMode();
   const isDesktop = useMediaQuery((theme: Theme) => theme.breakpoints.up('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
+  const isPlatformAdmin = authStorage.getSessionUser()?.role === 'platform_admin';
   const closeMobileNav = () => setMobileOpen(false);
   const logout = async () => {
     try {
@@ -276,12 +296,18 @@ function Layout() {
     void navigate('/login');
   };
 
+  const visibleGroups = navGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !item.platformOnly || isPlatformAdmin),
+    }))
+    .filter((group) => group.items.length > 0);
   const navList = (
     <List sx={{ px: 0.5 }}>
       {topLinks.map((item) => (
         <NavItem key={item.to} {...item} onNavigate={closeMobileNav} />
       ))}
-      {navGroups.map((group) => (
+      {visibleGroups.map((group) => (
         <NavGroup key={group.label} {...group} onNavigate={closeMobileNav} />
       ))}
       {bottomLinks.map((item) => (
@@ -381,6 +407,59 @@ function LoginRoute() {
   return authStorage.getSessionToken() ? <Navigate to="/" replace /> : <LoginPage />;
 }
 
+interface RouteErrorBoundaryState {
+  hasError: boolean;
+}
+
+class RouteErrorBoundary extends Component<{ children: ReactNode }, RouteErrorBoundaryState> {
+  state: RouteErrorBoundaryState = { hasError: false };
+
+  static getDerivedStateFromError(): RouteErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch(_error: Error, _errorInfo: ErrorInfo): void {
+    // O erro é registrado pelo boundary sem expor detalhes técnicos ao operador.
+  }
+
+  render(): ReactNode {
+    if (this.state.hasError) {
+      return (
+        <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', p: 3 }}>
+          <Box sx={{ maxWidth: 440, textAlign: 'center' }}>
+            <Typography variant="h5" gutterBottom>
+              Não foi possível carregar esta tela
+            </Typography>
+            <Typography color="text.secondary" sx={{ mb: 2 }}>
+              Tente novamente. Se o problema persistir, informe o horário da ocorrência ao suporte.
+            </Typography>
+            <IconButton aria-label="Tentar novamente" onClick={() => window.location.reload()}>
+              <RefreshOutlined />
+            </IconButton>
+          </Box>
+        </Box>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function SessionExpirationHandler() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const onSessionExpired = () => {
+      authStorage.removeSessionToken();
+      queryClient.clear();
+      void navigate('/login', { replace: true });
+    };
+    window.addEventListener(SESSION_EXPIRED_EVENT, onSessionExpired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onSessionExpired);
+  }, [navigate]);
+
+  return null;
+}
+
 function ThemedApp() {
   const { mode } = useThemeMode();
   const theme = useMemo(() => buildTheme(mode), [mode]);
@@ -390,31 +469,41 @@ function ThemedApp() {
       <CssBaseline />
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
-          <Suspense fallback={<Box sx={{ minHeight: '100vh' }} />}>
-            <Routes>
-              <Route path="/login" element={<LoginRoute />} />
-              <Route element={<ProtectedRoute />}>
-                <Route path="/" element={<DashboardPage />} />
-                <Route path="/tenants" element={<TenantsPage />} />
-                <Route path="/applications" element={<ApplicationsPage />} />
-                <Route path="/whatsapp-accounts" element={<WhatsAppAccountsPage />} />
-                <Route path="/phone-numbers" element={<PhoneNumbersPage />} />
-                <Route path="/email-configurations" element={<EmailConfigurationsPage />} />
-                <Route path="/api-keys" element={<ApiKeysPage />} />
-                <Route path="/users" element={<UsersPage />} />
-                <Route path="/audit-logs" element={<AuditLogsPage />} />
-                <Route path="/messages" element={<MessagesPage />} />
-                <Route path="/templates" element={<TemplatesPage />} />
-                <Route path="/api-docs" element={<ApiDocsPage />} />
-                <Route path="/webhooks" element={<WebhooksPage />} />
-                <Route path="/monitoring" element={<MonitoringPage />} />
-                <Route path="/engineering-alerts" element={<EngineeringAlertsPage />} />
-                <Route path="/sandbox" element={<SandboxPage />} />
-                <Route path="/help" element={<HelpPage />} />
-              </Route>
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </Suspense>
+          <SessionExpirationHandler />
+          <RouteErrorBoundary>
+            <Suspense
+              fallback={
+                <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', gap: 2 }}>
+                  <CircularProgress aria-label="Carregando tela" />
+                  <Typography color="text.secondary">Carregando tela...</Typography>
+                </Box>
+              }
+            >
+              <Routes>
+                <Route path="/login" element={<LoginRoute />} />
+                <Route element={<ProtectedRoute />}>
+                  <Route path="/" element={<DashboardPage />} />
+                  <Route path="/tenants" element={<TenantsPage />} />
+                  <Route path="/applications" element={<ApplicationsPage />} />
+                  <Route path="/whatsapp-accounts" element={<WhatsAppAccountsPage />} />
+                  <Route path="/phone-numbers" element={<PhoneNumbersPage />} />
+                  <Route path="/email-configurations" element={<EmailConfigurationsPage />} />
+                  <Route path="/api-keys" element={<ApiKeysPage />} />
+                  <Route path="/users" element={<UsersPage />} />
+                  <Route path="/audit-logs" element={<AuditLogsPage />} />
+                  <Route path="/messages" element={<MessagesPage />} />
+                  <Route path="/templates" element={<TemplatesPage />} />
+                  <Route path="/api-docs" element={<ApiDocsPage />} />
+                  <Route path="/webhooks" element={<WebhooksPage />} />
+                  <Route path="/monitoring" element={<MonitoringPage />} />
+                  <Route path="/engineering-alerts" element={<EngineeringAlertsPage />} />
+                  <Route path="/sandbox" element={<SandboxPage />} />
+                  <Route path="/help" element={<HelpPage />} />
+                </Route>
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </Suspense>
+          </RouteErrorBoundary>
         </BrowserRouter>
       </QueryClientProvider>
     </ThemeProvider>

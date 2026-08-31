@@ -17,6 +17,7 @@ import { SendEmailCommand } from '../commands/send-email.command';
 import { EmailMessageDto } from '../dto/email-message.dto';
 import { EmailMessageMapper } from '../mappers/email-message.mapper';
 import { EMAIL_PUBLISHER, IEmailPublisher } from '../ports/email-publisher.interface';
+import { OutboxEventType } from '@shared/outbox';
 
 @CommandHandler(SendEmailCommand)
 export class SendEmailHandler implements ICommandHandler<SendEmailCommand> {
@@ -53,8 +54,30 @@ export class SendEmailHandler implements ICommandHandler<SendEmailCommand> {
       requestId: command.requestId,
     });
     if (result.isFailure) return Result.fail(result.error);
-    await this.emails.save(result.value);
-    await this.publisher.publishEmailRequested({ emailMessageId: result.value.id.value });
+    try {
+      const outboxEvent = {
+        eventType: OutboxEventType.EMAIL_REQUESTED,
+        aggregateType: 'EmailMessage',
+        aggregateId: result.value.id.value,
+        tenantId: application.tenantId.value,
+        payload: { emailMessageId: result.value.id.value },
+      };
+      if (this.emails.saveWithOutbox) {
+        await this.emails.saveWithOutbox(result.value, outboxEvent);
+      } else {
+        await this.emails.save(result.value);
+        await this.publisher.publishEmailRequested({ emailMessageId: result.value.id.value });
+      }
+    } catch (error: unknown) {
+      if (command.idempotencyKey) {
+        const concurrent = await this.emails.findByIdempotencyKey(
+          applicationId,
+          command.idempotencyKey,
+        );
+        if (concurrent) return Result.ok(EmailMessageMapper.toDto(concurrent));
+      }
+      throw error;
+    }
     return Result.ok(EmailMessageMapper.toDto(result.value));
   }
 }

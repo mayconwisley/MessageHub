@@ -1,11 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UniqueId } from '@shared/domain';
-import { Repository } from 'typeorm';
+import { Brackets, Repository } from 'typeorm';
 import { EmailMessage, EmailMessageProps } from '../../domain/entities/email-message.entity';
-import { EmailStatus } from '../../domain/enums/email-status.enum';
-import { IEmailMessageRepository } from '../../domain/repositories/email-message.repository.interface';
+import {
+  IEmailMessageRepository,
+  ListEmailsFilter,
+} from '../../domain/repositories/email-message.repository.interface';
 import { EmailMessageOrmEntity } from '../entities/email-message.orm-entity';
+import { EmailAttemptOrmEntity } from '../entities/email-attempt.orm-entity';
+import { EmailAttempt } from '../../domain/entities/email-attempt.entity';
+import { EmailStatus } from '../../domain/enums/email-status.enum';
+import { NewOutboxEvent } from '@shared/outbox';
+import { OutboxEventOrmEntity } from '@infrastructure/database/entities/outbox-event.orm-entity';
+import { OutboxRepository } from '@infrastructure/outbox/outbox.repository';
+import { PaginatedResult } from '@shared/types';
 
 @Injectable()
 export class PostgresEmailMessageRepository implements IEmailMessageRepository {
@@ -15,6 +24,55 @@ export class PostgresEmailMessageRepository implements IEmailMessageRepository {
   ) {}
   async save(message: EmailMessage): Promise<void> {
     await this.repository.save(this.toOrm(message));
+  }
+  async saveWithOutbox(
+    message: EmailMessage,
+    events: NewOutboxEvent | NewOutboxEvent[],
+  ): Promise<void> {
+    await this.repository.manager.transaction(async (manager) => {
+      await manager.save(this.toOrm(message));
+      await manager
+        .getRepository(OutboxEventOrmEntity)
+        .save(
+          (Array.isArray(events) ? events : [events]).map((event) =>
+            OutboxRepository.createEntity(event),
+          ),
+        );
+    });
+  }
+  async saveDeliveryOutcome(
+    message: EmailMessage,
+    attempt: EmailAttempt,
+    events?: NewOutboxEvent | NewOutboxEvent[],
+  ): Promise<void> {
+    await this.repository.manager.transaction(async (manager) => {
+      await manager.save(this.toOrm(message));
+      await manager.save(this.toAttemptOrm(attempt));
+      if (events) {
+        await manager
+          .getRepository(OutboxEventOrmEntity)
+          .save(
+            (Array.isArray(events) ? events : [events]).map((event) =>
+              OutboxRepository.createEntity(event),
+            ),
+          );
+      }
+    });
+  }
+  async claimForProcessing(id: UniqueId): Promise<EmailMessage | null> {
+    const result = await this.repository
+      .createQueryBuilder()
+      .update(EmailMessageOrmEntity)
+      .set({
+        status: EmailStatus.PROCESSING,
+        attemptCount: () => '"attempt_count" + 1',
+        updatedAt: new Date(),
+      })
+      .where('id = :id', { id: id.value })
+      .andWhere('status IN (:...statuses)', { statuses: [EmailStatus.PENDING, EmailStatus.RETRY] })
+      .execute();
+    if (!result.affected) return null;
+    return this.findById(id);
   }
   async findById(id: UniqueId): Promise<EmailMessage | null> {
     const row = await this.repository.findOne({ where: { id: id.value } });
@@ -28,6 +86,39 @@ export class PostgresEmailMessageRepository implements IEmailMessageRepository {
       where: { applicationId: applicationId.value, idempotencyKey },
     });
     return row ? this.toDomain(row) : null;
+  }
+  async listByApplicationId(
+    applicationId: UniqueId,
+    page: number,
+    pageSize: number,
+    filter?: ListEmailsFilter,
+  ): Promise<PaginatedResult<EmailMessage>> {
+    const query = this.repository
+      .createQueryBuilder('email')
+      .where('email.application_id = :applicationId', { applicationId: applicationId.value });
+
+    if (filter?.status) query.andWhere('email.status = :status', { status: filter.status });
+    if (filter?.search?.trim()) {
+      const search = `%${filter.search.trim()}%`;
+      query.andWhere(
+        new Brackets((where) =>
+          where
+            .where('email.id::text ILIKE :search', { search })
+            .orWhere('email.provider_message_id ILIKE :search', { search })
+            .orWhere('email.request_id ILIKE :search', { search })
+            .orWhere('email.idempotency_key ILIKE :search', { search })
+            .orWhere('email.to ILIKE :search', { search })
+            .orWhere('email.subject ILIKE :search', { search }),
+        ),
+      );
+    }
+
+    const [rows, total] = await query
+      .orderBy('email.created_at', 'DESC')
+      .skip((page - 1) * pageSize)
+      .take(pageSize)
+      .getManyAndCount();
+    return { items: rows.map((row) => this.toDomain(row)), total, page, pageSize };
   }
   private toOrm(message: EmailMessage): EmailMessageOrmEntity {
     const row = new EmailMessageOrmEntity();
@@ -64,5 +155,17 @@ export class PostgresEmailMessageRepository implements IEmailMessageRepository {
       updatedAt: row.updatedAt,
     };
     return EmailMessage.reconstitute(props, UniqueId.create(row.id));
+  }
+
+  private toAttemptOrm(attempt: EmailAttempt): EmailAttemptOrmEntity {
+    const row = new EmailAttemptOrmEntity();
+    row.id = attempt.id.value;
+    row.emailMessageId = attempt.emailMessageId.value;
+    row.attemptNumber = attempt.attemptNumber;
+    row.status = attempt.status;
+    row.errorCode = attempt.errorCode;
+    row.errorMessage = attempt.errorMessage;
+    row.occurredAt = attempt.occurredAt;
+    return row;
   }
 }

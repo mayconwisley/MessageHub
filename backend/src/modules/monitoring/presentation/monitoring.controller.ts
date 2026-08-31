@@ -5,6 +5,7 @@ import { UserSessionAuthGuard } from '@presentation/http/guards/user-session-aut
 import { PlatformAdminGuard } from '@presentation/http/guards/platform-admin.guard';
 import { toHttpException } from '@presentation/http/result-http.mapper';
 import { GetIntegrationMonitorQuery } from '../application/queries/get-integration-monitor.query';
+import { GetOperationalSummaryQuery } from '../application/queries/get-operational-summary.query';
 @ApiTags('monitoring')
 @ApiBearerAuth()
 @UseGuards(UserSessionAuthGuard, PlatformAdminGuard)
@@ -16,5 +17,10 @@ export class MonitoringController {
     const result = await this.mediator.query(new GetIntegrationMonitorQuery(applicationId));
     if (result.isFailure) throw toHttpException(result.error);
     return result.value;
+  }
+
+  @Get('operational-summary')
+  async getOperationalSummary() {
+    return this.mediator.query(new GetOperationalSummaryQuery());
   }
 }

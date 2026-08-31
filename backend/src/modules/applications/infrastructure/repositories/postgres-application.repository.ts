@@ -10,12 +10,14 @@ import {
 } from '../../domain/repositories/application.repository.interface';
 import { ApplicationOrmEntity } from '../entities/application.orm-entity';
 import { PaginatedResult } from '@shared/types';
+import { WebhookSecretCipherService } from '../security/webhook-secret-cipher.service';
 
 @Injectable()
 export class PostgresApplicationRepository implements IApplicationRepository {
   constructor(
     @InjectRepository(ApplicationOrmEntity)
     private readonly repository: Repository<ApplicationOrmEntity>,
+    private readonly webhookSecretCipher: WebhookSecretCipherService,
   ) {}
 
   async save(application: Application): Promise<void> {
@@ -52,7 +54,9 @@ export class PostgresApplicationRepository implements IApplicationRepository {
     orm.name = application.name;
     orm.status = application.status;
     orm.webhookUrl = application.webhookUrl;
-    orm.webhookSecret = application.webhookSecret;
+    orm.webhookSecret = application.webhookSecret
+      ? this.webhookSecretCipher.encrypt(application.webhookSecret)
+      : null;
     orm.quotaPerMinute = application.quotaPerMinute;
     orm.quotaPerDay = application.quotaPerDay;
     orm.createdAt = application.createdAt;
@@ -65,7 +69,7 @@ export class PostgresApplicationRepository implements IApplicationRepository {
       name: row.name,
       status: row.status as ApplicationStatus,
       webhookUrl: row.webhookUrl,
-      webhookSecret: row.webhookSecret,
+      webhookSecret: row.webhookSecret ? this.webhookSecretCipher.decrypt(row.webhookSecret) : null,
       quotaPerMinute: row.quotaPerMinute ?? 60,
       quotaPerDay: row.quotaPerDay ?? 10_000,
       createdAt: row.createdAt,

@@ -38,6 +38,7 @@ import {
   MESSAGE_TIMELINE_REPOSITORY,
 } from '../ports/message-timeline.repository.interface';
 import { PhoneNumberResolverService } from '../services/phone-number-resolver.service';
+import { OutboxEventType } from '@shared/outbox';
 
 @CommandHandler(SendTemplateMessageCommand)
 export class SendTemplateMessageHandler implements ICommandHandler<SendTemplateMessageCommand> {
@@ -135,10 +136,20 @@ export class SendTemplateMessageHandler implements ICommandHandler<SendTemplateM
     });
     if (messageResult.isFailure) return Result.fail(messageResult.error);
     const message = messageResult.value;
-    const saveResult = await this.messageRepository.saveWithQuotaCheck(message, {
-      perMinute: application.quotaPerMinute,
-      perDay: application.quotaPerDay,
-    });
+    const saveResult = await this.messageRepository.saveWithQuotaCheck(
+      message,
+      {
+        perMinute: application.quotaPerMinute,
+        perDay: application.quotaPerDay,
+      },
+      {
+        eventType: OutboxEventType.MESSAGE_REQUESTED,
+        aggregateType: 'Message',
+        aggregateId: message.id.value,
+        tenantId: application.tenantId.value,
+        payload: { messageId: message.id.value },
+      },
+    );
     if (saveResult.outcome === 'rate_limited') {
       const scopeLabel =
         saveResult.scope === 'minute'
@@ -156,7 +167,9 @@ export class SendTemplateMessageHandler implements ICommandHandler<SendTemplateM
       source: 'API',
       metadata: { requestId: message.requestId, idempotencyKey: message.idempotencyKey },
     });
-    await this.messagePublisher.publishMessageRequested({ messageId: message.id.value });
+    if (!saveResult.outboxPersisted) {
+      await this.messagePublisher.publishMessageRequested({ messageId: message.id.value });
+    }
     return Result.ok(MessageMapper.toDto(message));
   }
 }
