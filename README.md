@@ -389,6 +389,26 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
 docker compose -f docker-compose.yml -f docker-compose.prod.yml logs --tail=100 backend migrate
 ```
 
+### Backup e recuperação de desastres
+
+O Postgres é a única fonte de verdade durável (inclusive do outbox); o RabbitMQ carrega apenas transporte volátil e é recriado vazio a qualquer momento - por isso só o Postgres precisa de backup.
+
+```bash
+# Dump manual (usa docker compose exec + pg_dump, aplica retenção local)
+./scripts/backup-postgres.sh
+
+# Restauração (destrutiva - pede confirmação, ver instruções no cabeçalho do script)
+./scripts/restore-postgres.sh backups/message-hub-message_hub-<timestamp>.dump
+```
+
+Agende `backup-postgres.sh` via cron no servidor de deploy, no diretório com o `.env` de produção, por exemplo diariamente às 3h com retenção de 14 dias local:
+
+```cron
+0 3 * * * cd /caminho/para/message-hub && ./scripts/backup-postgres.sh >> /var/log/message-hub-backup.log 2>&1
+```
+
+Defina `BACKUP_REMOTE_DIR` (destino compatível com `rsync`, ex.: `usuario@host:/backups/message-hub`) no `.env` para copiar cada dump para fora do host - sem isso, um backup que mora só no volume Docker do próprio servidor não protege contra a perda do servidor inteiro. Teste a restauração periodicamente em um ambiente separado; um backup nunca validado por restore não é confiável.
+
 ### Controles implementados
 
 - `helmet`, compressão, remoção de `X-Powered-By`, CORS explícito e `ValidationPipe` global com whitelist/forbid.
