@@ -74,13 +74,16 @@ const sections: Section[] = [
     icon: <DashboardOutlined />,
     title: 'Visão geral',
     purpose:
-      'É o dashboard operacional do Message Hub. Reúne os indicadores de estrutura, volume, entrega, saúde da operação e as mensagens mais recentes.',
+      'É o dashboard operacional do Message Hub. Reúne o estado da plataforma, indicadores de estrutura, volume, entrega, itens que precisam de atenção e a atividade técnica mais recente.',
     steps: [
+      'Consulte "Estado da plataforma" para ver, de forma independente, se API, banco de dados e RabbitMQ estão disponíveis. Atualiza automaticamente a cada 30 segundos, ou use o ícone de atualizar para checar na hora.',
+      'Use os cartões de atalho ("Consultar mensagens", "Gerenciar aplicações", "Documentação da API", "Monitor de integrações", "Alertas de engenharia", "Ambiente sandbox") para ir direto à tela correspondente.',
       'Consulte "Recursos cadastrados" para ver as quantidades de tenants, aplicações, contas WhatsApp e números disponíveis para operação.',
       'Use "Volume de mensagens" para acompanhar os envios registrados nos últimos 14 dias.',
       'Use "Status de entrega" para analisar a distribuição dos status das mensagens dos últimos 30 dias.',
-      'Em "Saúde operacional", acompanhe a taxa de sucesso, mensagens na fila, falhas nas últimas 24 horas e números ativos.',
-      'Confira "Atividade recente" para visualizar os últimos envios, com os quatro últimos dígitos do destinatário, tipo, data e status.',
+      'Em "Requer atenção", veja mensagens com falha nas últimas 24 horas e mensagens aguardando processamento — clique em qualquer linha para ir direto à tela de Mensagens filtrada.',
+      'Em "Qualidade de entrega", acompanhe a taxa de sucesso (indicador circular) e a quantidade de números ativos.',
+      'Confira "Atividade técnica recente" para visualizar os últimos envios, com os quatro últimos dígitos do destinatário, tipo, data e status.',
       'Se um indicador não carregar, use o botão de tentar novamente exibido no próprio cartão. Cada indicador é carregado de forma independente.',
     ],
     notes: [
@@ -109,14 +112,20 @@ const sections: Section[] = [
       'Cadastra aplicações consumidoras, configura o callback de status de mensagens e define quais números cada aplicação pode usar.',
     steps: [
       'Selecione um tenant em "Filtrar por tenant" para exibir a lista de aplicações — sem isso a lista não aparece.',
-      'Clique em "Criar aplicação", escolha o "Tenant" e informe o "Nome da aplicação" (mínimo 2 caracteres).',
+      'Clique em "Criar aplicação", escolha o "Tenant" e informe o "Nome da aplicação" (mínimo 2 caracteres). Uma aplicação nova nasce com quota padrão de 60 mensagens/minuto e 10.000 mensagens/dia.',
       'Para configurar o callback de status, selecione primeiro o tenant no filtro, clique em "Configurar webhook", escolha a aplicação e informe a URL HTTPS. Deixe o campo de URL vazio para remover a configuração existente.',
+      'Clique em "Configurar quotas", escolha a aplicação e informe os novos limites de "Quota por minuto" e "Quota por dia". Os valores atuais da aplicação selecionada são pré-carregados no formulário.',
       'Clique em "Vincular números", escolha a aplicação e marque os números que ela poderá usar para enviar mensagens. Salve os vínculos ao terminar.',
+      'Clique em "Ver detalhes" em qualquer linha para consultar webhook, quotas e números vinculados da aplicação em um só lugar.',
     ],
     notes: [
       {
         severity: 'info',
-        text: 'A lista, o seletor do webhook e o seletor de números respeitam o tenant escolhido. Se nenhum tenant estiver selecionado, não haverá aplicações ou números para escolher.',
+        text: 'A lista e os seletores de webhook, quotas e números respeitam o tenant escolhido. Se nenhum tenant estiver selecionado, não haverá aplicações ou números para escolher.',
+      },
+      {
+        severity: 'info',
+        text: 'O consumo efetivo das quotas configuradas aqui é acompanhado em "Monitor de integrações".',
       },
     ],
   },
@@ -181,6 +190,7 @@ const sections: Section[] = [
       'Selecione "Filtrar por tenant" e depois "Filtrar por aplicação" para ver as chaves de uma aplicação.',
       'Clique em "Gerar chave de API", escolha "Tenant" e "Aplicação", o "Tipo" (Plataforma ou Tenant) e, se quiser, uma data em "Expira em (opcional)".',
       'Copie o valor completo da chave exibido no alerta imediatamente após a criação.',
+      'Consulte as colunas "Escopos" e "Último uso" na listagem para saber o que a chave autoriza e se ela está realmente em uso ("Nunca" quando ainda não foi usada).',
       'Para desativar uma chave, clique em "Revogar" na linha correspondente — chaves já revogadas não podem ser revogadas de novo.',
     ],
     notes: [
@@ -194,16 +204,19 @@ const sections: Section[] = [
     icon: <PeopleOutlined />,
     title: 'Usuários',
     purpose:
-      'Cria usuários administrativos que poderão fazer login no console, opcionalmente vinculados a um tenant.',
+      'Cria, lista, edita e ativa/desativa usuários administrativos que podem fazer login no console, opcionalmente vinculados a um tenant.',
     steps: [
+      'Use "Buscar por nome ou e-mail" e os filtros "Papel" e "Status" para localizar um usuário na lista.',
       'Clique em "Criar usuário" e informe "Nome", "E-mail" e "Senha" (mínimo 12 caracteres).',
       'Escolha o "Papel": Administrador da plataforma, Administrador do tenant ou Operador.',
       'Se o papel escolhido não for "Administrador da plataforma", selecione também o "Tenant" — o campo aparece automaticamente e é obrigatório para papéis não globais.',
+      'Abra o menu de ações de uma linha e clique em "Editar" para alterar nome, e-mail, papel ou tenant de um usuário existente.',
+      'Use "Desativar" (com confirmação) ou "Ativar" no menu de ações para alternar o status de acesso de um usuário.',
     ],
     notes: [
       {
         severity: 'info',
-        text: 'Esta tela ainda não lista os usuários já criados — apenas permite criar novos.',
+        text: 'Um usuário não pode desativar a própria conta — a ação é bloqueada pela API mesmo que tentada por outro caminho.',
       },
     ],
   },
@@ -227,15 +240,17 @@ const sections: Section[] = [
     icon: <ChatOutlined />,
     title: 'Mensagens',
     purpose:
-      'Envia mensagens avulsas — texto livre, modelo aprovado da Meta ou e-mail — a partir de um número ou configuração cadastrados, e acompanha, em uma linha do tempo, o processamento, as tentativas, erros, entrega e leitura.',
+      'Envia mensagens avulsas — texto livre, modelo aprovado da Meta ou e-mail —, lista o que já foi enviado em abas separadas por canal (WhatsApp e E-mails) e acompanha, em uma linha do tempo, o processamento, as tentativas, erros, entrega e leitura.',
     steps: [
-      'Selecione "Tenant" e "Aplicação" no topo da tela — esses filtros definem de onde as mensagens são listadas e em nome de qual aplicação uma nova mensagem é enviada. Quando só existe uma opção, ela é selecionada automaticamente.',
-      'Use o filtro "Status" para navegar pela lista (Pendente, Processando, Enviada, Entregue, Lida, Falhou, Repetindo).',
+      'Selecione "Tenant" e "Aplicação" no topo da tela — esses filtros definem de onde as comunicações são listadas e em nome de qual aplicação uma nova mensagem é enviada. Quando só existe uma opção, ela é selecionada automaticamente.',
+      'Use as abas "WhatsApp" e "E-mails" para alternar qual canal está sendo listado — cada aba tem sua própria lista, filtro de status e campo de rastreio.',
+      'Use o filtro "Status" para navegar pela lista. Em WhatsApp: Pendente, Processando, Enviada, Entregue, Lida, Falhou ou Repetindo. Em E-mails: Pendente, Processando, Enviada, Falhou ou Repetindo (não há Entregue/Lida para e-mail).',
+      'Use o campo "Rastrear mensagem"/"Rastrear e-mail" para buscar por ID, provider ID, request ID, chave de idempotência, destinatário ou (só para e-mail) assunto.',
       'Clique em "Enviar mensagem" e escolha o tipo de envio no topo do formulário: "Texto livre", "Modelo" ou "E-mail".',
       'Em "Texto livre", escolha o número de origem, informe o "Destinatário" (telefone E.164 ou BSUID recebido em um webhook da Meta) e o texto em "Mensagem" (até 4096 caracteres).',
       'Em "Modelo", escolha a "Conta WhatsApp" para listar os modelos aprovados dessa conta, selecione o modelo, o número de origem e o "Destinatário"; preencha os "Parâmetros" na mesma ordem dos placeholders {{1}}, {{2}} etc. do corpo do modelo, quando existirem.',
-      'Em "E-mail", informe o "Destinatário" (endereço de e-mail), o "Assunto" e a "Mensagem". O envio usa o SMTP do tenant configurado em "E-mail SMTP" ou, na ausência de override, o SMTP padrão da plataforma.',
-      'Na linha da mensagem, abra o menu de ações e clique em "Ver linha do tempo". O painel mostra o conteúdo, o status atual e todos os eventos disponíveis em ordem cronológica.',
+      'Em "E-mail", informe o "Destinatário" (endereço de e-mail), o "Assunto" e a "Mensagem". O envio usa o SMTP do tenant configurado em "E-mail SMTP" ou, na ausência de override, o SMTP padrão da plataforma. Ao enviar, a tela troca automaticamente para a aba "E-mails".',
+      'Na linha de uma mensagem ou e-mail, abra o menu de ações e clique em "Ver linha do tempo". O painel mostra o conteúdo, o status atual e todos os eventos disponíveis em ordem cronológica.',
       'Em cada tentativa, verifique se o provedor aceitou o envio ou se ocorreu falha. Quando houver falha, o painel mostra a mensagem e o código técnico retornado pelo provedor.',
       'Para mensagens entregues ou lidas, a linha do tempo é atualizada a partir dos webhooks da Meta. O evento "Entregue" indica que a mensagem chegou ao destinatário; "Lida" indica a confirmação de leitura.',
       'Quando o status for "Repetindo", aguarde a próxima tentativa automática. Se terminar em "Falha", corrija a causa indicada antes de realizar um novo envio.',
@@ -246,8 +261,8 @@ const sections: Section[] = [
         text: 'Somente modelos com status "Aprovado" aparecem no seletor de "Modelo" — sincronize com a Meta na tela "Modelos de mensagem" se um modelo recém-aprovado ainda não aparecer.',
       },
       {
-        severity: 'info',
-        text: 'O e-mail enviado por aqui não aparece na lista desta tela, que mostra apenas mensagens WhatsApp — acompanhe o e-mail pelo endpoint de linha do tempo em "Documentação da API" ou pelos "Eventos e logs".',
+        severity: 'warning',
+        text: 'Se a fila RabbitMQ estiver indisponível, um aviso aparece no topo da tela: os envios continuam sendo aceitos e ficam como pendentes até a conexão ser restabelecida, sem perda de dados.',
       },
       {
         severity: 'info',
@@ -265,7 +280,7 @@ const sections: Section[] = [
     purpose:
       'Cria, visualiza, edita, exclui, sincroniza e publica os modelos de mensagem da Meta em uma conta WhatsApp.',
     steps: [
-      'Selecione "Tenant" e depois a conta WhatsApp para ver os modelos dessa conta. Refine com os filtros "Status" e "Categoria" se necessário.',
+      'Selecione "Tenant" e depois a conta WhatsApp para ver os modelos dessa conta. Refine com "Buscar por nome" e os filtros "Status" e "Categoria" se necessário.',
       'Use "Sincronizar Meta" para atualizar o status dos modelos a partir da Meta, ou "Publicar pendentes" para enviar os rascunhos para aprovação.',
       'Clique em "Criar modelo" e informe Tenant, Conta WhatsApp, Nome, Idioma e Categoria. O editor permite cabeçalho, corpo, rodapé, variáveis {{1}}, exemplos e botão de URL, com prévia ao lado.',
       'A prévia é atualizada em tempo real. Use "Visualizar no WhatsApp" para consultar um modelo já cadastrado; o cabeçalho usa o nome da empresa, não o número de telefone.',
@@ -277,17 +292,22 @@ const sections: Section[] = [
         severity: 'warning',
         text: 'O status de aprovação (Rascunho, Pendente, Aprovado, Rejeitado, Pausado, Desativado) é definido pela Meta e pode mudar sem ação do usuário — sincronize periodicamente para manter o console atualizado.',
       },
+      {
+        severity: 'info',
+        text: 'A coluna "Retorno da Meta" mostra o motivo de rejeição ou o último erro reportado pela Meta para o modelo, quando houver.',
+      },
     ],
   },
   {
     icon: <IntegrationInstructionsOutlined />,
     title: 'Documentação da API',
     purpose:
-      'Referência de endpoints para times que vão integrar sistemas externos ao Hub via API (envio de mensagens WhatsApp e e-mail, e gestão de templates), com exemplos de requisição prontos para copiar.',
+      'Referência de endpoints para times que vão integrar sistemas externos ao Hub via API (envio de mensagens WhatsApp e e-mail, gestão de templates e configuração de contas WhatsApp/números/SMTP de um tenant), com exemplos de requisição prontos para copiar.',
     steps: [
       'Gere ou copie uma chave de API na tela "Chaves de API" antes de testar os exemplos.',
       'Use o botão "Copiar" em cada bloco de código para copiar o comando de exemplo.',
-      'A página separa os endpoints de Mensagens, E-mails e Modelos de mensagem. Nos envios de mensagem e de e-mail, informe uma Idempotency-Key para evitar duplicidade em retries.',
+      'A página separa os endpoints em Mensagens, E-mails, Modelos de mensagem (chave "Plataforma", wh_live_...) e Configuração do tenant — Contas WhatsApp, Números e SMTP (chave "Tenant", wh_tenant_live_...). Nos envios de mensagem e de e-mail, informe uma Idempotency-Key para evitar duplicidade em retries.',
+      'Baixe a "Coleção Postman" para importar todos os exemplos prontos no Postman ou compatíveis.',
       'Para o contrato completo de todos os endpoints, use o botão "Referência completa (Swagger)".',
     ],
   },
@@ -298,6 +318,7 @@ const sections: Section[] = [
       'Mostra os eventos recebidos da Meta (payload mascarado), seu processamento e permite reenviar manualmente os que esgotaram as tentativas automáticas.',
     steps: [
       'Use o filtro "Status" (Pendente, Processado, Falhou / DLQ) para localizar um evento.',
+      'Consulte as colunas "Tentativas" e "Motivo" para entender quantas vezes o processamento foi tentado e por que falhou, quando aplicável.',
       'Clique em "Ver payload mascarado" para inspecionar o conteúdo recebido da Meta.',
       'Para eventos com status "Falhou / DLQ", use "Reprocessar" para tentar novamente — a ação é registrada na auditoria técnica.',
     ],

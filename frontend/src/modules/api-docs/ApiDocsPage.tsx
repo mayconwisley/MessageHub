@@ -42,10 +42,11 @@ function buildCurl(
   path: string,
   body?: unknown,
   extraHeaders: string[] = [],
+  authPrefix = 'wh_live_SEU_TOKEN_AQUI',
 ): string {
   const lines = [
     `curl -X ${method} "${baseUrl}${path}"`,
-    `  -H "Authorization: Bearer wh_live_SEU_TOKEN_AQUI"`,
+    `  -H "Authorization: Bearer ${authPrefix}"`,
   ];
   if (body !== undefined) lines.push('  -H "Content-Type: application/json"');
   extraHeaders.forEach((header) => lines.push(`  -H "${header}"`));
@@ -251,11 +252,126 @@ const emailEndpoints: Endpoint[] = [
   },
   {
     method: 'GET',
+    path: '/v1/emails',
+    title: 'Listar e-mails',
+    description:
+      'Lista paginada dos e-mails da aplicação autenticada. Aceita os parâmetros page, pageSize, status e search.',
+    curl: buildCurl('GET', '/v1/emails?page=1&pageSize=20&status=SENT'),
+  },
+  {
+    method: 'GET',
     path: '/v1/emails/{id}/timeline',
     title: 'Consultar linha do tempo de um e-mail',
     description:
       'Retorna, em ordem cronológica, os eventos registrados durante o processamento do e-mail (tentativas de entrega, aceite pelo provedor, falhas, reagendamentos, envio para fila de erro), útil para depurar falhas de envio.',
     curl: buildCurl('GET', '/v1/emails/6f1c2e6a-2222-4b3a-9a11-3d0a4f0a1234/timeline'),
+  },
+];
+
+const tenantConfigEndpoints: Endpoint[] = [
+  {
+    method: 'POST',
+    path: '/v1/whatsapp-accounts',
+    title: 'Registrar conta WhatsApp (WABA)',
+    description:
+      'Registra a WhatsApp Business Account do tenant e as credenciais que o Hub usará para falar com a Meta em nome dele.',
+    curl: buildCurl(
+      'POST',
+      '/v1/whatsapp-accounts',
+      {
+        wabaId: '109876543210987',
+        credentialSource: 'TENANT',
+        accessToken: 'EAAG...',
+        appSecret: 'a1b2c3d4e5f6...',
+      },
+      [],
+      'wh_tenant_live_SEU_TOKEN_AQUI',
+    ),
+    notes:
+      'Exige uma API key do tipo "Tenant" (prefixo wh_tenant_live_...), gerada em "Chaves de API". accessToken e appSecret são cifrados antes de persistir e nunca retornados pela API.',
+  },
+  {
+    method: 'GET',
+    path: '/v1/whatsapp-accounts',
+    title: 'Listar contas WhatsApp',
+    description: 'Lista paginada das contas WhatsApp do tenant. Aceita status e search.',
+    curl: buildCurl(
+      'GET',
+      '/v1/whatsapp-accounts?page=1&pageSize=20',
+      undefined,
+      [],
+      'wh_tenant_live_SEU_TOKEN_AQUI',
+    ),
+  },
+  {
+    method: 'POST',
+    path: '/v1/phone-numbers',
+    title: 'Registrar número de telefone',
+    description: 'Vincula um número Meta a uma conta WhatsApp já registrada para o tenant.',
+    curl: buildCurl(
+      'POST',
+      '/v1/phone-numbers',
+      {
+        whatsAppAccountId: '22222222-2222-2222-2222-222222222222',
+        phoneNumberId: '109876543211234',
+        displayNumber: '+5511999999999',
+      },
+      [],
+      'wh_tenant_live_SEU_TOKEN_AQUI',
+    ),
+    notes:
+      'whatsAppAccountId é o UUID interno do Hub retornado ao registrar a conta WhatsApp, não o ID da Meta.',
+  },
+  {
+    method: 'GET',
+    path: '/v1/phone-numbers',
+    title: 'Listar números',
+    description: 'Lista paginada dos números do tenant. Aceita status e search.',
+    curl: buildCurl(
+      'GET',
+      '/v1/phone-numbers?page=1&pageSize=20',
+      undefined,
+      [],
+      'wh_tenant_live_SEU_TOKEN_AQUI',
+    ),
+  },
+  {
+    method: 'PUT',
+    path: '/v1/email-configurations/smtp',
+    title: 'Configurar SMTP do tenant',
+    description:
+      'Cadastra ou substitui o SMTP próprio do tenant, usado no lugar do SMTP padrão da plataforma para os e-mails enviados por essa organização.',
+    curl: buildCurl(
+      'PUT',
+      '/v1/email-configurations/smtp',
+      {
+        host: 'smtp.exemplo.com.br',
+        port: 587,
+        secure: false,
+        username: 'no-reply@exemplo.com.br',
+        password: 'SENHA_SMTP',
+        fromEmail: 'no-reply@exemplo.com.br',
+        fromName: 'Minha Empresa',
+      },
+      [],
+      'wh_tenant_live_SEU_TOKEN_AQUI',
+    ),
+    notes:
+      'A senha é cifrada no banco e nunca é retornada por nenhum endpoint. Use secure=true apenas para SMTPS direto na porta 465.',
+  },
+  {
+    method: 'DELETE',
+    path: '/v1/email-configurations/smtp',
+    title: 'Remover SMTP do tenant',
+    description:
+      'Remove o override de SMTP do tenant; os envios voltam a usar o SMTP padrão da plataforma, quando habilitado no ambiente.',
+    curl: buildCurl(
+      'DELETE',
+      '/v1/email-configurations/smtp',
+      undefined,
+      [],
+      'wh_tenant_live_SEU_TOKEN_AQUI',
+    ),
   },
 ];
 
@@ -319,7 +435,11 @@ export function ApiDocsPage() {
               >
                 Authorization: Bearer wh_live_...
               </Typography>{' '}
-              de cada requisição.
+              de cada requisição. Existem dois tipos de chave: uma chave <strong>Plataforma</strong>{' '}
+              (<code>wh_live_...</code>) autentica os endpoints de Mensagens, E-mails e Modelos de
+              mensagem; uma chave <strong>Tenant</strong> (<code>wh_tenant_live_...</code>)
+              autentica os endpoints de configuração do tenant (Contas WhatsApp, Números e SMTP), na
+              seção "Configuração do tenant" abaixo.
             </Typography>
             <Divider />
             <Typography variant="subtitle2">URL base</Typography>
@@ -374,6 +494,20 @@ export function ApiDocsPage() {
         <Typography variant="h6">Modelos de mensagem</Typography>
         <Stack spacing={1}>
           {templateEndpoints.map((endpoint) => (
+            <EndpointAccordion key={`${endpoint.method}-${endpoint.path}`} endpoint={endpoint} />
+          ))}
+        </Stack>
+      </Stack>
+
+      <Stack spacing={1.5}>
+        <Typography variant="h6">Configuração do tenant</Typography>
+        <Typography color="text.secondary">
+          Endpoints para provisionar contas WhatsApp, números e SMTP de um tenant a partir de uma
+          integração externa, sem passar pelo console. Exigem uma chave de API do tipo{' '}
+          <strong>Tenant</strong> (<code>wh_tenant_live_...</code>).
+        </Typography>
+        <Stack spacing={1}>
+          {tenantConfigEndpoints.map((endpoint) => (
             <EndpointAccordion key={`${endpoint.method}-${endpoint.path}`} endpoint={endpoint} />
           ))}
         </Stack>

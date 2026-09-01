@@ -1,8 +1,284 @@
 {
-  "info": { "name": "Message Hub - Integração", "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json" },
+  "info": {
+    "name": "Message Hub - Integração",
+    "description": "Endpoints para integrar sistemas externos ao Message Hub: envio de mensagens WhatsApp e e-mail, gestão de templates e configuração de tenant. Veja também /api-docs no console e docs/api-reference.md no repositório.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:3000" },
-    { "key": "apiKey", "value": "wh_live_SUBSTITUA_AQUI" }
+    { "key": "apiKey", "value": "wh_live_SUBSTITUA_AQUI" },
+    { "key": "tenantApiKey", "value": "wh_tenant_live_SUBSTITUA_AQUI" }
   ],
-  "item": [{ "name": "Enviar mensagem", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{apiKey}}" }, { "key": "Idempotency-Key", "value": "{{$guid}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"to\": \"+5511999999999\",\n  \"content\": \"Olá do Message Hub\"\n}" }, "url": "{{baseUrl}}/v1/messages" } }]
+  "item": [
+    {
+      "name": "Mensagens",
+      "item": [
+        {
+          "name": "Enviar mensagem de texto",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{apiKey}}" },
+              { "key": "Idempotency-Key", "value": "{{$guid}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": \"+5511999999999\",\n  \"content\": \"Olá do Message Hub\"\n}"
+            },
+            "url": "{{baseUrl}}/v1/messages"
+          }
+        },
+        {
+          "name": "Enviar mensagem de template",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{apiKey}}" },
+              { "key": "Idempotency-Key", "value": "{{$guid}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": \"+5511999999999\",\n  \"templateName\": \"order_confirmation\",\n  \"parameters\": [\"Maria\", \"PED-2026-001\"]\n}"
+            },
+            "url": "{{baseUrl}}/v1/messages/templates"
+          }
+        },
+        {
+          "name": "Listar mensagens",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{apiKey}}" }],
+            "url": "{{baseUrl}}/v1/messages?page=1&pageSize=20"
+          }
+        },
+        {
+          "name": "Consultar status de uma mensagem",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{apiKey}}" }],
+            "url": "{{baseUrl}}/v1/messages/:id"
+          }
+        },
+        {
+          "name": "Listar tentativas de entrega",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{apiKey}}" }],
+            "url": "{{baseUrl}}/v1/messages/:id/attempts"
+          }
+        },
+        {
+          "name": "Consultar linha do tempo da mensagem",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{apiKey}}" }],
+            "url": "{{baseUrl}}/v1/messages/:id/timeline"
+          }
+        }
+      ]
+    },
+    {
+      "name": "E-mails",
+      "item": [
+        {
+          "name": "Enviar e-mail",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{apiKey}}" },
+              { "key": "Idempotency-Key", "value": "{{$guid}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": \"cliente@exemplo.com\",\n  \"subject\": \"Pedido confirmado\",\n  \"textBody\": \"Seu pedido foi confirmado.\",\n  \"htmlBody\": \"<p>Seu pedido foi confirmado.</p>\"\n}"
+            },
+            "url": "{{baseUrl}}/v1/emails"
+          }
+        },
+        {
+          "name": "Listar e-mails",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{apiKey}}" }],
+            "url": "{{baseUrl}}/v1/emails?page=1&pageSize=20"
+          }
+        },
+        {
+          "name": "Consultar linha do tempo de um e-mail",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{apiKey}}" }],
+            "url": "{{baseUrl}}/v1/emails/:id/timeline"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Modelos de mensagem",
+      "item": [
+        {
+          "name": "Criar template",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{apiKey}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"whatsAppAccountId\": \"22222222-2222-2222-2222-222222222222\",\n  \"name\": \"order_confirmation\",\n  \"language\": \"pt_BR\",\n  \"category\": \"UTILITY\",\n  \"components\": [\n    { \"type\": \"BODY\", \"text\": \"Olá {{1}}, seu pedido {{2}} foi confirmado!\", \"example\": { \"bodyText\": [{ \"values\": [\"Maria Silva\", \"PED-2026-001\"] }] } }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/v1/templates"
+          }
+        },
+        {
+          "name": "Listar modelos de mensagem",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{apiKey}}" }],
+            "url": "{{baseUrl}}/v1/templates?whatsAppAccountId=22222222-2222-2222-2222-222222222222&page=1&pageSize=20"
+          }
+        },
+        {
+          "name": "Detalhes de um template",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{apiKey}}" }],
+            "url": "{{baseUrl}}/v1/templates/:id"
+          }
+        },
+        {
+          "name": "Atualizar template",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{apiKey}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category\": \"UTILITY\",\n  \"components\": [\n    { \"type\": \"BODY\", \"text\": \"Olá {{1}}, seu pedido {{2}} já saiu para entrega!\" }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/v1/templates/:id"
+          }
+        },
+        {
+          "name": "Remover template",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{apiKey}}" }],
+            "url": "{{baseUrl}}/v1/templates/:id"
+          }
+        },
+        {
+          "name": "Sincronizar modelos de mensagem com a Meta",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{apiKey}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"whatsAppAccountId\": \"22222222-2222-2222-2222-222222222222\"\n}"
+            },
+            "url": "{{baseUrl}}/v1/templates/sync"
+          }
+        },
+        {
+          "name": "Publicar modelos de mensagem pendentes",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{apiKey}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"whatsAppAccountId\": \"22222222-2222-2222-2222-222222222222\"\n}"
+            },
+            "url": "{{baseUrl}}/v1/templates/publish-pending"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Configuração do tenant",
+      "description": "Requer uma API key do tipo Tenant (wh_tenant_live_...).",
+      "item": [
+        {
+          "name": "Registrar conta WhatsApp (WABA)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tenantApiKey}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"wabaId\": \"109876543210987\",\n  \"credentialSource\": \"TENANT\",\n  \"accessToken\": \"EAAG...\",\n  \"appSecret\": \"a1b2c3d4e5f6...\"\n}"
+            },
+            "url": "{{baseUrl}}/v1/whatsapp-accounts"
+          }
+        },
+        {
+          "name": "Listar contas WhatsApp",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tenantApiKey}}" }],
+            "url": "{{baseUrl}}/v1/whatsapp-accounts?page=1&pageSize=20"
+          }
+        },
+        {
+          "name": "Registrar número de telefone",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tenantApiKey}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"whatsAppAccountId\": \"22222222-2222-2222-2222-222222222222\",\n  \"phoneNumberId\": \"109876543211234\",\n  \"displayNumber\": \"+5511999999999\"\n}"
+            },
+            "url": "{{baseUrl}}/v1/phone-numbers"
+          }
+        },
+        {
+          "name": "Listar números",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tenantApiKey}}" }],
+            "url": "{{baseUrl}}/v1/phone-numbers?page=1&pageSize=20"
+          }
+        },
+        {
+          "name": "Configurar SMTP do tenant",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tenantApiKey}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"host\": \"smtp.exemplo.com.br\",\n  \"port\": 587,\n  \"secure\": false,\n  \"username\": \"no-reply@exemplo.com.br\",\n  \"password\": \"SENHA_SMTP\",\n  \"fromEmail\": \"no-reply@exemplo.com.br\",\n  \"fromName\": \"Minha Empresa\"\n}"
+            },
+            "url": "{{baseUrl}}/v1/email-configurations/smtp"
+          }
+        },
+        {
+          "name": "Remover SMTP do tenant",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tenantApiKey}}" }],
+            "url": "{{baseUrl}}/v1/email-configurations/smtp"
+          }
+        }
+      ]
+    }
+  ]
 }

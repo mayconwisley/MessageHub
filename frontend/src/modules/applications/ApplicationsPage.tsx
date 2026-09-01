@@ -33,6 +33,21 @@ const webhookSchema = z.object({
 });
 type WebhookFormData = z.infer<typeof webhookSchema>;
 
+const quotaSchema = z.object({
+  applicationId: z.string().uuid('Selecione uma aplicação.'),
+  quotaPerMinute: z.coerce
+    .number({ invalid_type_error: 'Informe um número.' })
+    .int('Informe um número inteiro.')
+    .min(1, 'O mínimo é 1.')
+    .max(100000, 'O máximo é 100000.'),
+  quotaPerDay: z.coerce
+    .number({ invalid_type_error: 'Informe um número.' })
+    .int('Informe um número inteiro.')
+    .min(1, 'O mínimo é 1.')
+    .max(100000000, 'O máximo é 100000000.'),
+});
+type QuotaFormData = z.infer<typeof quotaSchema>;
+
 const statusLabels: Record<string, string> = { ACTIVE: 'Ativo', SUSPENDED: 'Suspenso' };
 
 export function ApplicationsPage() {
@@ -42,6 +57,8 @@ export function ApplicationsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [webhookOpen, setWebhookOpen] = useState(false);
   const [webhookTenantId, setWebhookTenantId] = useState('');
+  const [quotasOpen, setQuotasOpen] = useState(false);
+  const [quotaTenantId, setQuotaTenantId] = useState('');
   const [phoneNumbersOpen, setPhoneNumbersOpen] = useState(false);
   const [linkTenantId, setLinkTenantId] = useState('');
   const [linkApplicationId, setLinkApplicationId] = useState('');
@@ -51,6 +68,7 @@ export function ApplicationsPage() {
   const { feedback, notifySuccess, notifyError, clear } = useFeedback();
   const createForm = useForm<CreateFormData>({ resolver: zodResolver(createSchema) });
   const webhookForm = useForm<WebhookFormData>({ resolver: zodResolver(webhookSchema) });
+  const quotaForm = useForm<QuotaFormData>({ resolver: zodResolver(quotaSchema) });
 
   const create = useMutation({
     mutationFn: applicationsApi.create,
@@ -66,6 +84,30 @@ export function ApplicationsPage() {
       void client.invalidateQueries({ queryKey: ['applications'] });
     },
     onError: (error) => notifyError('Não foi possível salvar o webhook.', error),
+  });
+
+  const quotaApplicationId = quotaForm.watch('applicationId');
+  const validQuotaApplicationId = z.string().uuid().safeParse(quotaApplicationId).success;
+  const currentQuotas = useQuery({
+    queryKey: ['application-quotas', quotaApplicationId],
+    queryFn: () => applicationsApi.getById(quotaApplicationId),
+    enabled: validQuotaApplicationId,
+  });
+  useEffect(() => {
+    if (currentQuotas.data) {
+      quotaForm.setValue('quotaPerMinute', currentQuotas.data.quotaPerMinute);
+      quotaForm.setValue('quotaPerDay', currentQuotas.data.quotaPerDay);
+    }
+  }, [currentQuotas.data, quotaForm]);
+  const configureQuotas = useMutation({
+    mutationFn: ({ applicationId, quotaPerMinute, quotaPerDay }: QuotaFormData) =>
+      applicationsApi.configureQuotas(applicationId, quotaPerMinute, quotaPerDay),
+    onSuccess: () => {
+      notifySuccess('Quotas salvas.');
+      void client.invalidateQueries({ queryKey: ['applications'] });
+      void client.invalidateQueries({ queryKey: ['application-quotas'] });
+    },
+    onError: (error) => notifyError('Não foi possível salvar as quotas.', error),
   });
 
   const validLinkApplicationId = z.string().uuid().safeParse(linkApplicationId).success;
@@ -117,6 +159,14 @@ export function ApplicationsPage() {
   };
   const closeWebhook = () => setWebhookOpen(false);
 
+  const openQuotas = () => {
+    quotaForm.reset();
+    configureQuotas.reset();
+    setQuotaTenantId(tenantIdFilter);
+    setQuotasOpen(true);
+  };
+  const closeQuotas = () => setQuotasOpen(false);
+
   const openPhoneNumbers = () => {
     setLinkTenantId(tenantIdFilter);
     setLinkApplicationId('');
@@ -131,7 +181,7 @@ export function ApplicationsPage() {
     <Stack spacing={3}>
       <PageHeader
         title="Aplicações"
-        description="Vincule aplicações consumidoras a um tenant e configure o webhook de status de mensagens."
+        description="Vincule aplicações consumidoras a um tenant e configure webhook, quotas de envio e números."
         action={
           <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
             <Button variant="contained" onClick={openCreate}>
@@ -139,6 +189,9 @@ export function ApplicationsPage() {
             </Button>
             <Button variant="outlined" onClick={openWebhook}>
               Configurar webhook
+            </Button>
+            <Button variant="outlined" onClick={openQuotas}>
+              Configurar quotas
             </Button>
             <Button variant="outlined" onClick={openPhoneNumbers}>
               Vincular números
@@ -173,6 +226,12 @@ export function ApplicationsPage() {
                 render: (row) => (
                   <Chip label={statusLabels[row.status] ?? row.status} size="small" />
                 ),
+              },
+              {
+                key: 'quotas',
+                label: 'Quotas',
+                render: (row) =>
+                  `${row.quotaPerMinute.toLocaleString('pt-BR')}/min · ${row.quotaPerDay.toLocaleString('pt-BR')}/dia`,
               },
               {
                 key: 'createdAt',
@@ -310,6 +369,62 @@ export function ApplicationsPage() {
         </Stack>
       </FormDialog>
 
+      <FormDialog open={quotasOpen} onClose={closeQuotas} title="Configurar quotas">
+        <Stack
+          component="form"
+          spacing={2}
+          sx={{ mt: 1 }}
+          onSubmit={quotaForm.handleSubmit((data) => configureQuotas.mutate(data))}
+        >
+          <TenantAutocomplete
+            label="Tenant"
+            value={quotaTenantId}
+            onChange={(id) => {
+              setQuotaTenantId(id);
+              quotaForm.setValue('applicationId', '');
+            }}
+          />
+          <Controller
+            name="applicationId"
+            control={quotaForm.control}
+            render={({ field }) => (
+              <ApplicationAutocomplete
+                tenantId={quotaTenantId}
+                value={field.value ?? ''}
+                onChange={field.onChange}
+                error={!!quotaForm.formState.errors.applicationId}
+                helperText={quotaForm.formState.errors.applicationId?.message}
+              />
+            )}
+          />
+          <TextField
+            label="Quota por minuto"
+            type="number"
+            {...quotaForm.register('quotaPerMinute')}
+            error={!!quotaForm.formState.errors.quotaPerMinute}
+            helperText={
+              quotaForm.formState.errors.quotaPerMinute?.message ??
+              'Limite de mensagens enviadas por minuto (1 a 100000). Padrão de uma aplicação nova: 60.'
+            }
+            fullWidth
+          />
+          <TextField
+            label="Quota por dia"
+            type="number"
+            {...quotaForm.register('quotaPerDay')}
+            error={!!quotaForm.formState.errors.quotaPerDay}
+            helperText={
+              quotaForm.formState.errors.quotaPerDay?.message ??
+              'Limite de mensagens enviadas por dia (1 a 100000000). Padrão de uma aplicação nova: 10000.'
+            }
+            fullWidth
+          />
+          <Button type="submit" variant="contained" disabled={configureQuotas.isPending}>
+            {configureQuotas.isPending ? 'Salvando...' : 'Salvar quotas'}
+          </Button>
+        </Stack>
+      </FormDialog>
+
       <FormDialog open={phoneNumbersOpen} onClose={closePhoneNumbers} title="Vincular números">
         <Stack spacing={2} sx={{ mt: 1 }}>
           <TenantAutocomplete
@@ -352,6 +467,12 @@ export function ApplicationsPage() {
           <Typography variant="subtitle2">Webhook configurado</Typography>
           <Typography color="text.secondary">
             {detailsApplication?.webhookUrl ?? 'Nenhum webhook configurado.'}
+          </Typography>
+          <Typography variant="subtitle2">Quotas</Typography>
+          <Typography color="text.secondary">
+            {detailsApplication
+              ? `${detailsApplication.quotaPerMinute.toLocaleString('pt-BR')} mensagens/minuto · ${detailsApplication.quotaPerDay.toLocaleString('pt-BR')} mensagens/dia`
+              : '—'}
           </Typography>
           <Typography variant="subtitle2">Números vinculados</Typography>
           <AsyncState
