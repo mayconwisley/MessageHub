@@ -260,6 +260,11 @@ messages/
 
 Preferir essa abordagem quando houver vários Bounded Contexts.
 
+> Exceção conhecida: módulos essencialmente de leitura/agregação (`audit`, `dashboard`,
+> `monitoring`, `notifications`, `system-logs`) não possuem pasta `domain/` própria — eles
+> reaproveitam entidades de outros contextos e expõem apenas `application/`, `infrastructure/`
+> e `presentation/`.
+
 ## 5.1 Estrutura real atual (referência viva)
 
 O backend já adota a organização por módulo/Bounded Context descrita acima. Estrutura atual de `backend/src/`:
@@ -275,7 +280,9 @@ backend/src/
 │   ├── logging/                # pino, captura de logs de sistema
 │   ├── messaging/rabbitmq/    # módulo, constants, health indicator
 │   ├── meta/                   # clients/ dto/ errors/ mappers/ services/ (Graph API)
-│   └── sandbox/                 # provider de mensagens para ambiente sandbox
+│   ├── outbox/                  # outbox-dispatcher.service, outbox.repository (transactional outbox)
+│   ├── sandbox/                 # provider de mensagens para ambiente sandbox
+│   └── throttling/               # postgres-throttler.storage (storage do rate limit em Postgres)
 │
 ├── presentation/http/
 │   ├── controllers/            # ex.: health.controller.ts
@@ -295,6 +302,8 @@ backend/src/
 │   ├── domain/                  # entity.base.ts, value-object.base.ts, unique-id.ts
 │   ├── errors/                   # base.error.ts, rate-limit-exceeded.error.ts
 │   ├── mediator/                # mediator.ts, command.base.ts, query.base.ts
+│   ├── outbox/                   # outbox-event.type.ts (contrato do padrão outbox)
+│   ├── persistence/               # resolve-date-range-operator.util.ts
 │   ├── result/                   # result.ts
 │   ├── security/                 # webhook-url.security.ts
 │   └── types/
@@ -1527,7 +1536,8 @@ Considerar:
 O rate limit interno deve ser separado dos limites impostos pela Meta.
 
 Referência viva: `AppThrottlerGuard` (`presentation/http/guards/app-throttler.guard.ts`) aplica o
-rate limit por Application/Tenant nos endpoints de mensagens. Quando o Hub roda atrás de reverse
+rate limit por Application/Tenant nos endpoints de mensagens, com estado persistido em
+`infrastructure/throttling/postgres-throttler.storage.ts`. Quando o Hub roda atrás de reverse
 proxy (ver `TRUST_PROXY` e o overlay `docker-compose.prod.yml`), o guard deve resolver o IP real do
 cliente a partir dos cabeçalhos confiáveis, e não do socket direto.
 
@@ -1580,8 +1590,10 @@ Durante o desenvolvimento, PostgreSQL, RabbitMQ e Redis quando necessário são 
 variáveis de ambiente e podem ser executados pela infraestrutura que o time definir. Existem
 `Dockerfile`s (`backend/Dockerfile`, `frontend/Dockerfile`) e `docker-compose.yml` /
 `docker-compose.prod.yml` na raiz para permitir testar a aplicação completa com um único comando
-(ver seção "Docker" do README.md), mas esses artefatos ainda não são usados no fluxo real de
-desenvolvimento nem na implantação em produção da plataforma.
+(ver seção "Docker" do README.md). Esses artefatos já fazem parte do fluxo real: o CI valida o
+build das imagens (job `container-build`, ver [seção 54](#54-integração-contínua-cicd)) e o
+workflow `release.yml` publica as imagens de backend/frontend no GHCR ao criar uma tag `v*`, sendo
+essa a forma de implantação em produção da plataforma.
 
 ---
 
@@ -1861,6 +1873,9 @@ ci.yml
     ├── frontend-build        # build, depende dos dois jobs acima
     └── frontend-audit        # npm audit --audit-level=high (non-blocking)
 
+    Containers:
+    └── container-build       # docker build de backend/Dockerfile e frontend/Dockerfile
+
     └── ci-success             # gate final: falha se algum job obrigatório não passou
 ```
 
@@ -1869,7 +1884,20 @@ testes unitários e e2e, build) antes do merge. Toda migration nova deve sobrevi
 `up → down → up` exercido por `backend-migrations` (ver [seção 25](#25-migrations)).
 
 Os artefatos Docker (`Dockerfile`s e `docker-compose*.yml`, ver [seção 43](#43-serviços-externos))
-não fazem parte destes workflows — o CI roda diretamente com Node.js, não via imagem Docker.
+têm seu build validado no próprio `ci.yml` pelo job `container-build`, que integra o gate
+`ci-success`.
+
+Além de `ci.yml`, existem dois workflows dedicados a release:
+
+```text
+release.yml
+    └── disparado ao criar uma tag `v*`; builda e publica as imagens de backend e frontend
+        no GHCR (ghcr.io), usando BACKEND_IMAGE_NAME/FRONTEND_IMAGE_NAME.
+
+release-verify.yml
+    └── workflow reutilizável (workflow_call) que roda as migrations contra um Postgres
+        efêmero como parte da verificação de release.
+```
 
 # Frontend
 
@@ -1907,11 +1935,12 @@ frontend/src/
 ├── components/
 │   ├── ui/                        # design system (ex.: PageHeader)
 │   └── shared/                    # PaginatedTable, FormDialog, TableActionsMenu,
-│                                   # AsyncState, EntityResult, CodeBlock e os
-│                                   # *Autocomplete (Tenant/Application/PhoneNumber/
-│                                   # PhoneNumberMulti/WhatsAppAccount/Message)
+│                                   # AsyncState, EntityResult, CodeBlock, ConfirmDialog,
+│                                   # FeedbackSnackbar e os *Autocomplete (Tenant/Application/
+│                                   # PhoneNumber/PhoneNumberMulti/WhatsAppAccount/Message/
+│                                   # Template)
 ├── services/                      # http-client.ts, auth-storage.ts, pagination.ts
-├── hooks/                         # usePagination.ts
+├── hooks/                         # usePagination.ts, useFeedback.ts, useSort.ts
 ├── lib/                           # presentation.ts (labels/formatação)
 └── styles/
 ```
