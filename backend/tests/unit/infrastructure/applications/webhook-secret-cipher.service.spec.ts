@@ -38,8 +38,13 @@ describe('WebhookSecretCipherService', () => {
     const encrypted = cipher.encrypt('webhook-secret');
     const parts = encrypted.split('.');
     const lastIndex = parts.length - 1;
-    const lastPart = parts[lastIndex];
-    parts[lastIndex] = lastPart.slice(0, -1) + (lastPart.at(-1) === 'A' ? 'B' : 'A');
+    // Adultera um byte real do buffer decodificado (em vez de um caractere
+    // base64 diretamente) para não cair nos bits de padding não
+    // significativos do último caractere, que não alterariam o valor
+    // decodificado e deixariam o teste instável.
+    const tamperedBytes = Buffer.from(parts[lastIndex], 'base64url');
+    tamperedBytes[tamperedBytes.length - 1] ^= 0xff;
+    parts[lastIndex] = tamperedBytes.toString('base64url');
 
     expect(() => cipher.decrypt(parts.join('.'))).toThrow();
   });

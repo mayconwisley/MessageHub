@@ -58,7 +58,13 @@ describe('SmtpPasswordCipherService', () => {
   it('throws when decrypting a tampered ciphertext', () => {
     const encrypted = buildCipher(key).encrypt('super-secret-password');
     const [version, iv, authTag, cipherText] = encrypted.split('.');
-    const tamperedCipherText = cipherText.slice(0, -1) + (cipherText.at(-1) === 'A' ? 'B' : 'A');
+    // Adultera um byte real do buffer decodificado (em vez de um caractere
+    // base64 diretamente) para não depender de o texto cifrado ter um
+    // tamanho que deixe bits de padding não significativos no último
+    // caractere, o que deixaria o teste instável.
+    const tamperedBytes = Buffer.from(cipherText, 'base64url');
+    tamperedBytes[tamperedBytes.length - 1] ^= 0xff;
+    const tamperedCipherText = tamperedBytes.toString('base64url');
     const tampered = [version, iv, authTag, tamperedCipherText].join('.');
 
     expect(() => buildCipher(key).decrypt(tampered)).toThrow();
