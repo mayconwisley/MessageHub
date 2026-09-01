@@ -22,6 +22,12 @@ export interface MessageDto {
   updatedAt: Date;
 }
 
+/** Envelope de retorno do envio: `isReplay` indica reuso de Idempotency-Key (nenhum envio novo ocorreu). */
+export interface SendMessageResultDto {
+  message: MessageDto;
+  isReplay: boolean;
+}
+
 export interface MessageAttemptDto {
   id: string;
   attemptNumber: number;

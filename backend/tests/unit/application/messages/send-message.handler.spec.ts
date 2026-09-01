@@ -192,10 +192,11 @@ describe('SendMessageHandler', () => {
       new SendMessageCommand(application.id.value, phoneNumber.id.value, '+5511988888888', 'Ola!'),
     );
 
-    const dto = expectOk(result);
-    expect(dto.status).toBe('PENDING');
+    const { message, isReplay } = expectOk(result);
+    expect(message.status).toBe('PENDING');
+    expect(isReplay).toBe(false);
     expect(messageRepository.saved).toHaveLength(1);
-    expect(messagePublisher.published).toEqual([{ messageId: dto.id }]);
+    expect(messagePublisher.published).toEqual([{ messageId: message.id }]);
   });
 
   it('returns RATE_LIMIT_EXCEEDED (429) when the repository reports the application is over quota', async () => {
@@ -238,34 +239,50 @@ describe('SendMessageHandler', () => {
     expect(messagePublisher.published).toHaveLength(0);
   });
 
-  it('returns the existing message when the idempotency key repeats', async () => {
+  it('returns the existing message as a replay when the idempotency key repeats with the same payload', async () => {
+    const { handler, application, phoneNumber, messageRepository } = buildHandler();
+    const command = new SendMessageCommand(
+      application.id.value,
+      phoneNumber.id.value,
+      '+5511988888888',
+      'Ola!',
+      'idem-key-1',
+    );
+
+    const first = expectOk(await handler.execute(command));
+    const second = expectOk(await handler.execute(command));
+
+    expect(first.isReplay).toBe(false);
+    expect(second.isReplay).toBe(true);
+    expect(second.message.id).toBe(first.message.id);
+    expect(messageRepository.saved).toHaveLength(1);
+  });
+
+  it('rejects a repeated idempotency key whose payload differs from the original request', async () => {
     const { handler, application, phoneNumber, messageRepository } = buildHandler();
 
-    const first = expectOk(
-      await handler.execute(
-        new SendMessageCommand(
-          application.id.value,
-          phoneNumber.id.value,
-          '+5511988888888',
-          'Ola!',
-          'idem-key-1',
-        ),
+    await handler.execute(
+      new SendMessageCommand(
+        application.id.value,
+        phoneNumber.id.value,
+        '+5511988888888',
+        'Ola!',
+        'idem-key-1',
       ),
     );
 
-    const second = expectOk(
-      await handler.execute(
-        new SendMessageCommand(
-          application.id.value,
-          phoneNumber.id.value,
-          '+5511988888888',
-          'Ola de novo!',
-          'idem-key-1',
-        ),
+    const result = await handler.execute(
+      new SendMessageCommand(
+        application.id.value,
+        phoneNumber.id.value,
+        '+5511988888888',
+        'Ola de novo, com outro conteúdo!',
+        'idem-key-1',
       ),
     );
 
-    expect(second.id).toBe(first.id);
+    expect(result.isFailure).toBe(true);
+    expect(result.error.code).toBe('IDEMPOTENCY_KEY_CONFLICT');
     expect(messageRepository.saved).toHaveLength(1);
   });
 
@@ -330,7 +347,7 @@ describe('SendMessageHandler', () => {
       new SendMessageCommand(application.id.value, undefined, '+5511988888888', 'Ola!'),
     );
 
-    expect(expectOk(result).status).toBe('PENDING');
+    expect(expectOk(result).message.status).toBe('PENDING');
   });
 
   it('fails with PHONE_NUMBER_NOT_CONFIGURED when no phone number is linked and none is informed', async () => {

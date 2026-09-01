@@ -1,10 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { PaginatedResult } from '@shared/types';
+import { FindOptionsOrder, Repository } from 'typeorm';
+import { PaginatedResult, SortDirection } from '@shared/types';
+import { resolveDateRangeOperator } from '@shared/persistence/resolve-date-range-operator.util';
 import {
   AuditLogDto,
   AuditLogListFilters,
+  AuditLogSortField,
   IAuditLogRepository,
 } from '../../application/ports/audit-log.repository.interface';
 import { AuditLogOrmEntity } from '../entities/audit-log.orm-entity';
@@ -20,12 +22,14 @@ export class PostgresAuditLogRepository implements IAuditLogRepository {
     pageSize: number,
     filters?: AuditLogListFilters,
   ): Promise<PaginatedResult<AuditLogDto>> {
+    const occurredAtRange = resolveDateRangeOperator(filters?.createdFrom, filters?.createdTo);
     const [rows, total] = await this.repository.findAndCount({
       where: {
         ...(filters?.resourceType ? { resourceType: filters.resourceType } : {}),
         ...(filters?.httpMethod ? { httpMethod: filters.httpMethod } : {}),
+        ...(occurredAtRange ? { occurredAt: occurredAtRange } : {}),
       },
-      order: { occurredAt: 'DESC' },
+      order: this.resolveOrder(filters?.sortBy, filters?.sortDirection),
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
@@ -49,5 +53,14 @@ export class PostgresAuditLogRepository implements IAuditLogRepository {
       page,
       pageSize,
     };
+  }
+
+  private resolveOrder(
+    sortBy?: AuditLogSortField,
+    sortDirection?: SortDirection,
+  ): FindOptionsOrder<AuditLogOrmEntity> {
+    const field = sortBy ?? AuditLogSortField.OCCURRED_AT;
+    const direction = sortDirection ?? SortDirection.DESC;
+    return { [field]: direction };
   }
 }

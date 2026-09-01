@@ -40,16 +40,29 @@ export function ApplicationAutocomplete({
     enabled: validTenantId,
     staleTime: 30_000,
   });
-  const options = data?.items ?? [];
+  const matchInPage = data?.items.find((application) => application.id === value) ?? null;
+
+  // A aplicação selecionada pode não estar na página atual de resultados (ex.: ao editar um
+  // registro cuja aplicação vinculada não é uma das primeiras da busca) - busca por ID como fallback.
+  const { data: fallbackApplication } = useQuery({
+    queryKey: ['applications-select-by-id', value],
+    queryFn: () => applicationsApi.getById(value),
+    enabled: Boolean(value) && !matchInPage,
+    staleTime: 30_000,
+  });
 
   useEffect(() => {
     if (!value) {
       setSelectedOption(null);
       return;
     }
-    const match = data?.items.find((application) => application.id === value);
-    setSelectedOption(match ?? null);
-  }, [data, value]);
+    setSelectedOption(matchInPage ?? fallbackApplication ?? null);
+  }, [value, matchInPage, fallbackApplication]);
+
+  const options =
+    fallbackApplication && !matchInPage
+      ? [fallbackApplication, ...(data?.items ?? [])]
+      : (data?.items ?? []);
 
   return (
     <Autocomplete

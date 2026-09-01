@@ -5,15 +5,16 @@ import { Result } from '@shared/result';
 import { RateLimitExceededError } from '@shared/errors';
 import {
   AmbiguousPhoneNumberError,
+  IdempotencyKeyConflictError,
   InvalidMessageError,
   PhoneNumberNotConfiguredError,
   TemplateNotFoundError,
 } from '../../domain/errors';
-import { MessageDto } from '../dto/message.dto';
+import { SendMessageResultDto } from '../dto/message.dto';
 
 export class SendTemplateMessageCommand extends Command<
   Result<
-    MessageDto,
+    SendMessageResultDto,
     | InvalidMessageError
     | ApplicationNotFoundError
     | PhoneNumberNotFoundError
@@ -21,6 +22,7 @@ export class SendTemplateMessageCommand extends Command<
     | AmbiguousPhoneNumberError
     | TemplateNotFoundError
     | RateLimitExceededError
+    | IdempotencyKeyConflictError
   >
 > {
   constructor(

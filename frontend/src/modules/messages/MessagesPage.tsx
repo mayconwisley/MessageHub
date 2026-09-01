@@ -32,6 +32,7 @@ import { TenantAutocomplete } from '../../components/shared/TenantAutocomplete';
 import { WhatsAppAccountAutocomplete } from '../../components/shared/WhatsAppAccountAutocomplete';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { usePagination } from '../../hooks/usePagination';
+import { useSort } from '../../hooks/useSort';
 import { applicationsApi } from '../applications/applications.api';
 import { tenantsApi } from '../tenants/tenants.api';
 import type { Template } from '../templates/templates.api';
@@ -92,6 +93,7 @@ const statusLabels: Record<string, string> = {
 
 export function MessagesPage() {
   const { page, pageSize, setPage, setPageSize } = usePagination();
+  const { sort, onSortChange, sortBy, sortDirection } = useSort(() => setPage(1));
   const [tenantId, setTenantId] = useState('');
   const [applicationId, setApplicationId] = useState('');
   const [status, setStatus] = useState('');
@@ -217,7 +219,7 @@ export function MessagesPage() {
   }, [selectedTemplate]);
 
   const list = useQuery({
-    queryKey: ['messages', applicationId, page, pageSize, status, search],
+    queryKey: ['messages', applicationId, page, pageSize, status, search, sortBy, sortDirection],
     queryFn: () =>
       messagesApi.list({
         applicationId,
@@ -225,11 +227,13 @@ export function MessagesPage() {
         pageSize,
         status: status || undefined,
         search: search || undefined,
+        sortBy,
+        sortDirection,
       }),
     enabled: validApplicationId,
   });
   const emails = useQuery({
-    queryKey: ['emails', applicationId, page, pageSize, status, search],
+    queryKey: ['emails', applicationId, page, pageSize, status, search, sortBy, sortDirection],
     queryFn: () =>
       emailsApi.list({
         applicationId,
@@ -237,6 +241,8 @@ export function MessagesPage() {
         pageSize,
         status: status || undefined,
         search: search || undefined,
+        sortBy,
+        sortDirection,
       }),
     enabled: validApplicationId && channel === 'email',
   });
@@ -399,6 +405,7 @@ export function MessagesPage() {
                 {
                   key: 'status',
                   label: 'Status',
+                  sortable: true,
                   render: (row) => (
                     <Chip label={toPresentationValue('status', row.status)} size="small" />
                   ),
@@ -407,6 +414,7 @@ export function MessagesPage() {
                 {
                   key: 'createdAt',
                   label: 'Criado em',
+                  sortable: true,
                   render: (row) => new Date(row.createdAt).toLocaleString('pt-BR'),
                 },
               ]}
@@ -419,6 +427,8 @@ export function MessagesPage() {
                 setPageSize(size);
                 setPage(1);
               }}
+              sort={sort}
+              onSortChange={onSortChange}
               rowActions={(row) => (
                 <TableActionsMenu
                   actions={[
@@ -439,6 +449,7 @@ export function MessagesPage() {
                 {
                   key: 'status',
                   label: 'Status',
+                  sortable: true,
                   render: (row) => (
                     <Chip label={toPresentationValue('status', row.status)} size="small" />
                   ),
@@ -447,6 +458,7 @@ export function MessagesPage() {
                 {
                   key: 'createdAt',
                   label: 'Criado em',
+                  sortable: true,
                   render: (row) => new Date(row.createdAt).toLocaleString('pt-BR'),
                 },
               ]}
@@ -459,6 +471,8 @@ export function MessagesPage() {
                 setPageSize(size);
                 setPage(1);
               }}
+              sort={sort}
+              onSortChange={onSortChange}
               rowActions={(row) => (
                 <TableActionsMenu
                   actions={[

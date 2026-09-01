@@ -26,7 +26,7 @@ export class MetaWhatsAppProvider implements IMessageProvider {
     const accessToken = this.resolveAccessToken(message);
     if (!accessToken) {
       return Result.fail(
-        new ProviderUnavailableError('Tenant Meta access token is not configured.'),
+        new ProviderUnavailableError('As credenciais da Meta não estão configuradas.'),
       );
     }
 

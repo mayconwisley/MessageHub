@@ -2,15 +2,22 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, MoreThanOrEqual, QueryFailedError, Repository } from 'typeorm';
 import { UniqueId } from '@shared/domain';
-import { PaginatedResult } from '@shared/types';
+import { PaginatedResult, SortDirection } from '@shared/types';
 import { Message, MessageProps } from '../../domain/entities/message.entity';
 import { MessageStatus } from '../../domain/enums/message-status.enum';
 import {
   IMessageRepository,
   ListMessagesFilter,
   MessageQuotaLimits,
+  MessageSortField,
   SaveWithQuotaCheckResult,
 } from '../../domain/repositories/message.repository.interface';
+
+/** Mapeia o campo de ordenação exposto pela API para a coluna correspondente na querybuilder. */
+const SORT_COLUMN_BY_FIELD: Record<MessageSortField, string> = {
+  [MessageSortField.STATUS]: 'message.status',
+  [MessageSortField.CREATED_AT]: 'message.created_at',
+};
 import { MessageContent } from '../../domain/value-objects/message-content.value-object';
 import { MessageType } from '../../domain/enums/message-type.enum';
 import { TemplateMessage } from '../../domain/value-objects/template-message.value-object';
@@ -201,6 +208,12 @@ export class PostgresMessageRepository implements IMessageRepository {
       .createQueryBuilder('message')
       .where('message.application_id = :applicationId', { applicationId: applicationId.value });
     if (filter?.status) query.andWhere('message.status = :status', { status: filter.status });
+    if (filter?.createdFrom) {
+      query.andWhere('message.created_at >= :createdFrom', { createdFrom: filter.createdFrom });
+    }
+    if (filter?.createdTo) {
+      query.andWhere('message.created_at <= :createdTo', { createdTo: filter.createdTo });
+    }
     if (filter?.search) {
       const search = `%${filter.search.trim()}%`;
       query.andWhere(
@@ -214,8 +227,10 @@ export class PostgresMessageRepository implements IMessageRepository {
         ),
       );
     }
+    const sortColumn = SORT_COLUMN_BY_FIELD[filter?.sortBy ?? MessageSortField.CREATED_AT];
+    const sortDirection = filter?.sortDirection ?? SortDirection.DESC;
     const [rows, total] = await query
-      .orderBy('message.created_at', 'DESC')
+      .orderBy(sortColumn, sortDirection)
       .skip((page - 1) * pageSize)
       .take(pageSize)
       .getManyAndCount();

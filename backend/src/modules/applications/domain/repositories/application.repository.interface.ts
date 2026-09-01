@@ -1,9 +1,20 @@
 import { UniqueId } from '@shared/domain';
 import { Application } from '../entities/application.entity';
-import { PaginatedResult } from '@shared/types';
+import { PaginatedResult, SortDirection } from '@shared/types';
+
+/** Campos pelos quais a listagem de aplicações pode ser ordenada. */
+export enum ApplicationSortField {
+  NAME = 'name',
+  STATUS = 'status',
+  CREATED_AT = 'createdAt',
+}
 
 export interface ListApplicationsFilter {
   search?: string;
+  createdFrom?: Date;
+  createdTo?: Date;
+  sortBy?: ApplicationSortField;
+  sortDirection?: SortDirection;
 }
 
 export interface IApplicationRepository {

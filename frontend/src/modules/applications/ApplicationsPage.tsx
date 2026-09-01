@@ -1,5 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Alert, Button, Chip, Stack, TextField } from '@mui/material';
+import { Visibility } from '@mui/icons-material';
+import { Alert, Button, Chip, Stack, TextField, Typography } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -8,12 +9,16 @@ import { ApplicationAutocomplete } from '../../components/shared/ApplicationAuto
 import { AsyncState } from '../../components/shared/AsyncState';
 import { CodeBlock } from '../../components/shared/CodeBlock';
 import { EntityResult } from '../../components/shared/EntityResult';
+import { FeedbackSnackbar } from '../../components/shared/FeedbackSnackbar';
 import { FormDialog } from '../../components/shared/FormDialog';
 import { PaginatedTable } from '../../components/shared/PaginatedTable';
 import { PhoneNumberMultiAutocomplete } from '../../components/shared/PhoneNumberMultiAutocomplete';
+import { TableActionsMenu } from '../../components/shared/TableActionsMenu';
 import { TenantAutocomplete } from '../../components/shared/TenantAutocomplete';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { useFeedback } from '../../hooks/useFeedback';
 import { usePagination } from '../../hooks/usePagination';
+import { useSort } from '../../hooks/useSort';
 import { applicationsApi, type Application } from './applications.api';
 
 const createSchema = z.object({
@@ -32,13 +37,18 @@ const statusLabels: Record<string, string> = { ACTIVE: 'Ativo', SUSPENDED: 'Susp
 
 export function ApplicationsPage() {
   const { page, pageSize, setPage, setPageSize } = usePagination();
+  const { sort, onSortChange, sortBy, sortDirection } = useSort(() => setPage(1));
   const [tenantIdFilter, setTenantIdFilter] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [webhookOpen, setWebhookOpen] = useState(false);
+  const [webhookTenantId, setWebhookTenantId] = useState('');
   const [phoneNumbersOpen, setPhoneNumbersOpen] = useState(false);
+  const [linkTenantId, setLinkTenantId] = useState('');
   const [linkApplicationId, setLinkApplicationId] = useState('');
   const [linkPhoneNumberIds, setLinkPhoneNumberIds] = useState<string[]>([]);
+  const [detailsApplication, setDetailsApplication] = useState<Application | null>(null);
   const client = useQueryClient();
+  const { feedback, notifySuccess, notifyError, clear } = useFeedback();
   const createForm = useForm<CreateFormData>({ resolver: zodResolver(createSchema) });
   const webhookForm = useForm<WebhookFormData>({ resolver: zodResolver(webhookSchema) });
 
@@ -51,6 +61,11 @@ export function ApplicationsPage() {
   const configureWebhook = useMutation({
     mutationFn: ({ applicationId, webhookUrl }: WebhookFormData) =>
       applicationsApi.configureWebhook(applicationId, webhookUrl || null),
+    onSuccess: () => {
+      notifySuccess('Webhook salvo.');
+      void client.invalidateQueries({ queryKey: ['applications'] });
+    },
+    onError: (error) => notifyError('Não foi possível salvar o webhook.', error),
   });
 
   const validLinkApplicationId = z.string().uuid().safeParse(linkApplicationId).success;
@@ -67,14 +82,23 @@ export function ApplicationsPage() {
   const setPhoneNumbers = useMutation({
     mutationFn: () => applicationsApi.setLinkedPhoneNumbers(linkApplicationId, linkPhoneNumberIds),
     onSuccess: () => {
+      notifySuccess('Vínculos de número atualizados.');
       void client.invalidateQueries({ queryKey: ['application-phone-numbers', linkApplicationId] });
     },
+    onError: (error) => notifyError('Não foi possível salvar os vínculos.', error),
+  });
+
+  const detailsPhoneNumbers = useQuery({
+    queryKey: ['application-phone-numbers', detailsApplication?.id],
+    queryFn: () => applicationsApi.listLinkedPhoneNumbers(detailsApplication!.id),
+    enabled: !!detailsApplication,
   });
 
   const validTenantFilter = z.string().uuid().safeParse(tenantIdFilter).success;
   const list = useQuery({
-    queryKey: ['applications', tenantIdFilter, page, pageSize],
-    queryFn: () => applicationsApi.list({ tenantId: tenantIdFilter, page, pageSize }),
+    queryKey: ['applications', tenantIdFilter, page, pageSize, sortBy, sortDirection],
+    queryFn: () =>
+      applicationsApi.list({ tenantId: tenantIdFilter, page, pageSize, sortBy, sortDirection }),
     enabled: validTenantFilter,
   });
 
@@ -88,17 +112,20 @@ export function ApplicationsPage() {
   const openWebhook = () => {
     webhookForm.reset();
     configureWebhook.reset();
+    setWebhookTenantId(tenantIdFilter);
     setWebhookOpen(true);
   };
   const closeWebhook = () => setWebhookOpen(false);
 
   const openPhoneNumbers = () => {
+    setLinkTenantId(tenantIdFilter);
     setLinkApplicationId('');
     setLinkPhoneNumberIds([]);
     setPhoneNumbers.reset();
     setPhoneNumbersOpen(true);
   };
   const closePhoneNumbers = () => setPhoneNumbersOpen(false);
+  const closeDetails = () => setDetailsApplication(null);
 
   return (
     <Stack spacing={3}>
@@ -142,6 +169,7 @@ export function ApplicationsPage() {
               {
                 key: 'status',
                 label: 'Status',
+                sortable: true,
                 render: (row) => (
                   <Chip label={statusLabels[row.status] ?? row.status} size="small" />
                 ),
@@ -149,6 +177,7 @@ export function ApplicationsPage() {
               {
                 key: 'createdAt',
                 label: 'Criado em',
+                sortable: true,
                 render: (row) => new Date(row.createdAt).toLocaleString('pt-BR'),
               },
             ]}
@@ -161,6 +190,19 @@ export function ApplicationsPage() {
               setPageSize(size);
               setPage(1);
             }}
+            sort={sort}
+            onSortChange={onSortChange}
+            rowActions={(row) => (
+              <TableActionsMenu
+                actions={[
+                  {
+                    label: 'Ver detalhes',
+                    icon: <Visibility fontSize="small" />,
+                    onClick: () => setDetailsApplication(row),
+                  },
+                ]}
+              />
+            )}
           />
         </AsyncState>
       </Stack>
@@ -217,15 +259,20 @@ export function ApplicationsPage() {
             spacing={2}
             onSubmit={webhookForm.handleSubmit((data) => configureWebhook.mutate(data))}
           >
-            {configureWebhook.error && (
-              <Alert severity="error">{configureWebhook.error.message}</Alert>
-            )}
+            <TenantAutocomplete
+              label="Tenant"
+              value={webhookTenantId}
+              onChange={(id) => {
+                setWebhookTenantId(id);
+                webhookForm.setValue('applicationId', '');
+              }}
+            />
             <Controller
               name="applicationId"
               control={webhookForm.control}
               render={({ field }) => (
                 <ApplicationAutocomplete
-                  tenantId={tenantIdFilter}
+                  tenantId={webhookTenantId}
                   value={field.value ?? ''}
                   onChange={field.onChange}
                   error={!!webhookForm.formState.errors.applicationId}
@@ -265,14 +312,21 @@ export function ApplicationsPage() {
 
       <FormDialog open={phoneNumbersOpen} onClose={closePhoneNumbers} title="Vincular números">
         <Stack spacing={2} sx={{ mt: 1 }}>
-          {setPhoneNumbers.error && <Alert severity="error">{setPhoneNumbers.error.message}</Alert>}
+          <TenantAutocomplete
+            label="Tenant"
+            value={linkTenantId}
+            onChange={(id) => {
+              setLinkTenantId(id);
+              setLinkApplicationId('');
+            }}
+          />
           <ApplicationAutocomplete
-            tenantId={tenantIdFilter}
+            tenantId={linkTenantId}
             value={linkApplicationId}
             onChange={setLinkApplicationId}
           />
           <PhoneNumberMultiAutocomplete
-            tenantId={tenantIdFilter}
+            tenantId={linkTenantId}
             value={linkPhoneNumberIds}
             onChange={setLinkPhoneNumberIds}
           />
@@ -286,11 +340,37 @@ export function ApplicationsPage() {
           >
             {setPhoneNumbers.isPending ? 'Salvando...' : 'Salvar vínculos'}
           </Button>
-          {setPhoneNumbers.isSuccess && (
-            <Alert severity="success">Vínculos atualizados com sucesso.</Alert>
-          )}
         </Stack>
       </FormDialog>
+
+      <FormDialog
+        open={Boolean(detailsApplication)}
+        onClose={closeDetails}
+        title={`Detalhes: ${detailsApplication?.name ?? ''}`}
+      >
+        <Stack spacing={2} sx={{ mt: 1 }}>
+          <Typography variant="subtitle2">Webhook configurado</Typography>
+          <Typography color="text.secondary">
+            {detailsApplication?.webhookUrl ?? 'Nenhum webhook configurado.'}
+          </Typography>
+          <Typography variant="subtitle2">Números vinculados</Typography>
+          <AsyncState
+            isLoading={detailsPhoneNumbers.isLoading}
+            error={detailsPhoneNumbers.error}
+            emptyMessage={
+              detailsPhoneNumbers.data?.length === 0 ? 'Nenhum número vinculado.' : undefined
+            }
+          >
+            <Stack spacing={0.5}>
+              {detailsPhoneNumbers.data?.map((phoneNumber) => (
+                <Typography key={phoneNumber.id}>{phoneNumber.displayNumber}</Typography>
+              ))}
+            </Stack>
+          </AsyncState>
+        </Stack>
+      </FormDialog>
+
+      <FeedbackSnackbar feedback={feedback} onClose={clear} />
     </Stack>
   );
 }

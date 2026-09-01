@@ -14,7 +14,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiHeader, ApiPropertyOptional, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsDateString, IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
 import { IMediator, MEDIATOR } from '@shared/mediator';
 import { UserSessionAuthGuard } from '@presentation/http/guards/user-session-auth.guard';
 import { PlatformAdminGuard } from '@presentation/http/guards/platform-admin.guard';
@@ -27,9 +27,11 @@ import { UpdateTenantStatusRequestDto } from '../dto/update-tenant-status-reques
 import { TenantResponseDto } from '../dto/tenant-response.dto';
 import { PaginationQueryDto } from '@presentation/http/dto/pagination-query.dto';
 import { ListTenantsQuery } from '../../application/queries/list-tenants.query';
-import { PaginatedResult } from '@shared/types';
+import { PaginatedResult, SortDirection } from '@shared/types';
 import { TenantStatus } from '../../domain/enums/tenant-status.enum';
+import { TenantSortField } from '../../domain/repositories/tenant.repository.interface';
 import { MetaConfigService } from '@infrastructure/configuration/meta-config.service';
+import { ApiPaginatedResponse } from '@presentation/http/decorators/api-paginated-response.decorator';
 
 class ListTenantsRequestDto extends PaginationQueryDto {
   @ApiPropertyOptional({ enum: TenantStatus })
@@ -42,6 +44,29 @@ class ListTenantsRequestDto extends PaginationQueryDto {
   @IsString()
   @MaxLength(255)
   search?: string;
+
+  @ApiPropertyOptional({ description: 'Filtra tenants criados a partir desta data (ISO 8601).' })
+  @IsOptional()
+  @IsDateString()
+  createdFrom?: string;
+
+  @ApiPropertyOptional({ description: 'Filtra tenants criados até esta data (ISO 8601).' })
+  @IsOptional()
+  @IsDateString()
+  createdTo?: string;
+
+  @ApiPropertyOptional({
+    enum: TenantSortField,
+    description: 'Campo de ordenação (padrão: createdAt).',
+  })
+  @IsOptional()
+  @IsEnum(TenantSortField)
+  sortBy?: TenantSortField;
+
+  @ApiPropertyOptional({ enum: SortDirection, description: 'Direção da ordenação (padrão: DESC).' })
+  @IsOptional()
+  @IsEnum(SortDirection)
+  sortDirection?: SortDirection;
 }
 
 @ApiTags('tenants')
@@ -66,9 +91,19 @@ export class TenantsController {
   }
 
   @Get()
+  @ApiPaginatedResponse(TenantResponseDto)
   async list(@Query() query: ListTenantsRequestDto): Promise<PaginatedResult<TenantResponseDto>> {
     const result = await this.mediator.query(
-      new ListTenantsQuery(query.page, query.pageSize, query.status, query.search),
+      new ListTenantsQuery(
+        query.page,
+        query.pageSize,
+        query.status,
+        query.search,
+        query.createdFrom ? new Date(query.createdFrom) : undefined,
+        query.createdTo ? new Date(query.createdTo) : undefined,
+        query.sortBy,
+        query.sortDirection,
+      ),
     );
     if (result.isFailure) throw toHttpException(result.error);
     return {

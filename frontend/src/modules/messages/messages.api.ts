@@ -1,5 +1,5 @@
 import { request, requestHealth, toQueryString } from '../../services/http-client';
-import type { PaginatedResult } from '../../services/pagination';
+import type { PaginatedResult, SortDirection } from '../../services/pagination';
 
 export interface Message {
   id: string;
@@ -69,6 +69,8 @@ export const messagesApi = {
     pageSize: number;
     status?: string;
     search?: string;
+    sortBy?: string;
+    sortDirection?: SortDirection;
   }) => request<PaginatedResult<Message>>(`/v1/messages${toQueryString(params)}`),
   listAttempts: (id: string, applicationId: string) =>
     request<MessageAttempt[]>(`/v1/messages/${id}/attempts${toQueryString({ applicationId })}`),

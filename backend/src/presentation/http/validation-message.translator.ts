@@ -36,19 +36,31 @@ const CONSTRAINT_TRANSLATORS: Record<string, ConstraintTranslator> = {
     `${property} deve conter no máximo ${firstNumber(message)} item(ns).`,
 };
 
-export function translateValidationErrors(errors: ValidationError[], parentPath = ''): string[] {
-  const messages: string[] = [];
+export interface ValidationErrorDetail {
+  field: string;
+  message: string;
+}
+
+/** Traduz erros do class-validator em detalhes estruturados por campo, prontos para um formulário mapear. */
+export function translateValidationErrors(
+  errors: ValidationError[],
+  parentPath = '',
+): ValidationErrorDetail[] {
+  const details: ValidationErrorDetail[] = [];
   for (const error of errors) {
     const path = parentPath ? `${parentPath}.${error.property}` : error.property;
     if (error.constraints) {
       for (const [constraint, defaultMessage] of Object.entries(error.constraints)) {
         const translate = CONSTRAINT_TRANSLATORS[constraint];
-        messages.push(translate ? translate(path, defaultMessage) : defaultMessage);
+        details.push({
+          field: path,
+          message: translate ? translate(path, defaultMessage) : defaultMessage,
+        });
       }
     }
     if (error.children?.length) {
-      messages.push(...translateValidationErrors(error.children, path));
+      details.push(...translateValidationErrors(error.children, path));
     }
   }
-  return messages;
+  return details;
 }

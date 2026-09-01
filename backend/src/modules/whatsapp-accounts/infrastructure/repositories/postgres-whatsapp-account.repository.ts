@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsWhere, ILike, Repository } from 'typeorm';
+import { FindOptionsOrder, FindOptionsWhere, ILike, Repository } from 'typeorm';
 import { UniqueId } from '@shared/domain';
+import { resolveDateRangeOperator } from '@shared/persistence/resolve-date-range-operator.util';
 import {
   WhatsAppAccount,
   WhatsAppAccountProps,
@@ -11,10 +12,11 @@ import { WhatsAppCredentialSource } from '../../domain/enums/whatsapp-credential
 import {
   IWhatsAppAccountRepository,
   ListWhatsAppAccountsFilter,
+  WhatsAppAccountSortField,
 } from '../../domain/repositories/whatsapp-account.repository.interface';
 import { WhatsAppAccountOrmEntity } from '../entities/whatsapp-account.orm-entity';
 import { AccessTokenCipherService } from '../security/access-token-cipher.service';
-import { PaginatedResult } from '@shared/types';
+import { PaginatedResult, SortDirection } from '@shared/types';
 
 @Injectable()
 export class PostgresWhatsAppAccountRepository implements IWhatsAppAccountRepository {
@@ -66,14 +68,25 @@ export class PostgresWhatsAppAccountRepository implements IWhatsAppAccountReposi
       ...(filter?.status ? { status: filter.status } : {}),
     };
     if (filter?.search) where.wabaId = ILike(`%${filter.search}%`);
+    const createdAtRange = resolveDateRangeOperator(filter?.createdFrom, filter?.createdTo);
+    if (createdAtRange) where.createdAt = createdAtRange;
 
     const [rows, total] = await this.repository.findAndCount({
       where,
-      order: { createdAt: 'DESC' },
+      order: this.resolveOrder(filter?.sortBy, filter?.sortDirection),
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
     return { items: rows.map((row) => this.toDomain(row)), total, page, pageSize };
+  }
+
+  private resolveOrder(
+    sortBy?: WhatsAppAccountSortField,
+    sortDirection?: SortDirection,
+  ): FindOptionsOrder<WhatsAppAccountOrmEntity> {
+    const field = sortBy ?? WhatsAppAccountSortField.CREATED_AT;
+    const direction = sortDirection ?? SortDirection.DESC;
+    return { [field]: direction };
   }
 
   async findIdsByTenantId(tenantId: UniqueId): Promise<UniqueId[]> {

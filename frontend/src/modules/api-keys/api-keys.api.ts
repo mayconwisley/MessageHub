@@ -1,5 +1,5 @@
 import { request, toQueryString } from '../../services/http-client';
-import type { PaginatedResult } from '../../services/pagination';
+import type { PaginatedResult, SortDirection } from '../../services/pagination';
 
 export interface ApiKey {
   id: string;
@@ -19,7 +19,10 @@ export interface CreatedApiKey extends ApiKey {
 }
 
 export const apiKeysApi = {
-  list: (applicationId: string, params: { page: number; pageSize: number }) =>
+  list: (
+    applicationId: string,
+    params: { page: number; pageSize: number; sortBy?: string; sortDirection?: SortDirection },
+  ) =>
     request<PaginatedResult<ApiKey>>(
       `/v1/applications/${applicationId}/api-keys${toQueryString(params)}`,
     ),

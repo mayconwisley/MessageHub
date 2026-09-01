@@ -13,12 +13,13 @@ import { Message } from '../../domain/entities/message.entity';
 import { InvalidMessageError } from '../../domain/errors/invalid-message.error';
 import { AmbiguousPhoneNumberError } from '../../domain/errors/ambiguous-phone-number.error';
 import { PhoneNumberNotConfiguredError } from '../../domain/errors/phone-number-not-configured.error';
+import { IdempotencyKeyConflictError } from '../../domain/errors/idempotency-key-conflict.error';
 import {
   IMessageRepository,
   MESSAGE_REPOSITORY,
 } from '../../domain/repositories/message.repository.interface';
 import { SendMessageCommand } from '../commands/send-message.command';
-import { MessageDto } from '../dto/message.dto';
+import { SendMessageResultDto } from '../dto/message.dto';
 import { MessageMapper } from '../mappers/message.mapper';
 import { IMessagePublisher, MESSAGE_PUBLISHER } from '../ports/message-publisher.interface';
 import {
@@ -42,13 +43,14 @@ export class SendMessageHandler implements ICommandHandler<SendMessageCommand> {
     command: SendMessageCommand,
   ): Promise<
     Result<
-      MessageDto,
+      SendMessageResultDto,
       | InvalidMessageError
       | ApplicationNotFoundError
       | PhoneNumberNotFoundError
       | PhoneNumberNotConfiguredError
       | AmbiguousPhoneNumberError
       | RateLimitExceededError
+      | IdempotencyKeyConflictError
     >
   > {
     const applicationId = UniqueId.create(command.applicationId);
@@ -77,7 +79,10 @@ export class SendMessageHandler implements ICommandHandler<SendMessageCommand> {
         command.idempotencyKey,
       );
       if (existing) {
-        return Result.ok(MessageMapper.toDto(existing));
+        if (!this.matchesReplayPayload(existing, command.to, command.content, phoneNumberId)) {
+          return Result.fail(new IdempotencyKeyConflictError(command.idempotencyKey));
+        }
+        return Result.ok({ message: MessageMapper.toDto(existing), isReplay: true });
       }
     }
 
@@ -117,7 +122,13 @@ export class SendMessageHandler implements ICommandHandler<SendMessageCommand> {
       return Result.fail(new RateLimitExceededError(scopeLabel));
     }
     if (saveResult.outcome === 'idempotent_conflict') {
-      return Result.ok(MessageMapper.toDto(saveResult.existing));
+      if (
+        command.idempotencyKey &&
+        !this.matchesReplayPayload(saveResult.existing, command.to, command.content, phoneNumberId)
+      ) {
+        return Result.fail(new IdempotencyKeyConflictError(command.idempotencyKey));
+      }
+      return Result.ok({ message: MessageMapper.toDto(saveResult.existing), isReplay: true });
     }
     await this.timeline?.record({
       messageId: message.id.value,
@@ -129,6 +140,20 @@ export class SendMessageHandler implements ICommandHandler<SendMessageCommand> {
     if (!saveResult.outboxPersisted) {
       await this.messagePublisher.publishMessageRequested({ messageId: message.id.value });
     }
-    return Result.ok(MessageMapper.toDto(message));
+    return Result.ok({ message: MessageMapper.toDto(message), isReplay: false });
+  }
+
+  /** Um reuso legitimo de Idempotency-Key deve repetir exatamente o mesmo pedido de envio. */
+  private matchesReplayPayload(
+    existing: Message,
+    to: string,
+    content: string,
+    phoneNumberId: UniqueId,
+  ): boolean {
+    return (
+      existing.to === to.trim() &&
+      existing.content.body === content.trim() &&
+      existing.phoneNumberId.value === phoneNumberId.value
+    );
   }
 }

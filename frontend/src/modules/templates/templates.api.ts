@@ -1,5 +1,5 @@
 import { request, toQueryString } from '../../services/http-client';
-import type { PaginatedResult } from '../../services/pagination';
+import type { PaginatedResult, SortDirection } from '../../services/pagination';
 
 export interface TemplateComponent {
   type: string;
@@ -52,7 +52,10 @@ export const templatesApi = {
     pageSize: number;
     status?: string;
     category?: string;
+    search?: string;
     sync?: boolean;
+    sortBy?: string;
+    sortDirection?: SortDirection;
   }) =>
     request<PaginatedResult<Template>>(
       `/v1/templates${toQueryString({ ...params, sync: params.sync ? 'true' : undefined })}`,

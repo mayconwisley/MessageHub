@@ -1,5 +1,5 @@
 import { request, toQueryString } from '../../services/http-client';
-import type { PaginatedResult } from '../../services/pagination';
+import type { PaginatedResult, SortDirection } from '../../services/pagination';
 
 export interface Application {
   id: string;
@@ -7,6 +7,7 @@ export interface Application {
   name: string;
   status: string;
   createdAt: string;
+  webhookUrl?: string | null;
   [key: string]: unknown;
 }
 
@@ -23,10 +24,17 @@ export interface LinkedPhoneNumber {
 }
 
 export const applicationsApi = {
-  list: (params: { tenantId: string; page: number; pageSize: number; search?: string }) =>
-    request<PaginatedResult<Application>>(`/v1/applications${toQueryString(params)}`),
+  list: (params: {
+    tenantId: string;
+    page: number;
+    pageSize: number;
+    search?: string;
+    sortBy?: string;
+    sortDirection?: SortDirection;
+  }) => request<PaginatedResult<Application>>(`/v1/applications${toQueryString(params)}`),
   create: (data: { tenantId: string; name: string }) =>
     request<Application>('/v1/applications', { method: 'POST', body: data }),
+  getById: (id: string) => request<Application>(`/v1/applications/${id}`),
   configureWebhook: (applicationId: string, webhookUrl: string | null) =>
     request<WebhookConfig>(`/v1/applications/${applicationId}/webhook`, {
       method: 'PUT',

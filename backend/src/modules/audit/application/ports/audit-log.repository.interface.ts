@@ -1,4 +1,4 @@
-import { PaginatedResult } from '@shared/types';
+import { PaginatedResult, SortDirection } from '@shared/types';
 
 export interface AuditLogDto {
   id: string;
@@ -16,9 +16,20 @@ export interface AuditLogDto {
   metadata: Record<string, unknown>;
 }
 
+/** Campos pelos quais a listagem de eventos de auditoria pode ser ordenada. */
+export enum AuditLogSortField {
+  OCCURRED_AT = 'occurredAt',
+  RESOURCE_TYPE = 'resourceType',
+  HTTP_STATUS = 'httpStatus',
+}
+
 export interface AuditLogListFilters {
   resourceType?: string;
   httpMethod?: string;
+  createdFrom?: Date;
+  createdTo?: Date;
+  sortBy?: AuditLogSortField;
+  sortDirection?: SortDirection;
 }
 
 export interface IAuditLogRepository {

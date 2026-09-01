@@ -23,6 +23,7 @@ import { TableActionsMenu } from '../../components/shared/TableActionsMenu';
 import { TenantAutocomplete } from '../../components/shared/TenantAutocomplete';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { usePagination } from '../../hooks/usePagination';
+import { useSort } from '../../hooks/useSort';
 import { whatsAppAccountsApi, type WhatsAppAccount } from './whatsapp-accounts.api';
 
 const schema = z.object({
@@ -44,6 +45,7 @@ const credentialSourceLabels: Record<string, string> = {
 
 export function WhatsAppAccountsPage() {
   const { page, pageSize, setPage, setPageSize } = usePagination();
+  const { sort, onSortChange, sortBy, sortDirection } = useSort(() => setPage(1));
   const [tenantIdFilter, setTenantIdFilter] = useState('');
   const [status, setStatus] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -64,13 +66,15 @@ export function WhatsAppAccountsPage() {
 
   const validTenantFilter = z.string().uuid().safeParse(tenantIdFilter).success;
   const list = useQuery({
-    queryKey: ['whatsapp-accounts', tenantIdFilter, status, page, pageSize],
+    queryKey: ['whatsapp-accounts', tenantIdFilter, status, page, pageSize, sortBy, sortDirection],
     queryFn: () =>
       whatsAppAccountsApi.list({
         tenantId: tenantIdFilter,
         page,
         pageSize,
         status: status || undefined,
+        sortBy,
+        sortDirection,
       }),
     enabled: validTenantFilter,
   });
@@ -140,6 +144,7 @@ export function WhatsAppAccountsPage() {
               {
                 key: 'status',
                 label: 'Status',
+                sortable: true,
                 render: (row) => (
                   <Chip label={statusLabels[row.status] ?? row.status} size="small" />
                 ),
@@ -147,6 +152,7 @@ export function WhatsAppAccountsPage() {
               {
                 key: 'createdAt',
                 label: 'Criado em',
+                sortable: true,
                 render: (row) => new Date(row.createdAt).toLocaleString('pt-BR'),
               },
             ]}
@@ -159,6 +165,8 @@ export function WhatsAppAccountsPage() {
               setPageSize(size);
               setPage(1);
             }}
+            sort={sort}
+            onSortChange={onSortChange}
             rowActions={(row) => (
               <TableActionsMenu
                 actions={[
@@ -210,7 +218,10 @@ export function WhatsAppAccountsPage() {
                 label="ID da conta WhatsApp (WABA)"
                 {...form.register('wabaId')}
                 error={!!form.formState.errors.wabaId}
-                helperText={form.formState.errors.wabaId?.message}
+                helperText={
+                  form.formState.errors.wabaId?.message ??
+                  'No Meta Business Manager: WhatsApp > Configuração da API > "ID da conta do WhatsApp Business".'
+                }
                 fullWidth
               />
               <TextField

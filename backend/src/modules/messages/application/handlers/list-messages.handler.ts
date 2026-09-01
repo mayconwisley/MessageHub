@@ -39,7 +39,14 @@ export class ListMessagesHandler implements IQueryHandler<ListMessagesQuery> {
       UniqueId.create(query.applicationId),
       query.page,
       query.pageSize,
-      query.status || query.search ? { status: query.status, search: query.search } : undefined,
+      {
+        status: query.status,
+        search: query.search,
+        createdFrom: query.createdFrom,
+        createdTo: query.createdTo,
+        sortBy: query.sortBy,
+        sortDirection: query.sortDirection,
+      },
     );
     return Result.ok({
       ...result,

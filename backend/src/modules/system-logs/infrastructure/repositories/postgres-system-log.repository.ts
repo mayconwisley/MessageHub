@@ -1,11 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, Repository } from 'typeorm';
-import { PaginatedResult } from '@shared/types';
+import { FindOptionsOrder, ILike, Repository } from 'typeorm';
+import { PaginatedResult, SortDirection } from '@shared/types';
+import { resolveDateRangeOperator } from '@shared/persistence/resolve-date-range-operator.util';
 import {
   ISystemLogRepository,
   SystemLogDto,
   SystemLogListFilters,
+  SystemLogSortField,
 } from '../../application/ports/system-log.repository.interface';
 import { SystemLogOrmEntity } from '../entities/system-log.orm-entity';
 
@@ -21,16 +23,20 @@ export class PostgresSystemLogRepository implements ISystemLogRepository {
     pageSize: number,
     filters?: SystemLogListFilters,
   ): Promise<PaginatedResult<SystemLogDto>> {
-    const levelFilter = filters?.level ? { level: filters.level } : {};
+    const occurredAtRange = resolveDateRangeOperator(filters?.createdFrom, filters?.createdTo);
+    const baseFilter = {
+      ...(filters?.level ? { level: filters.level } : {}),
+      ...(occurredAtRange ? { occurredAt: occurredAtRange } : {}),
+    };
     const searchTerm = filters?.search ? `%${filters.search}%` : undefined;
     const [rows, total] = await this.repository.findAndCount({
       where: searchTerm
         ? [
-            { ...levelFilter, message: ILike(searchTerm) },
-            { ...levelFilter, context: ILike(searchTerm) },
+            { ...baseFilter, message: ILike(searchTerm) },
+            { ...baseFilter, context: ILike(searchTerm) },
           ]
-        : levelFilter,
-      order: { occurredAt: 'DESC' },
+        : baseFilter,
+      order: this.resolveOrder(filters?.sortBy, filters?.sortDirection),
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
@@ -48,5 +54,14 @@ export class PostgresSystemLogRepository implements ISystemLogRepository {
       page,
       pageSize,
     };
+  }
+
+  private resolveOrder(
+    sortBy?: SystemLogSortField,
+    sortDirection?: SortDirection,
+  ): FindOptionsOrder<SystemLogOrmEntity> {
+    const field = sortBy ?? SystemLogSortField.OCCURRED_AT;
+    const direction = sortDirection ?? SortDirection.DESC;
+    return { [field]: direction };
   }
 }

@@ -1,14 +1,27 @@
 import { UniqueId } from '@shared/domain';
-import { PaginatedResult } from '@shared/types';
+import { PaginatedResult, SortDirection } from '@shared/types';
 import { User } from '../entities/user.entity';
 import { UserRole } from '../enums/user-role.enum';
 import { UserStatus } from '../enums/user-status.enum';
+
+/** Campos pelos quais a listagem de usuários pode ser ordenada. */
+export enum UserSortField {
+  NAME = 'name',
+  EMAIL = 'email',
+  ROLE = 'role',
+  STATUS = 'status',
+  CREATED_AT = 'createdAt',
+}
 
 export interface ListUsersFilter {
   tenantId?: string;
   role?: UserRole;
   status?: UserStatus;
   search?: string;
+  createdFrom?: Date;
+  createdTo?: Date;
+  sortBy?: UserSortField;
+  sortDirection?: SortDirection;
 }
 
 export interface IUserRepository {

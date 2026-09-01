@@ -1,15 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsWhere, ILike, Repository } from 'typeorm';
+import { FindOptionsOrder, FindOptionsWhere, ILike, Repository } from 'typeorm';
 import { UniqueId } from '@shared/domain';
+import { resolveDateRangeOperator } from '@shared/persistence/resolve-date-range-operator.util';
 import { Application, ApplicationProps } from '../../domain/entities/application.entity';
 import { ApplicationStatus } from '../../domain/enums/application-status.enum';
 import {
+  ApplicationSortField,
   IApplicationRepository,
   ListApplicationsFilter,
 } from '../../domain/repositories/application.repository.interface';
 import { ApplicationOrmEntity } from '../entities/application.orm-entity';
-import { PaginatedResult } from '@shared/types';
+import { PaginatedResult, SortDirection } from '@shared/types';
 import { WebhookSecretCipherService } from '../security/webhook-secret-cipher.service';
 
 @Injectable()
@@ -37,14 +39,25 @@ export class PostgresApplicationRepository implements IApplicationRepository {
   ): Promise<PaginatedResult<Application>> {
     const where: FindOptionsWhere<ApplicationOrmEntity> = { tenantId: tenantId.value };
     if (filter?.search) where.name = ILike(`%${filter.search}%`);
+    const createdAtRange = resolveDateRangeOperator(filter?.createdFrom, filter?.createdTo);
+    if (createdAtRange) where.createdAt = createdAtRange;
 
     const [rows, total] = await this.repository.findAndCount({
       where,
-      order: { createdAt: 'DESC' },
+      order: this.resolveOrder(filter?.sortBy, filter?.sortDirection),
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
     return { items: rows.map((row) => this.toDomain(row)), total, page, pageSize };
+  }
+
+  private resolveOrder(
+    sortBy?: ApplicationSortField,
+    sortDirection?: SortDirection,
+  ): FindOptionsOrder<ApplicationOrmEntity> {
+    const field = sortBy ?? ApplicationSortField.CREATED_AT;
+    const direction = sortDirection ?? SortDirection.DESC;
+    return { [field]: direction };
   }
 
   private toOrmEntity(application: Application): ApplicationOrmEntity {

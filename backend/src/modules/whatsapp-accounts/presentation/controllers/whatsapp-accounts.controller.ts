@@ -13,7 +13,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiPropertyOptional, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsDateString, IsEnum, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import { MetaConfigService } from '@infrastructure/configuration/meta-config.service';
 import { IMediator, MEDIATOR } from '@shared/mediator';
 import { PlatformAdminOrTenantApiKeyGuard } from '@presentation/http/guards/platform-admin-or-tenant-api-key.guard';
@@ -30,9 +30,11 @@ import { EnsureDefaultChannelAccountRequestDto } from '../dto/ensure-default-cha
 import { WhatsAppAccountResponseDto } from '../dto/whatsapp-account-response.dto';
 import { PaginationQueryDto } from '@presentation/http/dto/pagination-query.dto';
 import { ListWhatsAppAccountsQuery } from '../../application/queries/list-whatsapp-accounts.query';
-import { PaginatedResult } from '@shared/types';
+import { ApiPaginatedResponse } from '@presentation/http/decorators/api-paginated-response.decorator';
+import { PaginatedResult, SortDirection } from '@shared/types';
 import { WhatsAppAccountStatus } from '../../domain/enums/whatsapp-account-status.enum';
 import { WhatsAppCredentialSource } from '../../domain/enums/whatsapp-credential-source.enum';
+import { WhatsAppAccountSortField } from '../../domain/repositories/whatsapp-account.repository.interface';
 
 class ListWhatsAppAccountsRequestDto extends PaginationQueryDto {
   @ApiPropertyOptional()
@@ -50,6 +52,29 @@ class ListWhatsAppAccountsRequestDto extends PaginationQueryDto {
   @IsString()
   @MaxLength(255)
   search?: string;
+
+  @ApiPropertyOptional({ description: 'Filtra contas criadas a partir desta data (ISO 8601).' })
+  @IsOptional()
+  @IsDateString()
+  createdFrom?: string;
+
+  @ApiPropertyOptional({ description: 'Filtra contas criadas até esta data (ISO 8601).' })
+  @IsOptional()
+  @IsDateString()
+  createdTo?: string;
+
+  @ApiPropertyOptional({
+    enum: WhatsAppAccountSortField,
+    description: 'Campo de ordenação (padrão: createdAt).',
+  })
+  @IsOptional()
+  @IsEnum(WhatsAppAccountSortField)
+  sortBy?: WhatsAppAccountSortField;
+
+  @ApiPropertyOptional({ enum: SortDirection, description: 'Direção da ordenação (padrão: DESC).' })
+  @IsOptional()
+  @IsEnum(SortDirection)
+  sortDirection?: SortDirection;
 }
 
 @ApiTags('whatsapp-accounts')
@@ -126,6 +151,7 @@ export class WhatsAppAccountsController {
   }
 
   @Get()
+  @ApiPaginatedResponse(WhatsAppAccountResponseDto)
   async list(
     @Query() query: ListWhatsAppAccountsRequestDto,
     @CurrentOptionalAuthContext() auth?: AuthContextDto,
@@ -139,6 +165,10 @@ export class WhatsAppAccountsController {
         query.pageSize,
         query.status,
         query.search,
+        query.createdFrom ? new Date(query.createdFrom) : undefined,
+        query.createdTo ? new Date(query.createdTo) : undefined,
+        query.sortBy,
+        query.sortDirection,
       ),
     );
     if (result.isFailure) throw toHttpException(result.error);

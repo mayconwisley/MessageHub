@@ -8,12 +8,16 @@ import { z } from 'zod';
 import { ApplicationAutocomplete } from '../../components/shared/ApplicationAutocomplete';
 import { AsyncState } from '../../components/shared/AsyncState';
 import { CodeBlock } from '../../components/shared/CodeBlock';
+import { ConfirmDialog } from '../../components/shared/ConfirmDialog';
+import { FeedbackSnackbar } from '../../components/shared/FeedbackSnackbar';
 import { FormDialog } from '../../components/shared/FormDialog';
 import { PaginatedTable } from '../../components/shared/PaginatedTable';
 import { TableActionsMenu } from '../../components/shared/TableActionsMenu';
 import { TenantAutocomplete } from '../../components/shared/TenantAutocomplete';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { useFeedback } from '../../hooks/useFeedback';
 import { usePagination } from '../../hooks/usePagination';
+import { useSort } from '../../hooks/useSort';
 import { apiKeysApi, type ApiKey } from './api-keys.api';
 
 const schema = z.object({
@@ -24,20 +28,21 @@ const schema = z.object({
 });
 type FormData = z.infer<typeof schema>;
 
-const statusLabels: Record<string, string> = {
-  ACTIVE: 'Ativa',
-  active: 'Ativa',
-  REVOKED: 'Revogada',
-  revoked: 'Revogada',
-};
+function normalizeStatus(status: string): string {
+  return status.toUpperCase();
+}
+const statusLabels: Record<string, string> = { ACTIVE: 'Ativa', REVOKED: 'Revogada' };
 const typeLabels: Record<string, string> = { platform: 'Plataforma', tenant: 'Tenant' };
 
 export function ApiKeysPage() {
   const { page, pageSize, setPage, setPageSize } = usePagination();
+  const { sort, onSortChange, sortBy, sortDirection } = useSort(() => setPage(1));
   const [tenantIdFilter, setTenantIdFilter] = useState('');
   const [applicationIdFilter, setApplicationIdFilter] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
+  const [revoking, setRevoking] = useState<ApiKey | null>(null);
   const client = useQueryClient();
+  const { feedback, notifySuccess, notifyError, clear } = useFeedback();
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { type: 'platform' },
@@ -54,14 +59,18 @@ export function ApiKeysPage() {
   const revoke = useMutation({
     mutationFn: ({ applicationId, apiKeyId }: { applicationId: string; apiKeyId: string }) =>
       apiKeysApi.revoke(applicationId, apiKeyId),
-    onSuccess: (_, variables) =>
-      client.invalidateQueries({ queryKey: ['api-keys', variables.applicationId] }),
+    onSuccess: (_, variables) => {
+      setRevoking(null);
+      notifySuccess('Chave de API revogada.');
+      void client.invalidateQueries({ queryKey: ['api-keys', variables.applicationId] });
+    },
+    onError: (error) => notifyError('Não foi possível revogar a chave.', error),
   });
 
   const validApplicationFilter = z.string().uuid().safeParse(applicationIdFilter).success;
   const list = useQuery({
-    queryKey: ['api-keys', applicationIdFilter, page, pageSize],
-    queryFn: () => apiKeysApi.list(applicationIdFilter, { page, pageSize }),
+    queryKey: ['api-keys', applicationIdFilter, page, pageSize, sortBy, sortDirection],
+    queryFn: () => apiKeysApi.list(applicationIdFilter, { page, pageSize, sortBy, sortDirection }),
     enabled: validApplicationFilter,
   });
 
@@ -121,8 +130,12 @@ export function ApiKeysPage() {
               {
                 key: 'status',
                 label: 'Status',
+                sortable: true,
                 render: (row) => (
-                  <Chip label={statusLabels[row.status] ?? row.status} size="small" />
+                  <Chip
+                    label={statusLabels[normalizeStatus(row.status)] ?? row.status}
+                    size="small"
+                  />
                 ),
               },
               {
@@ -141,6 +154,7 @@ export function ApiKeysPage() {
               {
                 key: 'createdAt',
                 label: 'Criado em',
+                sortable: true,
                 render: (row) => new Date(row.createdAt).toLocaleString('pt-BR'),
               },
             ]}
@@ -153,6 +167,8 @@ export function ApiKeysPage() {
               setPageSize(size);
               setPage(1);
             }}
+            sort={sort}
+            onSortChange={onSortChange}
             rowActions={(row) => (
               <TableActionsMenu
                 actions={[
@@ -160,9 +176,8 @@ export function ApiKeysPage() {
                     label: 'Revogar chave',
                     icon: <Block fontSize="small" />,
                     color: 'error',
-                    disabled: row.status !== 'active' && row.status !== 'ACTIVE',
-                    onClick: () =>
-                      revoke.mutate({ applicationId: applicationIdFilter, apiKeyId: row.id }),
+                    disabled: normalizeStatus(row.status) !== 'ACTIVE',
+                    onClick: () => setRevoking(row),
                   },
                 ]}
               />
@@ -237,6 +252,20 @@ export function ApiKeysPage() {
           )}
         </Stack>
       </FormDialog>
+
+      <ConfirmDialog
+        open={Boolean(revoking)}
+        title="Revogar chave de API"
+        description="A chave deixará de autenticar requisições imediatamente. Esta ação não pode ser desfeita."
+        confirmLabel="Revogar"
+        isPending={revoke.isPending}
+        onConfirm={() =>
+          revoking && revoke.mutate({ applicationId: applicationIdFilter, apiKeyId: revoking.id })
+        }
+        onClose={() => setRevoking(null)}
+      />
+
+      <FeedbackSnackbar feedback={feedback} onClose={clear} />
     </Stack>
   );
 }

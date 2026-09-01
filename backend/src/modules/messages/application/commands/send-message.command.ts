@@ -6,17 +6,19 @@ import { PhoneNumberNotFoundError } from '@modules/phone-numbers/domain/errors';
 import { InvalidMessageError } from '../../domain/errors/invalid-message.error';
 import { AmbiguousPhoneNumberError } from '../../domain/errors/ambiguous-phone-number.error';
 import { PhoneNumberNotConfiguredError } from '../../domain/errors/phone-number-not-configured.error';
-import { MessageDto } from '../dto/message.dto';
+import { IdempotencyKeyConflictError } from '../../domain/errors/idempotency-key-conflict.error';
+import { SendMessageResultDto } from '../dto/message.dto';
 
 export class SendMessageCommand extends Command<
   Result<
-    MessageDto,
+    SendMessageResultDto,
     | InvalidMessageError
     | ApplicationNotFoundError
     | PhoneNumberNotFoundError
     | PhoneNumberNotConfiguredError
     | AmbiguousPhoneNumberError
     | RateLimitExceededError
+    | IdempotencyKeyConflictError
   >
 > {
   constructor(

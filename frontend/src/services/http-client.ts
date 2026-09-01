@@ -3,12 +3,18 @@ import { authStorage } from './auth-storage';
 const baseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 export const SESSION_EXPIRED_EVENT = 'message-hub:session-expired';
 
+export interface ApiValidationErrorDetail {
+  field: string;
+  message: string;
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
     readonly code?: string,
     readonly requestId?: string,
+    readonly details?: ApiValidationErrorDetail[],
   ) {
     super(message);
   }
@@ -18,6 +24,7 @@ interface ApiErrorPayload {
   message?: string | string[];
   code?: string;
   requestId?: string;
+  details?: ApiValidationErrorDetail[];
 }
 
 type RequestOptions = Omit<RequestInit, 'body' | 'headers'> & {
@@ -26,7 +33,9 @@ type RequestOptions = Omit<RequestInit, 'body' | 'headers'> & {
   authorization?: 'session' | 'none';
 };
 
-export function toQueryString(params: Record<string, string | number | undefined>): string {
+export function toQueryString<T extends Record<string, string | number | undefined>>(
+  params: T,
+): string {
   const search = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== '') search.set(key, String(value));
@@ -59,7 +68,13 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     if (response.status === 401 && authorization === 'session' && token) {
       window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
     }
-    throw new ApiError(message, response.status, payload?.code, payload?.requestId);
+    throw new ApiError(
+      message,
+      response.status,
+      payload?.code,
+      payload?.requestId,
+      payload?.details,
+    );
   }
   if (response.status === 204) return undefined as T;
 

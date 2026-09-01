@@ -11,29 +11,45 @@ import {
   MenuItem,
   Select,
   Stack,
-  Typography,
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { AsyncState } from '../../components/shared/AsyncState';
+import { CodeBlock } from '../../components/shared/CodeBlock';
+import { FeedbackSnackbar } from '../../components/shared/FeedbackSnackbar';
 import { PaginatedTable } from '../../components/shared/PaginatedTable';
 import { TableActionsMenu } from '../../components/shared/TableActionsMenu';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { useFeedback } from '../../hooks/useFeedback';
 import { usePagination } from '../../hooks/usePagination';
+import { useSort } from '../../hooks/useSort';
 import { webhooksApi, type WebhookEvent } from './webhooks.api';
+
+const statusLabels: Record<string, string> = {
+  PENDING: 'Pendente',
+  PROCESSED: 'Processado',
+  FAILED: 'Falhou / DLQ',
+};
 
 export function WebhooksPage() {
   const { page, pageSize, setPage, setPageSize } = usePagination();
+  const { sort, onSortChange, sortBy, sortDirection } = useSort(() => setPage(1));
   const [status, setStatus] = useState('');
   const [selected, setSelected] = useState<WebhookEvent | null>(null);
   const queryClient = useQueryClient();
+  const { feedback, notifySuccess, notifyError, clear } = useFeedback();
   const events = useQuery({
-    queryKey: ['webhook-events', page, pageSize, status],
-    queryFn: () => webhooksApi.list({ page, pageSize, status: status || undefined }),
+    queryKey: ['webhook-events', page, pageSize, status, sortBy, sortDirection],
+    queryFn: () =>
+      webhooksApi.list({ page, pageSize, status: status || undefined, sortBy, sortDirection }),
   });
   const reprocess = useMutation({
     mutationFn: webhooksApi.reprocess,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['webhook-events'] }),
+    onSuccess: () => {
+      notifySuccess('Evento reenviado para reprocessamento.');
+      void queryClient.invalidateQueries({ queryKey: ['webhook-events'] });
+    },
+    onError: (error) => notifyError('Não foi possível reprocessar o evento.', error),
   });
 
   return (
@@ -70,10 +86,11 @@ export function WebhooksPage() {
             {
               key: 'status',
               label: 'Status',
+              sortable: true,
               render: (row) => (
                 <Chip
                   size="small"
-                  label={row.status}
+                  label={statusLabels[row.status] ?? row.status}
                   color={
                     row.status === 'FAILED'
                       ? 'error'
@@ -88,6 +105,7 @@ export function WebhooksPage() {
             {
               key: 'receivedAt',
               label: 'Recebido em',
+              sortable: true,
               render: (row) => new Date(row.receivedAt).toLocaleString('pt-BR'),
             },
             { key: 'failureReason', label: 'Motivo', render: (row) => row.failureReason ?? '—' },
@@ -101,6 +119,8 @@ export function WebhooksPage() {
             setPageSize(value);
             setPage(1);
           }}
+          sort={sort}
+          onSortChange={onSortChange}
           rowActions={(row) => (
             <TableActionsMenu
               actions={[
@@ -123,24 +143,14 @@ export function WebhooksPage() {
       <Dialog open={!!selected} onClose={() => setSelected(null)} fullWidth maxWidth="md">
         <DialogTitle>Payload mascarado do webhook</DialogTitle>
         <DialogContent>
-          <Typography
-            component="pre"
-            sx={{
-              m: 0,
-              p: 2,
-              overflow: 'auto',
-              borderRadius: 1,
-              bgcolor: 'action.hover',
-              fontSize: 12,
-            }}
-          >
-            {JSON.stringify(selected?.payload, null, 2)}
-          </Typography>
+          <CodeBlock code={JSON.stringify(selected?.payload, null, 2)} />
           <Button sx={{ mt: 2 }} onClick={() => setSelected(null)}>
             Fechar
           </Button>
         </DialogContent>
       </Dialog>
+
+      <FeedbackSnackbar feedback={feedback} onClose={clear} />
     </Stack>
   );
 }

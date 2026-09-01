@@ -14,18 +14,21 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiHeader, ApiPropertyOptional, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsDateString, IsEnum, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import { IMediator, MEDIATOR } from '@shared/mediator';
 import { UserSessionAuthGuard } from '@presentation/http/guards/user-session-auth.guard';
 import { PlatformAdminGuard } from '@presentation/http/guards/platform-admin.guard';
 import { toHttpException } from '@presentation/http/result-http.mapper';
 import { PaginationQueryDto } from '@presentation/http/dto/pagination-query.dto';
-import { PaginatedResult } from '@shared/types';
+import { ApiPaginatedResponse } from '@presentation/http/decorators/api-paginated-response.decorator';
+import { PaginatedResult, SortDirection } from '@shared/types';
+import { ApplicationSortField } from '../../domain/repositories/application.repository.interface';
 import { CreateApplicationCommand } from '../../application/commands/create-application.command';
 import { ConfigureApplicationWebhookCommand } from '../../application/commands/configure-application-webhook.command';
 import { ConfigureApplicationQuotasCommand } from '../../application/commands/configure-application-quotas.command';
 import { SetApplicationPhoneNumbersCommand } from '../../application/commands/set-application-phone-numbers.command';
 import { ListApplicationsQuery } from '../../application/queries/list-applications.query';
+import { GetApplicationQuery } from '../../application/queries/get-application.query';
 import { ListApplicationPhoneNumbersQuery } from '../../application/queries/list-application-phone-numbers.query';
 import { ApplicationResponseDto } from '../dto/application-response.dto';
 import { CreateApplicationRequestDto } from '../dto/create-application-request.dto';
@@ -47,6 +50,29 @@ class ListApplicationsRequestDto extends PaginationQueryDto {
   @IsString()
   @MaxLength(255)
   search?: string;
+
+  @ApiPropertyOptional({ description: 'Filtra aplicações criadas a partir desta data (ISO 8601).' })
+  @IsOptional()
+  @IsDateString()
+  createdFrom?: string;
+
+  @ApiPropertyOptional({ description: 'Filtra aplicações criadas até esta data (ISO 8601).' })
+  @IsOptional()
+  @IsDateString()
+  createdTo?: string;
+
+  @ApiPropertyOptional({
+    enum: ApplicationSortField,
+    description: 'Campo de ordenação (padrão: createdAt).',
+  })
+  @IsOptional()
+  @IsEnum(ApplicationSortField)
+  sortBy?: ApplicationSortField;
+
+  @ApiPropertyOptional({ enum: SortDirection, description: 'Direção da ordenação (padrão: DESC).' })
+  @IsOptional()
+  @IsEnum(SortDirection)
+  sortDirection?: SortDirection;
 }
 
 @ApiTags('applications')
@@ -68,6 +94,7 @@ export class ApplicationsController {
   }
 
   @Get()
+  @ApiPaginatedResponse(ApplicationResponseDto)
   async list(
     @Query() query: ListApplicationsRequestDto,
   ): Promise<PaginatedResult<ApplicationResponseDto>> {
@@ -75,13 +102,32 @@ export class ApplicationsController {
       throw new BadRequestException('tenantId é obrigatório.');
     }
     const result = await this.mediator.query(
-      new ListApplicationsQuery(query.tenantId, query.page, query.pageSize, query.search),
+      new ListApplicationsQuery(
+        query.tenantId,
+        query.page,
+        query.pageSize,
+        query.search,
+        query.createdFrom ? new Date(query.createdFrom) : undefined,
+        query.createdTo ? new Date(query.createdTo) : undefined,
+        query.sortBy,
+        query.sortDirection,
+      ),
     );
     if (result.isFailure) throw toHttpException(result.error);
     return {
       ...result.value,
       items: result.value.items.map((application) => ApplicationResponseDto.fromDto(application)),
     };
+  }
+
+  @Get(':applicationId')
+  @ApiResponse({ status: HttpStatus.OK, type: ApplicationResponseDto })
+  async getById(
+    @Param('applicationId', ParseUUIDPipe) applicationId: string,
+  ): Promise<ApplicationResponseDto> {
+    const result = await this.mediator.query(new GetApplicationQuery(applicationId));
+    if (result.isFailure) throw toHttpException(result.error);
+    return ApplicationResponseDto.fromDto(result.value);
   }
 
   @Put(':applicationId/webhook')

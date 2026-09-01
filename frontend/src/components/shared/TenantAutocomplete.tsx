@@ -34,16 +34,27 @@ export function TenantAutocomplete({
     queryFn: () => tenantsApi.list({ page: 1, pageSize: 20, search: search || undefined }),
     staleTime: 30_000,
   });
-  const options = data?.items ?? [];
+  const matchInPage = data?.items.find((tenant) => tenant.id === value) ?? null;
+
+  // O tenant selecionado pode não estar na página atual de resultados (ex.: ao editar um
+  // registro cujo tenant vinculado não é um dos primeiros da busca) - busca por ID como fallback.
+  const { data: fallbackTenant } = useQuery({
+    queryKey: ['tenants-select-by-id', value],
+    queryFn: () => tenantsApi.getById(value),
+    enabled: Boolean(value) && !matchInPage,
+    staleTime: 30_000,
+  });
 
   useEffect(() => {
     if (!value) {
       setSelectedOption(null);
       return;
     }
-    const match = data?.items.find((tenant) => tenant.id === value);
-    setSelectedOption(match ?? null);
-  }, [data, value]);
+    setSelectedOption(matchInPage ?? fallbackTenant ?? null);
+  }, [value, matchInPage, fallbackTenant]);
+
+  const options =
+    fallbackTenant && !matchInPage ? [fallbackTenant, ...(data?.items ?? [])] : (data?.items ?? []);
 
   return (
     <Autocomplete

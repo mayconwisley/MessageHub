@@ -20,12 +20,16 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { AsyncState } from '../../components/shared/AsyncState';
+import { ConfirmDialog } from '../../components/shared/ConfirmDialog';
 import { EntityResult } from '../../components/shared/EntityResult';
+import { FeedbackSnackbar } from '../../components/shared/FeedbackSnackbar';
 import { FormDialog } from '../../components/shared/FormDialog';
 import { PaginatedTable } from '../../components/shared/PaginatedTable';
 import { TableActionsMenu } from '../../components/shared/TableActionsMenu';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { useFeedback } from '../../hooks/useFeedback';
 import { usePagination } from '../../hooks/usePagination';
+import { useSort } from '../../hooks/useSort';
 import { tenantsApi, type Tenant } from './tenants.api';
 
 const schema = z.object({ name: z.string().min(2, 'Informe ao menos 2 caracteres.') });
@@ -35,12 +39,15 @@ const statusLabels: Record<string, string> = { ACTIVE: 'Ativo', SUSPENDED: 'Susp
 
 export function TenantsPage() {
   const { page, pageSize, setPage, setPageSize } = usePagination();
+  const { sort, onSortChange, sortBy, sortDirection } = useSort(() => setPage(1));
   const [status, setStatus] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [confirmSuspend, setConfirmSuspend] = useState(false);
   const client = useQueryClient();
+  const { feedback, notifySuccess, notifyError, clear } = useFeedback();
   const form = useForm<FormData>({ resolver: zodResolver(schema) });
 
   useEffect(() => {
@@ -52,9 +59,16 @@ export function TenantsPage() {
   }, [searchInput, setPage]);
 
   const list = useQuery({
-    queryKey: ['tenants', page, pageSize, status, search],
+    queryKey: ['tenants', page, pageSize, status, search, sortBy, sortDirection],
     queryFn: () =>
-      tenantsApi.list({ page, pageSize, status: status || undefined, search: search || undefined }),
+      tenantsApi.list({
+        page,
+        pageSize,
+        status: status || undefined,
+        search: search || undefined,
+        sortBy,
+        sortDirection,
+      }),
   });
   const create = useMutation({
     mutationFn: tenantsApi.create,
@@ -70,10 +84,13 @@ export function TenantsPage() {
   const updateStatus = useMutation({
     mutationFn: (status: 'ACTIVE' | 'SUSPENDED') =>
       tenantsApi.updateStatus(selectedId as string, status),
-    onSuccess: () => {
+    onSuccess: (_, status) => {
+      setConfirmSuspend(false);
+      notifySuccess(status === 'SUSPENDED' ? 'Tenant suspenso.' : 'Tenant ativado.');
       void client.invalidateQueries({ queryKey: ['tenant', selectedId] });
       void client.invalidateQueries({ queryKey: ['tenants'] });
     },
+    onError: (error) => notifyError('Não foi possível alterar o status do tenant.', error),
   });
 
   const closeDetails = () => {
@@ -132,6 +149,7 @@ export function TenantsPage() {
               {
                 key: 'status',
                 label: 'Status',
+                sortable: true,
                 render: (row) => (
                   <Chip label={statusLabels[row.status] ?? row.status} size="small" />
                 ),
@@ -139,6 +157,7 @@ export function TenantsPage() {
               {
                 key: 'createdAt',
                 label: 'Criado em',
+                sortable: true,
                 render: (row) => new Date(row.createdAt).toLocaleString('pt-BR'),
               },
             ]}
@@ -151,6 +170,8 @@ export function TenantsPage() {
               setPageSize(size);
               setPage(1);
             }}
+            sort={sort}
+            onSortChange={onSortChange}
             rowActions={(row) => (
               <TableActionsMenu
                 actions={[
@@ -203,7 +224,6 @@ export function TenantsPage() {
         <DialogTitle>Detalhes do tenant</DialogTitle>
         <DialogContent>
           <Stack spacing={2}>
-            {updateStatus.error && <Alert severity="error">{updateStatus.error.message}</Alert>}
             <AsyncState isLoading={details.isLoading} error={details.error}>
               <EntityResult title="Detalhes" data={details.data ?? null} />
             </AsyncState>
@@ -214,7 +234,7 @@ export function TenantsPage() {
             <Button
               color="warning"
               disabled={updateStatus.isPending}
-              onClick={() => updateStatus.mutate('SUSPENDED')}
+              onClick={() => setConfirmSuspend(true)}
             >
               Suspender
             </Button>
@@ -231,6 +251,18 @@ export function TenantsPage() {
           <Button onClick={closeDetails}>Fechar</Button>
         </DialogActions>
       </Dialog>
+
+      <ConfirmDialog
+        open={confirmSuspend}
+        title="Suspender tenant"
+        description="Todas as aplicações, chaves de API e integrações deste tenant deixarão de funcionar até que ele seja reativado."
+        confirmLabel="Suspender"
+        isPending={updateStatus.isPending}
+        onConfirm={() => updateStatus.mutate('SUSPENDED')}
+        onClose={() => setConfirmSuspend(false)}
+      />
+
+      <FeedbackSnackbar feedback={feedback} onClose={clear} />
     </Stack>
   );
 }

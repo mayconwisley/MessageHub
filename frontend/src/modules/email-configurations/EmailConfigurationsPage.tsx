@@ -16,8 +16,11 @@ import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { AsyncState } from '../../components/shared/AsyncState';
+import { ConfirmDialog } from '../../components/shared/ConfirmDialog';
+import { FeedbackSnackbar } from '../../components/shared/FeedbackSnackbar';
 import { TenantAutocomplete } from '../../components/shared/TenantAutocomplete';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { useFeedback } from '../../hooks/useFeedback';
 import { emailConfigurationsApi } from './email-configurations.api';
 
 const schema = z.object({
@@ -34,7 +37,9 @@ type FormData = z.infer<typeof schema>;
 
 export function EmailConfigurationsPage() {
   const [tenantId, setTenantId] = useState('');
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const client = useQueryClient();
+  const { feedback, notifySuccess, notifyError, clear } = useFeedback();
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { port: 587, secure: false, fromName: 'Message Hub' },
@@ -58,12 +63,15 @@ export function EmailConfigurationsPage() {
         fromEmail: value.fromEmail ?? '',
         fromName: value.fromName ?? 'Message Hub',
       });
+      notifySuccess('SMTP do tenant salvo.');
       void client.invalidateQueries({ queryKey: ['email-smtp-configuration', tenantId] });
     },
+    onError: (error) => notifyError('Não foi possível salvar o SMTP do tenant.', error),
   });
   const remove = useMutation({
     mutationFn: emailConfigurationsApi.removeSmtp,
     onSuccess: () => {
+      setConfirmRemove(false);
       form.reset({
         tenantId,
         host: '',
@@ -74,8 +82,10 @@ export function EmailConfigurationsPage() {
         fromEmail: '',
         fromName: 'Message Hub',
       });
+      notifySuccess('O tenant voltará a usar o SMTP padrão da plataforma.');
       void client.invalidateQueries({ queryKey: ['email-smtp-configuration', tenantId] });
     },
+    onError: (error) => notifyError('Não foi possível remover o SMTP do tenant.', error),
   });
 
   const selectTenant = (value: string) => {
@@ -129,8 +139,6 @@ export function EmailConfigurationsPage() {
             </Paper>
             <Box component="form" onSubmit={form.handleSubmit((data) => save.mutate(data))}>
               <Stack spacing={2} sx={{ maxWidth: 640 }}>
-                {save.isError && <Alert severity="error">{save.error.message}</Alert>}
-                {remove.isError && <Alert severity="error">{remove.error.message}</Alert>}
                 <TextField
                   label="Servidor SMTP"
                   {...form.register('host')}
@@ -196,7 +204,7 @@ export function EmailConfigurationsPage() {
                     <Button
                       color="inherit"
                       disabled={remove.isPending}
-                      onClick={() => remove.mutate(tenantId)}
+                      onClick={() => setConfirmRemove(true)}
                     >
                       Usar SMTP padrão
                     </Button>
@@ -207,6 +215,19 @@ export function EmailConfigurationsPage() {
           </>
         </AsyncState>
       )}
+
+      <ConfirmDialog
+        open={confirmRemove}
+        title="Usar SMTP padrão"
+        description="As credenciais SMTP deste tenant serão removidas e os envios passarão a usar o SMTP padrão da plataforma."
+        confirmLabel="Remover override"
+        severity="warning"
+        isPending={remove.isPending}
+        onConfirm={() => remove.mutate(tenantId)}
+        onClose={() => setConfirmRemove(false)}
+      />
+
+      <FeedbackSnackbar feedback={feedback} onClose={clear} />
     </Stack>
   );
 }

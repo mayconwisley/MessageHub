@@ -90,7 +90,7 @@ describe('SmtpEmailProvider', () => {
     expect(result.isFailure).toBe(true);
     expect(result.error).toBeInstanceOf(SmtpProviderUnavailableError);
     expect(result.error.retryable).toBe(true);
-    expect(result.error.message).toBe('connect ECONNREFUSED');
+    expect(result.error.message).toBe('Servidor SMTP indisponível ou inacessível.');
   });
 
   it('returns a retryable failure when the transport reports a 4xx response code', async () => {
@@ -119,10 +119,10 @@ describe('SmtpEmailProvider', () => {
     expect(result.isFailure).toBe(true);
     expect(result.error).toBeInstanceOf(EmailDeliveryRejectedError);
     expect(result.error.retryable).toBe(false);
-    expect(result.error.message).toBe('mailbox unavailable');
+    expect(result.error.message).toBe('O servidor SMTP rejeitou o envio do e-mail.');
   });
 
-  it('falls back to a generic message when the thrown error is not an Error instance', async () => {
+  it('falls back to a generic safe message when the thrown error is not an Error instance', async () => {
     const sendMail = jest.fn().mockRejectedValue('boom');
     createTransportMock.mockReturnValue({ sendMail });
 
@@ -130,7 +130,7 @@ describe('SmtpEmailProvider', () => {
     const result = await provider.send(buildOutgoingEmail());
 
     expect(result.isFailure).toBe(true);
-    expect(result.error.message).toBe('Falha desconhecida no provedor SMTP.');
+    expect(result.error.message).toBe('O servidor SMTP rejeitou o envio do e-mail.');
     expect(result.error.retryable).toBe(false);
   });
 });

@@ -1,5 +1,5 @@
 import { request, toQueryString } from '../../services/http-client';
-import type { PaginatedResult } from '../../services/pagination';
+import type { PaginatedResult, SortDirection } from '../../services/pagination';
 
 export interface WebhookEvent {
   id: string;
@@ -14,8 +14,13 @@ export interface WebhookEvent {
 }
 
 export const webhooksApi = {
-  list: (params: { page: number; pageSize: number; status?: string }) =>
-    request<PaginatedResult<WebhookEvent>>(`/v1/webhook-events${toQueryString(params)}`),
+  list: (params: {
+    page: number;
+    pageSize: number;
+    status?: string;
+    sortBy?: string;
+    sortDirection?: SortDirection;
+  }) => request<PaginatedResult<WebhookEvent>>(`/v1/webhook-events${toQueryString(params)}`),
   reprocess: (id: string) =>
     request<WebhookEvent>(`/v1/webhook-events/${id}/reprocess`, { method: 'POST' }),
 };

@@ -21,12 +21,14 @@ import { RateLimitExceededError } from '@shared/errors';
 import { Message } from '../../domain/entities/message.entity';
 import {
   AmbiguousPhoneNumberError,
+  IdempotencyKeyConflictError,
   InvalidMessageError,
   PhoneNumberNotConfiguredError,
   TemplateNotFoundError,
 } from '../../domain/errors';
+import { TemplateParameterGroup } from '../../domain/value-objects/template-message.value-object';
 import { SendTemplateMessageCommand } from '../commands/send-template-message.command';
-import { MessageDto } from '../dto/message.dto';
+import { SendMessageResultDto } from '../dto/message.dto';
 import { MessageMapper } from '../mappers/message.mapper';
 import { IMessagePublisher, MESSAGE_PUBLISHER } from '../ports/message-publisher.interface';
 import {
@@ -57,7 +59,7 @@ export class SendTemplateMessageHandler implements ICommandHandler<SendTemplateM
     command: SendTemplateMessageCommand,
   ): Promise<
     Result<
-      MessageDto,
+      SendMessageResultDto,
       | InvalidMessageError
       | ApplicationNotFoundError
       | PhoneNumberNotFoundError
@@ -65,6 +67,7 @@ export class SendTemplateMessageHandler implements ICommandHandler<SendTemplateM
       | AmbiguousPhoneNumberError
       | TemplateNotFoundError
       | RateLimitExceededError
+      | IdempotencyKeyConflictError
     >
   > {
     const applicationId = UniqueId.create(command.applicationId);
@@ -85,14 +88,6 @@ export class SendTemplateMessageHandler implements ICommandHandler<SendTemplateM
     const account = await this.whatsAppAccountRepository.findById(phoneNumber.whatsAppAccountId);
     if (!account) {
       return Result.fail(new PhoneNumberNotFoundError(phoneNumber.id.value));
-    }
-
-    if (command.idempotencyKey) {
-      const existing = await this.messageRepository.findByIdempotencyKey(
-        applicationId,
-        command.idempotencyKey,
-      );
-      if (existing) return Result.ok(MessageMapper.toDto(existing));
     }
 
     const reference = command.template.id ?? command.template.name ?? 'unknown';
@@ -120,6 +115,25 @@ export class SendTemplateMessageHandler implements ICommandHandler<SendTemplateM
       return Result.fail(new TemplateNotFoundError(reference));
     }
 
+    const parameters: TemplateParameterGroup[] = command.parameters.length
+      ? [{ component: 'body', values: command.parameters }]
+      : [];
+
+    if (command.idempotencyKey) {
+      const existing = await this.messageRepository.findByIdempotencyKey(
+        applicationId,
+        command.idempotencyKey,
+      );
+      if (existing) {
+        if (
+          !this.matchesReplayPayload(existing, command.to, phoneNumberId, template.name, parameters)
+        ) {
+          return Result.fail(new IdempotencyKeyConflictError(command.idempotencyKey));
+        }
+        return Result.ok({ message: MessageMapper.toDto(existing), isReplay: true });
+      }
+    }
+
     const messageResult = Message.createTemplate({
       tenantId: application.tenantId,
       applicationId,
@@ -128,9 +142,7 @@ export class SendTemplateMessageHandler implements ICommandHandler<SendTemplateM
       metaTemplateId: template.metaTemplateId,
       templateName: template.name,
       language: template.language,
-      parameters: command.parameters.length
-        ? [{ component: 'body', values: command.parameters }]
-        : [],
+      parameters,
       idempotencyKey: command.idempotencyKey,
       requestId: command.requestId,
     });
@@ -158,7 +170,19 @@ export class SendTemplateMessageHandler implements ICommandHandler<SendTemplateM
       return Result.fail(new RateLimitExceededError(scopeLabel));
     }
     if (saveResult.outcome === 'idempotent_conflict') {
-      return Result.ok(MessageMapper.toDto(saveResult.existing));
+      if (
+        command.idempotencyKey &&
+        !this.matchesReplayPayload(
+          saveResult.existing,
+          command.to,
+          phoneNumberId,
+          template.name,
+          parameters,
+        )
+      ) {
+        return Result.fail(new IdempotencyKeyConflictError(command.idempotencyKey));
+      }
+      return Result.ok({ message: MessageMapper.toDto(saveResult.existing), isReplay: true });
     }
     await this.timeline?.record({
       messageId: message.id.value,
@@ -170,6 +194,22 @@ export class SendTemplateMessageHandler implements ICommandHandler<SendTemplateM
     if (!saveResult.outboxPersisted) {
       await this.messagePublisher.publishMessageRequested({ messageId: message.id.value });
     }
-    return Result.ok(MessageMapper.toDto(message));
+    return Result.ok({ message: MessageMapper.toDto(message), isReplay: false });
+  }
+
+  /** Um reuso legitimo de Idempotency-Key deve repetir exatamente o mesmo template e parametros. */
+  private matchesReplayPayload(
+    existing: Message,
+    to: string,
+    phoneNumberId: UniqueId,
+    templateName: string,
+    parameters: TemplateParameterGroup[],
+  ): boolean {
+    return (
+      existing.to === to.trim() &&
+      existing.phoneNumberId.value === phoneNumberId.value &&
+      existing.template?.name === templateName &&
+      JSON.stringify(existing.template?.parameters ?? []) === JSON.stringify(parameters)
+    );
   }
 }

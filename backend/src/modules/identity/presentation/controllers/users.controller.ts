@@ -15,7 +15,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiPropertyOptional, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsDateString, IsEnum, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import { IMediator, MEDIATOR } from '@shared/mediator';
 import { PlatformAdminGuard } from '@presentation/http/guards/platform-admin.guard';
 import {
@@ -24,7 +24,8 @@ import {
 } from '@presentation/http/guards/user-session-auth.guard';
 import { toHttpException } from '@presentation/http/result-http.mapper';
 import { PaginationQueryDto } from '@presentation/http/dto/pagination-query.dto';
-import { PaginatedResult } from '@shared/types';
+import { ApiPaginatedResponse } from '@presentation/http/decorators/api-paginated-response.decorator';
+import { PaginatedResult, SortDirection } from '@shared/types';
 import { CreateUserCommand } from '../../application/commands/create-user.command';
 import { UpdateUserCommand } from '../../application/commands/update-user.command';
 import { UpdateUserStatusCommand } from '../../application/commands/update-user-status.command';
@@ -32,6 +33,7 @@ import { ListUsersQuery } from '../../application/queries/list-users.query';
 import { GetUserQuery } from '../../application/queries/get-user.query';
 import { UserRole } from '../../domain/enums/user-role.enum';
 import { UserStatus } from '../../domain/enums/user-status.enum';
+import { UserSortField } from '../../domain/repositories/user.repository.interface';
 import { CreateUserRequestDto } from '../dto/create-user-request.dto';
 import { UpdateUserRequestDto } from '../dto/update-user-request.dto';
 import { UpdateUserStatusRequestDto } from '../dto/update-user-status-request.dto';
@@ -58,6 +60,29 @@ class ListUsersRequestDto extends PaginationQueryDto {
   @IsString()
   @MaxLength(255)
   search?: string;
+
+  @ApiPropertyOptional({ description: 'Filtra usuários criados a partir desta data (ISO 8601).' })
+  @IsOptional()
+  @IsDateString()
+  createdFrom?: string;
+
+  @ApiPropertyOptional({ description: 'Filtra usuários criados até esta data (ISO 8601).' })
+  @IsOptional()
+  @IsDateString()
+  createdTo?: string;
+
+  @ApiPropertyOptional({
+    enum: UserSortField,
+    description: 'Campo de ordenação (padrão: createdAt).',
+  })
+  @IsOptional()
+  @IsEnum(UserSortField)
+  sortBy?: UserSortField;
+
+  @ApiPropertyOptional({ enum: SortDirection, description: 'Direção da ordenação (padrão: DESC).' })
+  @IsOptional()
+  @IsEnum(SortDirection)
+  sortDirection?: SortDirection;
 }
 
 @ApiTags('users')
@@ -82,6 +107,7 @@ export class UsersController {
   }
 
   @Get()
+  @ApiPaginatedResponse(UserResponseDto)
   async list(@Query() query: ListUsersRequestDto): Promise<PaginatedResult<UserResponseDto>> {
     const result = await this.mediator.query(
       new ListUsersQuery(
@@ -91,6 +117,10 @@ export class UsersController {
         query.role,
         query.status,
         query.search,
+        query.createdFrom ? new Date(query.createdFrom) : undefined,
+        query.createdTo ? new Date(query.createdTo) : undefined,
+        query.sortBy,
+        query.sortDirection,
       ),
     );
     if (result.isFailure) throw toHttpException(result.error);

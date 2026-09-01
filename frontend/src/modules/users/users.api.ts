@@ -1,5 +1,5 @@
 import { request, toQueryString } from '../../services/http-client';
-import type { PaginatedResult } from '../../services/pagination';
+import type { PaginatedResult, SortDirection } from '../../services/pagination';
 
 export interface User {
   id: string;
@@ -23,6 +23,8 @@ export const usersApi = {
     role?: string;
     status?: string;
     search?: string;
+    sortBy?: string;
+    sortDirection?: SortDirection;
   }) => request<PaginatedResult<User>>(`/v1/users${toQueryString(params)}`),
   create: (data: {
     name: string;

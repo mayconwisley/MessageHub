@@ -40,16 +40,29 @@ export function PhoneNumberAutocomplete({
     enabled: validTenantId,
     staleTime: 30_000,
   });
-  const options = data?.items ?? [];
+  const matchInPage = data?.items.find((phoneNumber) => phoneNumber.id === value) ?? null;
+
+  // O número selecionado pode não estar na página atual de resultados (ex.: ao editar um
+  // registro cujo número vinculado não é um dos primeiros da busca) - busca por ID como fallback.
+  const { data: fallbackPhoneNumber } = useQuery({
+    queryKey: ['phone-numbers-select-by-id', value],
+    queryFn: () => phoneNumbersApi.getById(value),
+    enabled: Boolean(value) && !matchInPage,
+    staleTime: 30_000,
+  });
 
   useEffect(() => {
     if (!value) {
       setSelectedOption(null);
       return;
     }
-    const match = data?.items.find((phoneNumber) => phoneNumber.id === value);
-    setSelectedOption(match ?? null);
-  }, [data, value]);
+    setSelectedOption(matchInPage ?? fallbackPhoneNumber ?? null);
+  }, [value, matchInPage, fallbackPhoneNumber]);
+
+  const options =
+    fallbackPhoneNumber && !matchInPage
+      ? [fallbackPhoneNumber, ...(data?.items ?? [])]
+      : (data?.items ?? []);
 
   return (
     <Autocomplete

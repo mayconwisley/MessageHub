@@ -1,5 +1,5 @@
 import { request, toQueryString } from '../../services/http-client';
-import type { PaginatedResult } from '../../services/pagination';
+import type { PaginatedResult, SortDirection } from '../../services/pagination';
 
 export interface WhatsAppAccount {
   id: string;
@@ -23,6 +23,8 @@ export const whatsAppAccountsApi = {
     pageSize: number;
     status?: string;
     search?: string;
+    sortBy?: string;
+    sortDirection?: SortDirection;
   }) => request<PaginatedResult<WhatsAppAccount>>(`/v1/whatsapp-accounts${toQueryString(params)}`),
   create: (data: {
     tenantId: string;

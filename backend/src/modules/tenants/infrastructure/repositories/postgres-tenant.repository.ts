@@ -1,15 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsWhere, ILike, Repository } from 'typeorm';
+import { FindOptionsOrder, FindOptionsWhere, ILike, Repository } from 'typeorm';
 import { UniqueId } from '@shared/domain';
+import { resolveDateRangeOperator } from '@shared/persistence/resolve-date-range-operator.util';
 import { Tenant, TenantProps } from '../../domain/entities/tenant.entity';
 import { TenantStatus } from '../../domain/enums/tenant-status.enum';
 import {
   ITenantRepository,
   ListTenantsFilter,
+  TenantSortField,
 } from '../../domain/repositories/tenant.repository.interface';
 import { TenantOrmEntity } from '../entities/tenant.orm-entity';
-import { PaginatedResult } from '@shared/types';
+import { PaginatedResult, SortDirection } from '@shared/types';
 
 @Injectable()
 export class PostgresTenantRepository implements ITenantRepository {
@@ -35,14 +37,25 @@ export class PostgresTenantRepository implements ITenantRepository {
     const where: FindOptionsWhere<TenantOrmEntity> = {};
     if (filter?.status) where.status = filter.status;
     if (filter?.search) where.name = ILike(`%${filter.search}%`);
+    const createdAtRange = resolveDateRangeOperator(filter?.createdFrom, filter?.createdTo);
+    if (createdAtRange) where.createdAt = createdAtRange;
 
     const [rows, total] = await this.repository.findAndCount({
       where,
-      order: { createdAt: 'DESC' },
+      order: this.resolveOrder(filter?.sortBy, filter?.sortDirection),
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
     return { items: rows.map((row) => this.toDomain(row)), total, page, pageSize };
+  }
+
+  private resolveOrder(
+    sortBy?: TenantSortField,
+    sortDirection?: SortDirection,
+  ): FindOptionsOrder<TenantOrmEntity> {
+    const field = sortBy ?? TenantSortField.CREATED_AT;
+    const direction = sortDirection ?? SortDirection.DESC;
+    return { [field]: direction };
   }
 
   private toOrmEntity(tenant: Tenant): TenantOrmEntity {

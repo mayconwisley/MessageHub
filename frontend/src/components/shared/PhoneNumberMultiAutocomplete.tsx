@@ -42,15 +42,31 @@ export function PhoneNumberMultiAutocomplete({
   });
   const options = data?.items ?? [];
 
+  const knownIds = new Set([
+    ...(data?.items ?? []).map((phoneNumber) => phoneNumber.id),
+    ...selectedOptions.map((phoneNumber) => phoneNumber.id),
+  ]);
+  const missingIds = value.filter((id) => !knownIds.has(id));
+
+  // Números já vinculados podem não estar na página atual de resultados (ex.: ao editar uma
+  // aplicação cujos números vinculados não são os primeiros da busca) - busca por ID como fallback.
+  const { data: fallbackPhoneNumbers } = useQuery({
+    queryKey: ['phone-numbers-select-by-ids', missingIds],
+    queryFn: () => Promise.all(missingIds.map((id) => phoneNumbersApi.getById(id))),
+    enabled: missingIds.length > 0,
+    staleTime: 30_000,
+  });
+
   useEffect(() => {
     setSelectedOptions((previous) => {
       const known = new Map(previous.map((phoneNumber) => [phoneNumber.id, phoneNumber]));
       for (const option of data?.items ?? []) known.set(option.id, option);
+      for (const option of fallbackPhoneNumbers ?? []) known.set(option.id, option);
       return value
         .map((id) => known.get(id))
         .filter((phoneNumber): phoneNumber is PhoneNumber => Boolean(phoneNumber));
     });
-  }, [data, value]);
+  }, [data, fallbackPhoneNumbers, value]);
 
   const mergedOptions = [
     ...options,

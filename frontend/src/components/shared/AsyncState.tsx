@@ -1,5 +1,15 @@
 import { Alert, Box, CircularProgress, Typography } from '@mui/material';
 import type { ReactNode } from 'react';
+import { ApiError } from '../../services/http-client';
+
+const GENERIC_ERROR_MESSAGE =
+  'Não foi possível carregar os dados. Verifique sua conexão e tente novamente.';
+
+/** Erros de rede/infra (ex.: "Failed to fetch") vêm em inglês e não devem aparecer crus na UI em pt-BR. */
+function toDisplayMessage(error: Error): string {
+  if (error instanceof ApiError) return error.message;
+  return GENERIC_ERROR_MESSAGE;
+}
 
 export function AsyncState({
   isLoading,
@@ -18,7 +28,7 @@ export function AsyncState({
         <CircularProgress aria-label="Carregando" />
       </Box>
     );
-  if (error) return <Alert severity="error">{error.message}</Alert>;
+  if (error) return <Alert severity="error">{toDisplayMessage(error)}</Alert>;
   if (emptyMessage) return <Typography color="text.secondary">{emptyMessage}</Typography>;
   return <>{children}</>;
 }

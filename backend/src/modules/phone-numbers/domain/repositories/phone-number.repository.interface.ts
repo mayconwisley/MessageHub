@@ -1,11 +1,22 @@
 import { UniqueId } from '@shared/domain';
 import { PhoneNumber } from '../entities/phone-number.entity';
-import { PaginatedResult } from '@shared/types';
+import { PaginatedResult, SortDirection } from '@shared/types';
 import { PhoneNumberStatus } from '../enums/phone-number-status.enum';
+
+/** Campos pelos quais a listagem de números de telefone pode ser ordenada. */
+export enum PhoneNumberSortField {
+  DISPLAY_NUMBER = 'displayNumber',
+  STATUS = 'status',
+  CREATED_AT = 'createdAt',
+}
 
 export interface ListPhoneNumbersFilter {
   status?: PhoneNumberStatus;
   search?: string;
+  createdFrom?: Date;
+  createdTo?: Date;
+  sortBy?: PhoneNumberSortField;
+  sortDirection?: SortDirection;
 }
 
 export interface IPhoneNumberRepository {

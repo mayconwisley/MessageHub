@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import { Result } from '@shared/result';
 import { EmailDeliveryRejectedError, SmtpProviderUnavailableError } from '../../domain/errors';
@@ -16,6 +16,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /** Adaptador SMTP: a aplicação nunca conhece a biblioteca ou as respostas do servidor. */
 @Injectable()
 export class SmtpEmailProvider implements IEmailProvider {
+  private readonly logger = new Logger(SmtpEmailProvider.name);
+
   async send(email: OutgoingEmail): Promise<Result<EmailProviderResult, EmailDeliveryError>> {
     try {
       const transporter = nodemailer.createTransport({
@@ -43,12 +45,15 @@ export class SmtpEmailProvider implements IEmailProvider {
     const code = isRecord(error) && typeof error.code === 'string' ? error.code : undefined;
     const responseCode =
       isRecord(error) && typeof error.responseCode === 'number' ? error.responseCode : undefined;
-    const message = error instanceof Error ? error.message : 'Falha desconhecida no provedor SMTP.';
+    const rawMessage =
+      error instanceof Error ? error.message : 'Falha desconhecida no provedor SMTP.';
+    this.logger.error({ code, responseCode, rawMessage }, 'SMTP delivery failed');
+
     if (
       (responseCode !== undefined && responseCode >= 400 && responseCode < 500) ||
       ['ECONNECTION', 'ECONNRESET', 'ETIMEDOUT', 'ESOCKET', 'EAI_AGAIN'].includes(code ?? '')
     )
-      return new SmtpProviderUnavailableError(message);
-    return new EmailDeliveryRejectedError(message);
+      return new SmtpProviderUnavailableError('Servidor SMTP indisponível ou inacessível.');
+    return new EmailDeliveryRejectedError('O servidor SMTP rejeitou o envio do e-mail.');
   }
 }

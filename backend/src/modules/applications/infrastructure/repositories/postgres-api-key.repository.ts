@@ -1,12 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { FindOptionsOrder, FindOptionsWhere, ILike, Repository } from 'typeorm';
 import { UniqueId } from '@shared/domain';
-import { PaginatedResult } from '@shared/types';
+import { PaginatedResult, SortDirection } from '@shared/types';
+import { resolveDateRangeOperator } from '@shared/persistence/resolve-date-range-operator.util';
 import { ApiKey, ApiKeyProps } from '../../domain/entities/api-key.entity';
 import { ApiKeyStatus } from '../../domain/enums/api-key-status.enum';
 import { ApiKeyType } from '../../domain/enums/api-key-type.enum';
-import { IApiKeyRepository } from '../../domain/repositories/api-key.repository.interface';
+import {
+  ApiKeySortField,
+  IApiKeyRepository,
+  ListApiKeysFilter,
+} from '../../domain/repositories/api-key.repository.interface';
 import { ApiKeyOrmEntity } from '../entities/api-key.orm-entity';
 
 @Injectable()
@@ -29,14 +34,32 @@ export class PostgresApiKeyRepository implements IApiKeyRepository {
     applicationId: UniqueId,
     page: number,
     pageSize: number,
+    filter?: ListApiKeysFilter,
   ): Promise<PaginatedResult<ApiKey>> {
+    const createdAtRange = resolveDateRangeOperator(filter?.createdFrom, filter?.createdTo);
+    const where: FindOptionsWhere<ApiKeyOrmEntity> = {
+      applicationId: applicationId.value,
+      ...(filter?.status ? { status: filter.status } : {}),
+      ...(filter?.search ? { prefix: ILike(`%${filter.search}%`) } : {}),
+      ...(createdAtRange ? { createdAt: createdAtRange } : {}),
+    };
+
     const [rows, total] = await this.repository.findAndCount({
-      where: { applicationId: applicationId.value },
-      order: { createdAt: 'DESC' },
+      where,
+      order: this.resolveOrder(filter?.sortBy, filter?.sortDirection),
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
     return { items: rows.map((row) => this.toDomain(row)), total, page, pageSize };
+  }
+
+  private resolveOrder(
+    sortBy?: ApiKeySortField,
+    sortDirection?: SortDirection,
+  ): FindOptionsOrder<ApiKeyOrmEntity> {
+    const field = sortBy ?? ApiKeySortField.CREATED_AT;
+    const direction = sortDirection ?? SortDirection.DESC;
+    return { [field]: direction };
   }
 
   async recordUsage(id: UniqueId, ipAddress?: string): Promise<void> {

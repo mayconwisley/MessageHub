@@ -1,14 +1,24 @@
 import { UniqueId } from '@shared/domain';
-import { PaginatedResult } from '@shared/types';
+import { PaginatedResult, SortDirection } from '@shared/types';
 import { EmailMessage } from '../entities/email-message.entity';
 import { EmailAttempt } from '../entities/email-attempt.entity';
 import { EmailStatus } from '../enums/email-status.enum';
 import { NewOutboxEvent } from '@shared/outbox';
 
+/** Campos pelos quais a listagem de e-mails pode ser ordenada. */
+export enum EmailSortField {
+  STATUS = 'status',
+  CREATED_AT = 'createdAt',
+}
+
 export interface ListEmailsFilter {
   status?: EmailStatus;
   /** Busca por identificadores de rastreio, assunto ou destinatário. */
   search?: string;
+  createdFrom?: Date;
+  createdTo?: Date;
+  sortBy?: EmailSortField;
+  sortDirection?: SortDirection;
 }
 
 export interface IEmailMessageRepository {

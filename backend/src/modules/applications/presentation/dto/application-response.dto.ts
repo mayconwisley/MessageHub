@@ -20,6 +20,9 @@ export class ApplicationResponseDto {
   @ApiProperty() quotaPerMinute!: number;
   @ApiProperty() quotaPerDay!: number;
 
+  @ApiProperty({ nullable: true, description: 'Nunca inclui o segredo do webhook.' })
+  webhookUrl!: string | null;
+
   static fromDto(dto: ApplicationDto): ApplicationResponseDto {
     const response = new ApplicationResponseDto();
     response.id = dto.id;
@@ -29,6 +32,7 @@ export class ApplicationResponseDto {
     response.createdAt = dto.createdAt;
     response.quotaPerMinute = dto.quotaPerMinute;
     response.quotaPerDay = dto.quotaPerDay;
+    response.webhookUrl = dto.webhookUrl;
     return response;
   }
 }

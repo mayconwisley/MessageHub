@@ -1,13 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UniqueId } from '@shared/domain';
-import { PaginatedResult } from '@shared/types';
-import { Repository } from 'typeorm';
+import { PaginatedResult, SortDirection } from '@shared/types';
+import { resolveDateRangeOperator } from '@shared/persistence/resolve-date-range-operator.util';
+import { FindOptionsOrder, ILike, Repository } from 'typeorm';
 import { Template, TemplateProps } from '../../domain/entities/template.entity';
 import { TemplateStatus } from '../../domain/enums/template-status.enum';
 import {
   ITemplateRepository,
   ListTemplatesFilter,
+  TemplateSortField,
 } from '../../domain/repositories/template.repository.interface';
 import { TemplateOrmEntity } from '../entities/template.orm-entity';
 
@@ -84,18 +86,30 @@ export class PostgresTemplateRepository implements ITemplateRepository {
     pageSize: number,
     filter?: ListTemplatesFilter,
   ): Promise<PaginatedResult<Template>> {
+    const createdAtRange = resolveDateRangeOperator(filter?.createdFrom, filter?.createdTo);
     const [rows, total] = await this.repository.findAndCount({
       where: {
         tenantId: tenantId.value,
         whatsAppAccountId: whatsAppAccountId.value,
         ...(filter?.status ? { status: filter.status } : {}),
         ...(filter?.category ? { category: filter.category } : {}),
+        ...(filter?.search ? { name: ILike(`%${filter.search}%`) } : {}),
+        ...(createdAtRange ? { createdAt: createdAtRange } : {}),
       },
-      order: { name: 'ASC', language: 'ASC' },
+      order: this.resolveOrder(filter?.sortBy, filter?.sortDirection),
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
     return { items: rows.map((row) => this.toDomain(row)), total, page, pageSize };
+  }
+
+  private resolveOrder(
+    sortBy?: TemplateSortField,
+    sortDirection?: SortDirection,
+  ): FindOptionsOrder<TemplateOrmEntity> {
+    const field = sortBy ?? TemplateSortField.CREATED_AT;
+    const direction = sortDirection ?? SortDirection.DESC;
+    return { [field]: direction };
   }
   private toOrm(template: Template): TemplateOrmEntity {
     return Object.assign(new TemplateOrmEntity(), {

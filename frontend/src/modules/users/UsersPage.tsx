@@ -1,6 +1,5 @@
 import { Block, CheckCircle, Edit } from '@mui/icons-material';
 import {
-  Alert,
   Button,
   Chip,
   FormControl,
@@ -13,10 +12,14 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { AsyncState } from '../../components/shared/AsyncState';
+import { ConfirmDialog } from '../../components/shared/ConfirmDialog';
+import { FeedbackSnackbar } from '../../components/shared/FeedbackSnackbar';
 import { PaginatedTable } from '../../components/shared/PaginatedTable';
 import { TableActionsMenu } from '../../components/shared/TableActionsMenu';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { useFeedback } from '../../hooks/useFeedback';
 import { usePagination } from '../../hooks/usePagination';
+import { useSort } from '../../hooks/useSort';
 import { UserFormDialog, type UserFormData } from './UserFormDialog';
 import { usersApi, type User } from './users.api';
 
@@ -30,13 +33,16 @@ const statusLabels: Record<string, string> = { active: 'Ativo', suspended: 'Susp
 
 export function UsersPage() {
   const { page, pageSize, setPage, setPageSize } = usePagination();
+  const { sort, onSortChange, sortBy, sortDirection } = useSort(() => setPage(1));
   const [role, setRole] = useState('');
   const [status, setStatus] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
+  const [deactivating, setDeactivating] = useState<User | null>(null);
   const client = useQueryClient();
+  const { feedback, notifySuccess, notifyError, clear } = useFeedback();
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -47,7 +53,7 @@ export function UsersPage() {
   }, [searchInput, setPage]);
 
   const list = useQuery({
-    queryKey: ['users', page, pageSize, role, status, search],
+    queryKey: ['users', page, pageSize, role, status, search, sortBy, sortDirection],
     queryFn: () =>
       usersApi.list({
         page,
@@ -55,6 +61,8 @@ export function UsersPage() {
         role: role || undefined,
         status: status || undefined,
         search: search || undefined,
+        sortBy,
+        sortDirection,
       }),
   });
   const invalidate = () => client.invalidateQueries({ queryKey: ['users'] });
@@ -87,7 +95,12 @@ export function UsersPage() {
   const updateStatus = useMutation({
     mutationFn: (params: { id: string; status: 'active' | 'suspended' }) =>
       usersApi.updateStatus(params.id, params.status),
-    onSuccess: invalidate,
+    onSuccess: (_, variables) => {
+      setDeactivating(null);
+      notifySuccess(variables.status === 'suspended' ? 'Usuário desativado.' : 'Usuário ativado.');
+      void invalidate();
+    },
+    onError: (error) => notifyError('Não foi possível alterar o status do usuário.', error),
   });
 
   const openCreate = () => {
@@ -150,7 +163,6 @@ export function UsersPage() {
             </Select>
           </FormControl>
         </Stack>
-        {updateStatus.error && <Alert severity="error">{updateStatus.error.message}</Alert>}
         <AsyncState isLoading={list.isLoading} error={list.error}>
           <PaginatedTable<User>
             columns={[
@@ -169,6 +181,7 @@ export function UsersPage() {
               {
                 key: 'status',
                 label: 'Status',
+                sortable: true,
                 render: (row) => (
                   <Chip
                     label={statusLabels[row.status] ?? row.status}
@@ -193,6 +206,8 @@ export function UsersPage() {
               setPageSize(size);
               setPage(1);
             }}
+            sort={sort}
+            onSortChange={onSortChange}
             rowActions={(row) => (
               <TableActionsMenu
                 actions={[
@@ -207,7 +222,7 @@ export function UsersPage() {
                         icon: <Block fontSize="small" />,
                         color: 'error' as const,
                         disabled: updateStatus.isPending,
-                        onClick: () => updateStatus.mutate({ id: row.id, status: 'suspended' }),
+                        onClick: () => setDeactivating(row),
                       }
                     : {
                         label: 'Ativar',
@@ -233,6 +248,20 @@ export function UsersPage() {
         }}
         onSubmit={(data) => (creating ? create.mutate(data) : update.mutate(data))}
       />
+
+      <ConfirmDialog
+        open={Boolean(deactivating)}
+        title="Desativar usuário"
+        description={`O usuário "${deactivating?.name ?? ''}" perderá acesso imediatamente ao console.`}
+        confirmLabel="Desativar"
+        isPending={updateStatus.isPending}
+        onConfirm={() =>
+          deactivating && updateStatus.mutate({ id: deactivating.id, status: 'suspended' })
+        }
+        onClose={() => setDeactivating(null)}
+      />
+
+      <FeedbackSnackbar feedback={feedback} onClose={clear} />
     </Stack>
   );
 }

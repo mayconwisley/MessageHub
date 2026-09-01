@@ -22,7 +22,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsUUID } from 'class-validator';
+import { IsDateString, IsEnum, IsOptional, IsUUID } from 'class-validator';
 import { IDEMPOTENCY_KEY_HEADER } from '@shared/constants';
 import { IMediator, MEDIATOR } from '@shared/mediator';
 import { AuthContextDto } from '@modules/applications/application/dto/api-key.dto';
@@ -34,11 +34,13 @@ import { CurrentOptionalAuthContext } from '@presentation/http/decorators/curren
 import { PlatformAdminOrApiKeyGuard } from '@presentation/http/guards/platform-admin-or-api-key.guard';
 import { toHttpException } from '@presentation/http/result-http.mapper';
 import { PaginationQueryDto } from '@presentation/http/dto/pagination-query.dto';
-import { PaginatedResult } from '@shared/types';
+import { ApiPaginatedResponse } from '@presentation/http/decorators/api-paginated-response.decorator';
+import { PaginatedResult, SortDirection } from '@shared/types';
 import { SendEmailCommand } from '../../application/commands/send-email.command';
 import { ListEmailsQuery } from '../../application/queries/list-emails.query';
 import { ListEmailTimelineQuery } from '../../application/queries/list-email-timeline.query';
 import { EmailStatus } from '../../domain/enums/email-status.enum';
+import { EmailSortField } from '../../domain/repositories/email-message.repository.interface';
 import { EmailMessageResponseDto } from '../dto/email-message-response.dto';
 import { EmailTimelineEventResponseDto } from '../dto/email-timeline-event-response.dto';
 import { SendEmailRequestDto } from '../dto/send-email-request.dto';
@@ -71,6 +73,29 @@ class ListEmailsRequestDto extends PaginationQueryDto {
   @IsOptional()
   @IsUUID()
   applicationId?: string;
+
+  @ApiPropertyOptional({ description: 'Filtra e-mails criados a partir desta data (ISO 8601).' })
+  @IsOptional()
+  @IsDateString()
+  createdFrom?: string;
+
+  @ApiPropertyOptional({ description: 'Filtra e-mails criados até esta data (ISO 8601).' })
+  @IsOptional()
+  @IsDateString()
+  createdTo?: string;
+
+  @ApiPropertyOptional({
+    enum: EmailSortField,
+    description: 'Campo de ordenação (padrão: createdAt).',
+  })
+  @IsOptional()
+  @IsEnum(EmailSortField)
+  sortBy?: EmailSortField;
+
+  @ApiPropertyOptional({ enum: SortDirection, description: 'Direção da ordenação (padrão: DESC).' })
+  @IsOptional()
+  @IsEnum(SortDirection)
+  sortDirection?: SortDirection;
 }
 
 function resolveRequestingTenantId(user: AuthenticatedUserDto | undefined): string | undefined {
@@ -129,7 +154,7 @@ export class EmailsController {
 
   @Get()
   @ApiOperation({ summary: 'Lista e-mails de uma aplicação' })
-  @ApiResponse({ status: HttpStatus.OK, type: EmailMessageResponseDto, isArray: true })
+  @ApiPaginatedResponse(EmailMessageResponseDto)
   async list(
     @Query() query: ListEmailsRequestDto,
     @CurrentOptionalAuthContext() authContext?: AuthContextDto,
@@ -144,6 +169,10 @@ export class EmailsController {
         query.status,
         query.search,
         resolveRequestingTenantId(user),
+        query.createdFrom ? new Date(query.createdFrom) : undefined,
+        query.createdTo ? new Date(query.createdTo) : undefined,
+        query.sortBy,
+        query.sortDirection,
       ),
     );
     if (result.isFailure) throw toHttpException(result.error);

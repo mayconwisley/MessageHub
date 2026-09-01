@@ -8,3 +8,4 @@ export * from './provider-rate-limited.error';
 export * from './meta-provider-error.type';
 export * from './phone-number-not-configured.error';
 export * from './ambiguous-phone-number.error';
+export * from './idempotency-key-conflict.error';

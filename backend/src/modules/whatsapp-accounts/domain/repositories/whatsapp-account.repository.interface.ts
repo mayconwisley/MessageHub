@@ -1,11 +1,22 @@
 import { UniqueId } from '@shared/domain';
 import { WhatsAppAccount } from '../entities/whatsapp-account.entity';
-import { PaginatedResult } from '@shared/types';
+import { PaginatedResult, SortDirection } from '@shared/types';
 import { WhatsAppAccountStatus } from '../enums/whatsapp-account-status.enum';
+
+/** Campos pelos quais a listagem de contas WhatsApp pode ser ordenada. */
+export enum WhatsAppAccountSortField {
+  WABA_ID = 'wabaId',
+  STATUS = 'status',
+  CREATED_AT = 'createdAt',
+}
 
 export interface ListWhatsAppAccountsFilter {
   status?: WhatsAppAccountStatus;
   search?: string;
+  createdFrom?: Date;
+  createdTo?: Date;
+  sortBy?: WhatsAppAccountSortField;
+  sortDirection?: SortDirection;
 }
 
 export interface IWhatsAppAccountRepository {

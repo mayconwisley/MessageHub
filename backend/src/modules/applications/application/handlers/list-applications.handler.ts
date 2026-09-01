@@ -23,7 +23,13 @@ export class ListApplicationsHandler implements IQueryHandler<ListApplicationsQu
       UniqueId.create(query.tenantId),
       query.page,
       query.pageSize,
-      { search: query.search },
+      {
+        search: query.search,
+        createdFrom: query.createdFrom,
+        createdTo: query.createdTo,
+        sortBy: query.sortBy,
+        sortDirection: query.sortDirection,
+      },
     );
     return Result.ok({
       ...result,

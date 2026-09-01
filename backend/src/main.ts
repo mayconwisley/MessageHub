@@ -45,7 +45,13 @@ async function bootstrap(): Promise<void> {
       forbidNonWhitelisted: true,
       forbidUnknownValues: true,
       transform: true,
-      exceptionFactory: (errors) => new BadRequestException(translateValidationErrors(errors)),
+      // Mantem o mesmo formato {code, message} de todo erro de dominio (result-http.mapper.ts),
+      // acrescido de `details` por campo para um formulario destacar o input especifico.
+      exceptionFactory: (errors) => {
+        const details = translateValidationErrors(errors);
+        const message = details.length === 1 ? details[0].message : 'Dados inválidos.';
+        return new BadRequestException({ code: 'VALIDATION_ERROR', message, details });
+      },
     }),
   );
 
@@ -53,7 +59,8 @@ async function bootstrap(): Promise<void> {
     const swaggerConfig = new DocumentBuilder()
       .setTitle('Message Hub')
       .setDescription(
-        'WhatsApp/Messaging Hub - API interna de integracao com a Meta WhatsApp Business Platform',
+        'WhatsApp/Messaging Hub - API interna de integracao com a Meta WhatsApp Business Platform. ' +
+          'Toda resposta de erro traz um campo "requestId"; inclua-o ao reportar um problema para facilitar a correlação com os logs do servidor.',
       )
       .setVersion('1.0')
       .addBearerAuth()

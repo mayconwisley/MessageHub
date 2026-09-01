@@ -1,15 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UniqueId } from '@shared/domain';
-import { PaginatedResult } from '@shared/types';
-import { QueryFailedError, Repository } from 'typeorm';
+import { PaginatedResult, SortDirection } from '@shared/types';
+import { resolveDateRangeOperator } from '@shared/persistence/resolve-date-range-operator.util';
+import { FindOptionsOrder, FindOptionsWhere, QueryFailedError, Repository } from 'typeorm';
 import { WebhookEventOrmEntity } from '../entities/webhook-event.orm-entity';
 import { NewOutboxEvent } from '@shared/outbox';
 import { OutboxEventOrmEntity } from '@infrastructure/database/entities/outbox-event.orm-entity';
 import { OutboxRepository } from '@infrastructure/outbox/outbox.repository';
 import {
   IWebhookEventOperationsRepository,
+  ListWebhookEventsFilter,
   WebhookEventOperationDto,
+  WebhookEventSortField,
 } from '../../application/ports/webhook-event-operations.repository.interface';
 
 export interface IWebhookEventRepository {
@@ -129,15 +132,29 @@ export class PostgresWebhookEventRepository
   async list(
     page: number,
     pageSize: number,
-    status?: string,
+    filter?: ListWebhookEventsFilter,
   ): Promise<PaginatedResult<WebhookEventOperationDto>> {
+    const receivedAtRange = resolveDateRangeOperator(filter?.createdFrom, filter?.createdTo);
+    const where: FindOptionsWhere<WebhookEventOrmEntity> = {
+      ...(filter?.status ? { status: filter.status } : {}),
+      ...(receivedAtRange ? { receivedAt: receivedAtRange } : {}),
+    };
     const [items, total] = await this.repository.findAndCount({
-      where: status ? { status } : {},
-      order: { receivedAt: 'DESC' },
+      where,
+      order: this.resolveOrder(filter?.sortBy, filter?.sortDirection),
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
     return { items, total, page, pageSize };
+  }
+
+  private resolveOrder(
+    sortBy?: WebhookEventSortField,
+    sortDirection?: SortDirection,
+  ): FindOptionsOrder<WebhookEventOrmEntity> {
+    const field = sortBy ?? WebhookEventSortField.RECEIVED_AT;
+    const direction = sortDirection ?? SortDirection.DESC;
+    return { [field]: direction };
   }
   async requeue(id: string): Promise<WebhookEventOperationDto | null> {
     const event = await this.findById(id);

@@ -1,11 +1,24 @@
 import { UniqueId } from '@shared/domain';
-import { PaginatedResult } from '@shared/types';
+import { PaginatedResult, SortDirection } from '@shared/types';
 import { Template } from '../entities/template.entity';
 import { TemplateStatus } from '../enums/template-status.enum';
+
+/** Campos pelos quais a listagem paginada de templates pode ser ordenada. */
+export enum TemplateSortField {
+  NAME = 'name',
+  STATUS = 'status',
+  CATEGORY = 'category',
+  CREATED_AT = 'createdAt',
+}
 
 export interface ListTemplatesFilter {
   status?: TemplateStatus;
   category?: string;
+  search?: string;
+  createdFrom?: Date;
+  createdTo?: Date;
+  sortBy?: TemplateSortField;
+  sortDirection?: SortDirection;
 }
 
 export interface ITemplateRepository {

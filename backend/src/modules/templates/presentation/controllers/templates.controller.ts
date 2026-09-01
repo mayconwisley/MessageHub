@@ -14,7 +14,14 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiPropertyOptional, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { IsBooleanString, IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+  IsBooleanString,
+  IsDateString,
+  IsEnum,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 import { AuthContextDto } from '@modules/applications/application/dto/api-key.dto';
 import { AuthenticatedUserDto } from '@modules/identity/application/dto/authenticated-user.dto';
 import { resolveRequiredTenantId } from '@presentation/http/auth-scope.resolver';
@@ -23,8 +30,10 @@ import { CurrentAuthenticatedUser } from '@presentation/http/decorators/current-
 import { PlatformAdminOrApiKeyGuard } from '@presentation/http/guards/platform-admin-or-api-key.guard';
 import { toHttpException } from '@presentation/http/result-http.mapper';
 import { PaginationQueryDto } from '@presentation/http/dto/pagination-query.dto';
+import { ApiPaginatedResponse } from '@presentation/http/decorators/api-paginated-response.decorator';
 import { IMediator, MEDIATOR } from '@shared/mediator';
-import { PaginatedResult } from '@shared/types';
+import { PaginatedResult, SortDirection } from '@shared/types';
+import { TemplateSortField } from '../../domain/repositories/template.repository.interface';
 import { CreateTemplateCommand } from '../../application/commands/create-template.command';
 import { DeleteTemplateCommand } from '../../application/commands/delete-template.command';
 import { PublishPendingTemplatesCommand } from '../../application/commands/publish-pending-templates.command';
@@ -60,6 +69,34 @@ class ListTemplatesRequestDto extends PaginationQueryDto {
   @IsOptional()
   @IsString()
   category?: string;
+
+  @ApiPropertyOptional({ description: 'Busca por nome do template.' })
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @ApiPropertyOptional({ description: 'Filtra templates criados a partir desta data (ISO 8601).' })
+  @IsOptional()
+  @IsDateString()
+  createdFrom?: string;
+
+  @ApiPropertyOptional({ description: 'Filtra templates criados até esta data (ISO 8601).' })
+  @IsOptional()
+  @IsDateString()
+  createdTo?: string;
+
+  @ApiPropertyOptional({
+    enum: TemplateSortField,
+    description: 'Campo de ordenação (padrão: createdAt).',
+  })
+  @IsOptional()
+  @IsEnum(TemplateSortField)
+  sortBy?: TemplateSortField;
+
+  @ApiPropertyOptional({ enum: SortDirection, description: 'Direção da ordenação (padrão: DESC).' })
+  @IsOptional()
+  @IsEnum(SortDirection)
+  sortDirection?: SortDirection;
 
   @ApiPropertyOptional({
     description: 'Obrigatório apenas para requisições autenticadas por sessão administrativa.',
@@ -105,7 +142,7 @@ export class TemplatesController {
   }
 
   @Get()
-  @ApiResponse({ status: HttpStatus.OK, type: [TemplateResponseDto] })
+  @ApiPaginatedResponse(TemplateResponseDto)
   async list(
     @Query() query: ListTemplatesRequestDto,
     @CurrentOptionalAuthContext() auth?: AuthContextDto,
@@ -119,7 +156,15 @@ export class TemplatesController {
         query.sync === 'true',
         query.page,
         query.pageSize,
-        { status: query.status, category: query.category },
+        {
+          status: query.status,
+          category: query.category,
+          search: query.search,
+          createdFrom: query.createdFrom ? new Date(query.createdFrom) : undefined,
+          createdTo: query.createdTo ? new Date(query.createdTo) : undefined,
+          sortBy: query.sortBy,
+          sortDirection: query.sortDirection,
+        },
       ),
     );
     if (result.isFailure) throw toHttpException(result.error);
@@ -176,6 +221,7 @@ export class TemplatesController {
   }
 
   @Put(':id')
+  @ApiResponse({ status: HttpStatus.OK, type: TemplateResponseDto })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateTemplateRequestDto,

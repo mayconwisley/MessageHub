@@ -11,7 +11,7 @@ import {
   TextField,
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AsyncState } from '../../components/shared/AsyncState';
 import { FormDialog } from '../../components/shared/FormDialog';
 import { PaginatedTable } from '../../components/shared/PaginatedTable';
@@ -20,6 +20,7 @@ import { TenantAutocomplete } from '../../components/shared/TenantAutocomplete';
 import { WhatsAppAccountAutocomplete } from '../../components/shared/WhatsAppAccountAutocomplete';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { usePagination } from '../../hooks/usePagination';
+import { useSort } from '../../hooks/useSort';
 import { TemplateFormDialog } from './TemplateFormDialog';
 import { bodyExampleValues } from './template-example.utils';
 import { TemplateWhatsAppPreview } from './TemplateWhatsAppPreview';
@@ -51,18 +52,41 @@ function previewValues(template: Template) {
 
 export function TemplatesPage() {
   const { page, pageSize, setPage, setPageSize } = usePagination();
+  const { sort, onSortChange, sortBy, sortDirection } = useSort(() => setPage(1));
   const [tenantId, setTenantId] = useState('');
   const [accountId, setAccountId] = useState('');
   const [status, setStatus] = useState('');
   const [category, setCategory] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<Template | null>(null);
   const [creating, setCreating] = useState(false);
   const [previewing, setPreviewing] = useState<Template | null>(null);
   const [deleting, setDeleting] = useState<Template | null>(null);
   const client = useQueryClient();
   const isSelectionValid = Boolean(tenantId && accountId);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [searchInput, setPage]);
+
   const list = useQuery({
-    queryKey: ['templates', tenantId, accountId, page, pageSize, status, category],
+    queryKey: [
+      'templates',
+      tenantId,
+      accountId,
+      page,
+      pageSize,
+      status,
+      category,
+      search,
+      sortBy,
+      sortDirection,
+    ],
     queryFn: () =>
       templatesApi.list({
         tenantId,
@@ -71,6 +95,9 @@ export function TemplatesPage() {
         pageSize,
         status: status || undefined,
         category: category || undefined,
+        search: search || undefined,
+        sortBy,
+        sortDirection,
       }),
     enabled: isSelectionValid,
   });
@@ -151,7 +178,10 @@ export function TemplatesPage() {
             <Select
               label="Status"
               value={status}
-              onChange={(event) => setStatus(event.target.value)}
+              onChange={(event) => {
+                setStatus(event.target.value);
+                setPage(1);
+              }}
             >
               <MenuItem value="">Todos</MenuItem>
               {Object.entries(statusLabels).map(([value, label]) => (
@@ -163,9 +193,18 @@ export function TemplatesPage() {
           </FormControl>
           <TextField
             size="small"
+            label="Buscar por nome"
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+          />
+          <TextField
+            size="small"
             label="Categoria"
             value={category}
-            onChange={(event) => setCategory(event.target.value)}
+            onChange={(event) => {
+              setCategory(event.target.value);
+              setPage(1);
+            }}
           />
           <Button
             variant="outlined"
@@ -206,12 +245,13 @@ export function TemplatesPage() {
         >
           <PaginatedTable<Template>
             columns={[
-              { key: 'name', label: 'Nome' },
+              { key: 'name', label: 'Nome', sortable: true },
               { key: 'language', label: 'Idioma' },
               { key: 'category', label: 'Categoria' },
               {
                 key: 'status',
                 label: 'Status',
+                sortable: true,
                 render: (row) => (
                   <Chip label={statusLabels[row.status] ?? row.status} size="small" />
                 ),
@@ -231,6 +271,8 @@ export function TemplatesPage() {
               setPageSize(size);
               setPage(1);
             }}
+            sort={sort}
+            onSortChange={onSortChange}
             rowActions={(row) => (
               <TableActionsMenu
                 actions={[

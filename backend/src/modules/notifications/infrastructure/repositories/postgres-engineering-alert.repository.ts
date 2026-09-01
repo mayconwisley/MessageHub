@@ -1,12 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { v7 as uuidv7 } from 'uuid';
-import { Repository } from 'typeorm';
-import { PaginatedResult } from '@shared/types';
+import { FindOptionsOrder, Repository } from 'typeorm';
+import { PaginatedResult, SortDirection } from '@shared/types';
+import { resolveDateRangeOperator } from '@shared/persistence/resolve-date-range-operator.util';
 import {
   CreateEngineeringAlertInput,
   EngineeringAlertDto,
+  EngineeringAlertSortField,
   IEngineeringAlertRepository,
+  ListEngineeringAlertsFilter,
 } from '../../application/ports/engineering-alert.repository.interface';
 import { EngineeringAlertOrmEntity } from '../entities/engineering-alert.orm-entity';
 
@@ -45,11 +48,15 @@ export class PostgresEngineeringAlertRepository implements IEngineeringAlertRepo
   async list(
     page: number,
     pageSize: number,
-    severity?: EngineeringAlertDto['severity'],
+    filter?: ListEngineeringAlertsFilter,
   ): Promise<PaginatedResult<EngineeringAlertDto>> {
+    const occurredAtRange = resolveDateRangeOperator(filter?.createdFrom, filter?.createdTo);
     const [rows, total] = await this.repository.findAndCount({
-      where: severity ? { severity } : {},
-      order: { occurredAt: 'DESC' },
+      where: {
+        ...(filter?.severity ? { severity: filter.severity } : {}),
+        ...(occurredAtRange ? { occurredAt: occurredAtRange } : {}),
+      },
+      order: this.resolveOrder(filter?.sortBy, filter?.sortDirection),
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
@@ -68,5 +75,14 @@ export class PostgresEngineeringAlertRepository implements IEngineeringAlertRepo
       page,
       pageSize,
     };
+  }
+
+  private resolveOrder(
+    sortBy?: EngineeringAlertSortField,
+    sortDirection?: SortDirection,
+  ): FindOptionsOrder<EngineeringAlertOrmEntity> {
+    const field = sortBy ?? EngineeringAlertSortField.OCCURRED_AT;
+    const direction = sortDirection ?? SortDirection.DESC;
+    return { [field]: direction };
   }
 }

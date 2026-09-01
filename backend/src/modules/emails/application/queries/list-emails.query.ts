@@ -1,8 +1,9 @@
 import { Query } from '@shared/mediator';
 import { BaseError } from '@shared/errors';
 import { Result } from '@shared/result';
-import { PaginatedResult } from '@shared/types';
+import { PaginatedResult, SortDirection } from '@shared/types';
 import { EmailStatus } from '../../domain/enums/email-status.enum';
+import { EmailSortField } from '../../domain/repositories/email-message.repository.interface';
 import { EmailMessageDto } from '../dto/email-message.dto';
 
 export class ListEmailsQuery extends Query<Result<PaginatedResult<EmailMessageDto>, BaseError>> {
@@ -13,6 +14,10 @@ export class ListEmailsQuery extends Query<Result<PaginatedResult<EmailMessageDt
     public readonly status?: EmailStatus,
     public readonly search?: string,
     public readonly requestingTenantId?: string,
+    public readonly createdFrom?: Date,
+    public readonly createdTo?: Date,
+    public readonly sortBy?: EmailSortField,
+    public readonly sortDirection?: SortDirection,
   ) {
     super();
   }

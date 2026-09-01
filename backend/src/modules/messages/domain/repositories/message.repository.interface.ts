@@ -1,14 +1,24 @@
 import { UniqueId } from '@shared/domain';
-import { PaginatedResult } from '@shared/types';
+import { PaginatedResult, SortDirection } from '@shared/types';
 import { Message } from '../entities/message.entity';
 import { MessageAttempt } from '../entities/message-attempt.entity';
 import { MessageStatus } from '../enums/message-status.enum';
 import { NewOutboxEvent } from '@shared/outbox';
 
+/** Campos pelos quais a listagem de mensagens pode ser ordenada. */
+export enum MessageSortField {
+  STATUS = 'status',
+  CREATED_AT = 'createdAt',
+}
+
 export interface ListMessagesFilter {
   status?: MessageStatus;
   /** Busca por messageId, providerMessageId, requestId, chave de idempotência ou destinatário. */
   search?: string;
+  createdFrom?: Date;
+  createdTo?: Date;
+  sortBy?: MessageSortField;
+  sortDirection?: SortDirection;
 }
 
 export interface MessageQuotaLimits {

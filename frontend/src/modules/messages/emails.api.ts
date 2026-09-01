@@ -1,5 +1,5 @@
 import { request, toQueryString } from '../../services/http-client';
-import type { PaginatedResult } from '../../services/pagination';
+import type { PaginatedResult, SortDirection } from '../../services/pagination';
 
 export interface EmailMessage {
   id: string;
@@ -41,6 +41,8 @@ export const emailsApi = {
     pageSize: number;
     status?: string;
     search?: string;
+    sortBy?: string;
+    sortDirection?: SortDirection;
   }) => request<PaginatedResult<EmailMessage>>(`/v1/emails${toQueryString(params)}`),
   listTimeline: (id: string, applicationId: string) =>
     request<EmailTimelineEvent[]>(`/v1/emails/${id}/timeline${toQueryString({ applicationId })}`),

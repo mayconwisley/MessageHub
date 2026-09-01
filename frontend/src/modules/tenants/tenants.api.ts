@@ -1,5 +1,5 @@
 import { request, toQueryString } from '../../services/http-client';
-import type { PaginatedResult } from '../../services/pagination';
+import type { PaginatedResult, SortDirection } from '../../services/pagination';
 
 export interface Tenant {
   id: string;
@@ -10,8 +10,14 @@ export interface Tenant {
 }
 
 export const tenantsApi = {
-  list: (params: { page: number; pageSize: number; status?: string; search?: string }) =>
-    request<PaginatedResult<Tenant>>(`/v1/tenants${toQueryString(params)}`),
+  list: (params: {
+    page: number;
+    pageSize: number;
+    status?: string;
+    search?: string;
+    sortBy?: string;
+    sortDirection?: SortDirection;
+  }) => request<PaginatedResult<Tenant>>(`/v1/tenants${toQueryString(params)}`),
   create: (data: { name: string }) =>
     request<Tenant>('/v1/tenants', { method: 'POST', body: data }),
   getById: (id: string) => request<Tenant>(`/v1/tenants/${id}`),

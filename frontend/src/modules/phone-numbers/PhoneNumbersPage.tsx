@@ -24,6 +24,7 @@ import { TenantAutocomplete } from '../../components/shared/TenantAutocomplete';
 import { WhatsAppAccountAutocomplete } from '../../components/shared/WhatsAppAccountAutocomplete';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { usePagination } from '../../hooks/usePagination';
+import { useSort } from '../../hooks/useSort';
 import { phoneNumbersApi, type PhoneNumber } from './phone-numbers.api';
 
 const schema = z.object({
@@ -38,6 +39,7 @@ const statusLabels: Record<string, string> = { ACTIVE: 'Ativo', SUSPENDED: 'Susp
 
 export function PhoneNumbersPage() {
   const { page, pageSize, setPage, setPageSize } = usePagination();
+  const { sort, onSortChange, sortBy, sortDirection } = useSort(() => setPage(1));
   const [tenantIdFilter, setTenantIdFilter] = useState('');
   const [status, setStatus] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -63,13 +65,15 @@ export function PhoneNumbersPage() {
 
   const validTenantFilter = z.string().uuid().safeParse(tenantIdFilter).success;
   const list = useQuery({
-    queryKey: ['phone-numbers', tenantIdFilter, status, page, pageSize],
+    queryKey: ['phone-numbers', tenantIdFilter, status, page, pageSize, sortBy, sortDirection],
     queryFn: () =>
       phoneNumbersApi.list({
         tenantId: tenantIdFilter,
         page,
         pageSize,
         status: status || undefined,
+        sortBy,
+        sortDirection,
       }),
     enabled: validTenantFilter,
   });
@@ -140,6 +144,7 @@ export function PhoneNumbersPage() {
               {
                 key: 'status',
                 label: 'Status',
+                sortable: true,
                 render: (row) => (
                   <Chip label={statusLabels[row.status] ?? row.status} size="small" />
                 ),
@@ -147,6 +152,7 @@ export function PhoneNumbersPage() {
               {
                 key: 'createdAt',
                 label: 'Criado em',
+                sortable: true,
                 render: (row) => new Date(row.createdAt).toLocaleString('pt-BR'),
               },
             ]}
@@ -159,6 +165,8 @@ export function PhoneNumbersPage() {
               setPageSize(size);
               setPage(1);
             }}
+            sort={sort}
+            onSortChange={onSortChange}
             rowActions={(row) => (
               <TableActionsMenu
                 actions={[
@@ -224,7 +232,10 @@ export function PhoneNumbersPage() {
                 label="ID do número de telefone (Meta)"
                 {...form.register('phoneNumberId')}
                 error={!!form.formState.errors.phoneNumberId}
-                helperText={form.formState.errors.phoneNumberId?.message}
+                helperText={
+                  form.formState.errors.phoneNumberId?.message ??
+                  'No Meta Business Manager: WhatsApp > Configuração da API > Números de telefone > "ID do número de telefone".'
+                }
                 fullWidth
               />
               <TextField

@@ -18,6 +18,10 @@ export class ListTenantsHandler implements IQueryHandler<ListTenantsQuery> {
     const result = await this.tenants.list(query.page, query.pageSize, {
       status: query.status,
       search: query.search,
+      createdFrom: query.createdFrom,
+      createdTo: query.createdTo,
+      sortBy: query.sortBy,
+      sortDirection: query.sortDirection,
     });
     return Result.ok({
       ...result,

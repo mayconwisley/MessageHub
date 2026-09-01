@@ -43,16 +43,29 @@ export function TemplateAutocomplete({
     enabled: validScope,
     staleTime: 30_000,
   });
-  const options: Template[] = data?.items ?? [];
+  const matchInPage = data?.items.find((template) => template.id === value) ?? null;
+
+  // O template selecionado pode não estar entre os 100 primeiros aprovados retornados
+  // (ex.: ao editar um envio cujo template não está nesse conjunto) - busca por ID como fallback.
+  const { data: fallbackTemplate } = useQuery({
+    queryKey: ['templates-select-by-id', value, tenantId],
+    queryFn: () => templatesApi.getById(value, tenantId),
+    enabled: validScope && Boolean(value) && !matchInPage,
+    staleTime: 30_000,
+  });
 
   useEffect(() => {
     if (!value) {
       setSelectedOption(null);
       return;
     }
-    const match = data?.items.find((template) => template.id === value);
-    setSelectedOption(match ?? null);
-  }, [data, value]);
+    setSelectedOption(matchInPage ?? fallbackTemplate ?? null);
+  }, [value, matchInPage, fallbackTemplate]);
+
+  const options: Template[] =
+    fallbackTemplate && !matchInPage
+      ? [fallbackTemplate, ...(data?.items ?? [])]
+      : (data?.items ?? []);
 
   return (
     <Autocomplete

@@ -1,16 +1,25 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsWhere, ILike, In, QueryFailedError, Repository } from 'typeorm';
+import {
+  FindOptionsOrder,
+  FindOptionsWhere,
+  ILike,
+  In,
+  QueryFailedError,
+  Repository,
+} from 'typeorm';
 import { UniqueId } from '@shared/domain';
+import { resolveDateRangeOperator } from '@shared/persistence/resolve-date-range-operator.util';
 import { PhoneNumber, PhoneNumberProps } from '../../domain/entities/phone-number.entity';
 import { PhoneNumberAlreadyRegisteredError } from '../../domain/errors/phone-number-already-registered.error';
 import { PhoneNumberStatus } from '../../domain/enums/phone-number-status.enum';
 import {
   IPhoneNumberRepository,
   ListPhoneNumbersFilter,
+  PhoneNumberSortField,
 } from '../../domain/repositories/phone-number.repository.interface';
 import { PhoneNumberOrmEntity } from '../entities/phone-number.orm-entity';
-import { PaginatedResult } from '@shared/types';
+import { PaginatedResult, SortDirection } from '@shared/types';
 
 const UNIQUE_VIOLATION = '23505';
 
@@ -53,9 +62,11 @@ export class PostgresPhoneNumberRepository implements IPhoneNumberRepository {
     filter?: ListPhoneNumbersFilter,
   ): Promise<PaginatedResult<PhoneNumber>> {
     if (accountIds.length === 0) return { items: [], total: 0, page, pageSize };
+    const createdAtRange = resolveDateRangeOperator(filter?.createdFrom, filter?.createdTo);
     const baseWhere: FindOptionsWhere<PhoneNumberOrmEntity> = {
       whatsAppAccountId: In(accountIds.map((id) => id.value)),
       ...(filter?.status ? { status: filter.status } : {}),
+      ...(createdAtRange ? { createdAt: createdAtRange } : {}),
     };
     const where: FindOptionsWhere<PhoneNumberOrmEntity> | FindOptionsWhere<PhoneNumberOrmEntity>[] =
       filter?.search
@@ -67,11 +78,20 @@ export class PostgresPhoneNumberRepository implements IPhoneNumberRepository {
 
     const [rows, total] = await this.repository.findAndCount({
       where,
-      order: { createdAt: 'DESC' },
+      order: this.resolveOrder(filter?.sortBy, filter?.sortDirection),
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
     return { items: rows.map((row) => this.toDomain(row)), total, page, pageSize };
+  }
+
+  private resolveOrder(
+    sortBy?: PhoneNumberSortField,
+    sortDirection?: SortDirection,
+  ): FindOptionsOrder<PhoneNumberOrmEntity> {
+    const field = sortBy ?? PhoneNumberSortField.CREATED_AT;
+    const direction = sortDirection ?? SortDirection.DESC;
+    return { [field]: direction };
   }
 
   private toOrmEntity(phoneNumber: PhoneNumber): PhoneNumberOrmEntity {

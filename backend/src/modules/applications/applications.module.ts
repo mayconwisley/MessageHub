@@ -11,6 +11,7 @@ import { ConfigureApplicationQuotasHandler } from './application/handlers/config
 import { SetApplicationPhoneNumbersHandler } from './application/handlers/set-application-phone-numbers.handler';
 import { ListApiKeysHandler } from './application/handlers/list-api-keys.handler';
 import { ListApplicationsHandler } from './application/handlers/list-applications.handler';
+import { GetApplicationHandler } from './application/handlers/get-application.handler';
 import { ListApplicationPhoneNumbersHandler } from './application/handlers/list-application-phone-numbers.handler';
 import { RevokeApiKeyHandler } from './application/handlers/revoke-api-key.handler';
 import { ValidateApiKeyHandler } from './application/handlers/validate-api-key.handler';
@@ -56,6 +57,7 @@ import { ApplicationsController } from './presentation/controllers/applications.
     SetApplicationPhoneNumbersHandler,
     CreateApiKeyHandler,
     ListApplicationsHandler,
+    GetApplicationHandler,
     ListApplicationPhoneNumbersHandler,
     ListApiKeysHandler,
     RevokeApiKeyHandler,

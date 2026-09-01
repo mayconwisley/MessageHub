@@ -29,6 +29,10 @@ export class ListUsersHandler implements IQueryHandler<ListUsersQuery> {
       role: query.role,
       status: query.status,
       search: query.search,
+      createdFrom: query.createdFrom,
+      createdTo: query.createdTo,
+      sortBy: query.sortBy,
+      sortDirection: query.sortDirection,
     });
 
     const tenantIds = [

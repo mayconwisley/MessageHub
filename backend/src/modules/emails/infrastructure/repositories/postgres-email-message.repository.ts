@@ -4,6 +4,7 @@ import { UniqueId } from '@shared/domain';
 import { Brackets, Repository } from 'typeorm';
 import { EmailMessage, EmailMessageProps } from '../../domain/entities/email-message.entity';
 import {
+  EmailSortField,
   IEmailMessageRepository,
   ListEmailsFilter,
 } from '../../domain/repositories/email-message.repository.interface';
@@ -14,7 +15,13 @@ import { EmailStatus } from '../../domain/enums/email-status.enum';
 import { NewOutboxEvent } from '@shared/outbox';
 import { OutboxEventOrmEntity } from '@infrastructure/database/entities/outbox-event.orm-entity';
 import { OutboxRepository } from '@infrastructure/outbox/outbox.repository';
-import { PaginatedResult } from '@shared/types';
+import { PaginatedResult, SortDirection } from '@shared/types';
+
+/** Mapeia o campo de ordenação exposto pela API para a coluna correspondente na querybuilder. */
+const SORT_COLUMN_BY_FIELD: Record<EmailSortField, string> = {
+  [EmailSortField.STATUS]: 'email.status',
+  [EmailSortField.CREATED_AT]: 'email.created_at',
+};
 
 @Injectable()
 export class PostgresEmailMessageRepository implements IEmailMessageRepository {
@@ -98,6 +105,12 @@ export class PostgresEmailMessageRepository implements IEmailMessageRepository {
       .where('email.application_id = :applicationId', { applicationId: applicationId.value });
 
     if (filter?.status) query.andWhere('email.status = :status', { status: filter.status });
+    if (filter?.createdFrom) {
+      query.andWhere('email.created_at >= :createdFrom', { createdFrom: filter.createdFrom });
+    }
+    if (filter?.createdTo) {
+      query.andWhere('email.created_at <= :createdTo', { createdTo: filter.createdTo });
+    }
     if (filter?.search?.trim()) {
       const search = `%${filter.search.trim()}%`;
       query.andWhere(
@@ -113,8 +126,10 @@ export class PostgresEmailMessageRepository implements IEmailMessageRepository {
       );
     }
 
+    const sortColumn = SORT_COLUMN_BY_FIELD[filter?.sortBy ?? EmailSortField.CREATED_AT];
+    const sortDirection = filter?.sortDirection ?? SortDirection.DESC;
     const [rows, total] = await query
-      .orderBy('email.created_at', 'DESC')
+      .orderBy(sortColumn, sortDirection)
       .skip((page - 1) * pageSize)
       .take(pageSize)
       .getManyAndCount();

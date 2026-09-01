@@ -43,16 +43,29 @@ export function WhatsAppAccountAutocomplete({
     enabled: validTenantId,
     staleTime: 30_000,
   });
-  const options: WhatsAppAccount[] = data?.items ?? [];
+  const matchInPage = data?.items.find((account) => account.id === value) ?? null;
+
+  // A conta selecionada pode não estar na página atual de resultados (ex.: ao editar um
+  // registro cuja conta vinculada não é uma das primeiras da busca) - busca por ID como fallback.
+  const { data: fallbackAccount } = useQuery({
+    queryKey: ['whatsapp-accounts-select-by-id', value],
+    queryFn: () => whatsAppAccountsApi.getById(value),
+    enabled: Boolean(value) && !matchInPage,
+    staleTime: 30_000,
+  });
 
   useEffect(() => {
     if (!value) {
       setSelectedOption(null);
       return;
     }
-    const match = data?.items.find((account) => account.id === value);
-    setSelectedOption(match ?? null);
-  }, [data, value]);
+    setSelectedOption(matchInPage ?? fallbackAccount ?? null);
+  }, [value, matchInPage, fallbackAccount]);
+
+  const options: WhatsAppAccount[] =
+    fallbackAccount && !matchInPage
+      ? [fallbackAccount, ...(data?.items ?? [])]
+      : (data?.items ?? []);
 
   return (
     <Autocomplete

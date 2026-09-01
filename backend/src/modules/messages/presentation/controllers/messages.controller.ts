@@ -11,15 +11,17 @@ import {
   Post,
   Query,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { ApiBearerAuth, ApiPropertyOptional, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsUUID } from 'class-validator';
-import { IDEMPOTENCY_KEY_HEADER } from '@shared/constants';
+import { IsDateString, IsEnum, IsOptional, IsUUID } from 'class-validator';
+import { IDEMPOTENCY_KEY_HEADER, IDEMPOTENT_REPLAY_HEADER } from '@shared/constants';
 import { IMediator, MEDIATOR } from '@shared/mediator';
 import { PaginationQueryDto } from '@presentation/http/dto/pagination-query.dto';
-import { PaginatedResult } from '@shared/types';
+import { ApiPaginatedResponse } from '@presentation/http/decorators/api-paginated-response.decorator';
+import { PaginatedResult, SortDirection } from '@shared/types';
 import { resolveRequiredApplicationId } from '@presentation/http/auth-scope.resolver';
 import { CurrentOptionalAuthContext } from '@presentation/http/decorators/current-optional-auth-context.decorator';
 import { CurrentAuthenticatedUser } from '@presentation/http/decorators/current-authenticated-user.decorator';
@@ -34,6 +36,7 @@ import { ListMessagesQuery } from '../../application/queries/list-messages.query
 import { ListMessageAttemptsQuery } from '../../application/queries/list-message-attempts.query';
 import { ListMessageTimelineQuery } from '../../application/queries/list-message-timeline.query';
 import { MessageStatus } from '../../domain/enums/message-status.enum';
+import { MessageSortField } from '../../domain/repositories/message.repository.interface';
 import { MessageAttemptResponseDto, MessageResponseDto } from '../dto/message-response.dto';
 import { SendMessageRequestDto } from '../dto/send-message-request.dto';
 import { SendTemplateMessageRequestDto } from '../dto/send-template-message-request.dto';
@@ -58,6 +61,29 @@ class ListMessagesRequestDto extends PaginationQueryDto {
   @IsOptional()
   @IsUUID()
   applicationId?: string;
+
+  @ApiPropertyOptional({ description: 'Filtra mensagens criadas a partir desta data (ISO 8601).' })
+  @IsOptional()
+  @IsDateString()
+  createdFrom?: string;
+
+  @ApiPropertyOptional({ description: 'Filtra mensagens criadas até esta data (ISO 8601).' })
+  @IsOptional()
+  @IsDateString()
+  createdTo?: string;
+
+  @ApiPropertyOptional({
+    enum: MessageSortField,
+    description: 'Campo de ordenação (padrão: createdAt).',
+  })
+  @IsOptional()
+  @IsEnum(MessageSortField)
+  sortBy?: MessageSortField;
+
+  @ApiPropertyOptional({ enum: SortDirection, description: 'Direção da ordenação (padrão: DESC).' })
+  @IsOptional()
+  @IsEnum(SortDirection)
+  sortDirection?: SortDirection;
 }
 
 class ApplicationScopedQueryDto {
@@ -83,8 +109,14 @@ export class MessagesController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiResponse({ status: HttpStatus.CREATED, type: MessageResponseDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    type: MessageResponseDto,
+    description: 'Idempotency-Key já usada com o mesmo payload: retorna o envio original.',
+  })
   async send(
     @Body() dto: SendMessageRequestDto,
+    @Res({ passthrough: true }) res: Response,
     @CurrentOptionalAuthContext() authContext?: AuthContextDto,
     @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
     @Headers(IDEMPOTENCY_KEY_HEADER) idempotencyKey?: string,
@@ -105,14 +137,24 @@ export class MessagesController {
     if (result.isFailure) {
       throw toHttpException(result.error);
     }
-    return MessageResponseDto.fromDto(result.value);
+    if (result.value.isReplay) {
+      res.status(HttpStatus.OK);
+      res.setHeader(IDEMPOTENT_REPLAY_HEADER, 'true');
+    }
+    return MessageResponseDto.fromDto(result.value.message);
   }
 
   @Post('templates')
   @HttpCode(HttpStatus.CREATED)
   @ApiResponse({ status: HttpStatus.CREATED, type: MessageResponseDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    type: MessageResponseDto,
+    description: 'Idempotency-Key já usada com o mesmo payload: retorna o envio original.',
+  })
   async sendTemplate(
     @Body() dto: SendTemplateMessageRequestDto,
+    @Res({ passthrough: true }) res: Response,
     @CurrentOptionalAuthContext() authContext?: AuthContextDto,
     @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
     @Headers(IDEMPOTENCY_KEY_HEADER) idempotencyKey?: string,
@@ -132,10 +174,15 @@ export class MessagesController {
       ),
     );
     if (result.isFailure) throw toHttpException(result.error);
-    return MessageResponseDto.fromDto(result.value);
+    if (result.value.isReplay) {
+      res.status(HttpStatus.OK);
+      res.setHeader(IDEMPOTENT_REPLAY_HEADER, 'true');
+    }
+    return MessageResponseDto.fromDto(result.value.message);
   }
 
   @Get()
+  @ApiPaginatedResponse(MessageResponseDto)
   async list(
     @Query() query: ListMessagesRequestDto,
     @CurrentOptionalAuthContext() authContext?: AuthContextDto,
@@ -150,6 +197,10 @@ export class MessagesController {
         query.status,
         query.search,
         resolveRequestingTenantId(user),
+        query.createdFrom ? new Date(query.createdFrom) : undefined,
+        query.createdTo ? new Date(query.createdTo) : undefined,
+        query.sortBy,
+        query.sortDirection,
       ),
     );
     if (result.isFailure) throw toHttpException(result.error);

@@ -13,7 +13,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiPropertyOptional, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsDateString, IsEnum, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import { IMediator, MEDIATOR } from '@shared/mediator';
 import { PlatformAdminOrTenantApiKeyGuard } from '@presentation/http/guards/platform-admin-or-tenant-api-key.guard';
 import { CurrentOptionalAuthContext } from '@presentation/http/decorators/current-optional-auth-context.decorator';
@@ -27,8 +27,10 @@ import { PhoneNumberResponseDto } from '../dto/phone-number-response.dto';
 import { RegisterPhoneNumberRequestDto } from '../dto/register-phone-number-request.dto';
 import { PaginationQueryDto } from '@presentation/http/dto/pagination-query.dto';
 import { ListPhoneNumbersQuery } from '../../application/queries/list-phone-numbers.query';
-import { PaginatedResult } from '@shared/types';
+import { ApiPaginatedResponse } from '@presentation/http/decorators/api-paginated-response.decorator';
+import { PaginatedResult, SortDirection } from '@shared/types';
 import { PhoneNumberStatus } from '../../domain/enums/phone-number-status.enum';
+import { PhoneNumberSortField } from '../../domain/repositories/phone-number.repository.interface';
 
 class ListPhoneNumbersRequestDto extends PaginationQueryDto {
   @ApiPropertyOptional()
@@ -46,6 +48,29 @@ class ListPhoneNumbersRequestDto extends PaginationQueryDto {
   @IsString()
   @MaxLength(255)
   search?: string;
+
+  @ApiPropertyOptional({ description: 'Filtra números criados a partir desta data (ISO 8601).' })
+  @IsOptional()
+  @IsDateString()
+  createdFrom?: string;
+
+  @ApiPropertyOptional({ description: 'Filtra números criados até esta data (ISO 8601).' })
+  @IsOptional()
+  @IsDateString()
+  createdTo?: string;
+
+  @ApiPropertyOptional({
+    enum: PhoneNumberSortField,
+    description: 'Campo de ordenação (padrão: createdAt).',
+  })
+  @IsOptional()
+  @IsEnum(PhoneNumberSortField)
+  sortBy?: PhoneNumberSortField;
+
+  @ApiPropertyOptional({ enum: SortDirection, description: 'Direção da ordenação (padrão: DESC).' })
+  @IsOptional()
+  @IsEnum(SortDirection)
+  sortDirection?: SortDirection;
 }
 
 @ApiTags('phone-numbers')
@@ -78,6 +103,7 @@ export class PhoneNumbersController {
   }
 
   @Get()
+  @ApiPaginatedResponse(PhoneNumberResponseDto)
   async list(
     @Query() query: ListPhoneNumbersRequestDto,
     @CurrentOptionalAuthContext() auth?: AuthContextDto,
@@ -87,7 +113,17 @@ export class PhoneNumbersController {
     if (!tenantId)
       throw new BadRequestException('tenantId é obrigatório para requisições administrativas.');
     const result = await this.mediator.query(
-      new ListPhoneNumbersQuery(tenantId, query.page, query.pageSize, query.status, query.search),
+      new ListPhoneNumbersQuery(
+        tenantId,
+        query.page,
+        query.pageSize,
+        query.status,
+        query.search,
+        query.createdFrom ? new Date(query.createdFrom) : undefined,
+        query.createdTo ? new Date(query.createdTo) : undefined,
+        query.sortBy,
+        query.sortDirection,
+      ),
     );
     if (result.isFailure) throw toHttpException(result.error);
     return {
