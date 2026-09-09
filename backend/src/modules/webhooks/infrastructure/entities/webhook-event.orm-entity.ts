@@ -4,6 +4,7 @@ import { Column, Entity, Index, PrimaryColumn } from 'typeorm';
 @Index(['contentHash'], { unique: true })
 export class WebhookEventOrmEntity {
   @PrimaryColumn('uuid') id!: string;
+  @Column({ name: 'tenant_id', type: 'uuid', nullable: true }) tenantId!: string | null;
   @Column({ type: 'varchar', length: 50 }) provider!: string;
   @Column({ name: 'content_hash', type: 'char', length: 64 }) contentHash!: string;
   @Column({ type: 'jsonb' }) payload!: Record<string, unknown>;

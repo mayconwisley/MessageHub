@@ -78,6 +78,10 @@ class EnvironmentVariables {
   META_CREDENTIALS_ENCRYPTION_KEY!: string;
 
   @IsOptional()
+  @IsString()
+  META_CREDENTIALS_ENCRYPTION_KEYRING?: string;
+
+  @IsOptional()
   @IsIn(['true', 'false'])
   SMTP_DEFAULT_ENABLED?: string;
 
@@ -165,6 +169,26 @@ export function validateEnv(config: Record<string, unknown>): EnvironmentVariabl
 
   if (Buffer.from(validatedConfig.META_CREDENTIALS_ENCRYPTION_KEY, 'base64').length !== 32) {
     throw new Error('META_CREDENTIALS_ENCRYPTION_KEY deve conter exatamente 32 bytes em Base64.');
+  }
+
+  if (validatedConfig.META_CREDENTIALS_ENCRYPTION_KEYRING) {
+    const keyIds = new Set<string>();
+    for (const item of validatedConfig.META_CREDENTIALS_ENCRYPTION_KEYRING.split(',')) {
+      const [keyId, keyValue, ...extra] = item.trim().split(':');
+      if (
+        !keyId ||
+        !keyValue ||
+        extra.length > 0 ||
+        !/^[a-zA-Z0-9_-]+$/.test(keyId) ||
+        Buffer.from(keyValue, 'base64').length !== 32 ||
+        keyIds.has(keyId)
+      ) {
+        throw new Error(
+          'META_CREDENTIALS_ENCRYPTION_KEYRING deve conter chaves únicas no formato id:base64_32_bytes, separadas por vírgula.',
+        );
+      }
+      keyIds.add(keyId);
+    }
   }
 
   const corsOrigins = (validatedConfig.CORS_ORIGINS ?? '')

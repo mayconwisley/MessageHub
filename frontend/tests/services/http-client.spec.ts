@@ -1,11 +1,25 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { authStorage } from '../../src/services/auth-storage';
-import { request, SESSION_EXPIRED_EVENT, toQueryString } from '../../src/services/http-client';
+import {
+  ApiError,
+  request,
+  SESSION_EXPIRED_EVENT,
+  toQueryString,
+  toUserErrorMessage,
+} from '../../src/services/http-client';
 
 describe('toQueryString', () => {
   it('serializa apenas valores definidos e não vazios', () => {
     expect(toQueryString({ tenantId: 'tenant 1', page: 2, status: undefined, empty: '' })).toBe(
       '?tenantId=tenant+1&page=2',
+    );
+  });
+});
+
+describe('toUserErrorMessage', () => {
+  it('converte códigos internos em mensagens estáveis para o operador', () => {
+    expect(toUserErrorMessage(new ApiError('raw', 429, 'RATE_LIMIT_EXCEEDED', 'req-1'))).toBe(
+      'Limite de requisições atingido. Aguarde e tente novamente. Protocolo: req-1.',
     );
   });
 });

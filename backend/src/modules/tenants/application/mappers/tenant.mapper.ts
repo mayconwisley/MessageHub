@@ -7,6 +7,7 @@ export class TenantMapper {
       id: tenant.id.value,
       name: tenant.name,
       status: tenant.status,
+      dataRetentionDays: tenant.dataRetentionDays,
       createdAt: tenant.createdAt,
     };
   }

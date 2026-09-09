@@ -46,4 +46,12 @@ describe('validateEnv', () => {
       ),
     ).toThrow('INITIAL_PLATFORM_ADMIN_PASSWORD nao pode usar a senha de teste em producao');
   });
+
+  it('rejeita keyring de credenciais inválido antes do boot', () => {
+    expect(() =>
+      validateEnv(
+        createProductionEnvironment({ META_CREDENTIALS_ENCRYPTION_KEYRING: 'active:invalida' }),
+      ),
+    ).toThrow('META_CREDENTIALS_ENCRYPTION_KEYRING');
+  });
 });

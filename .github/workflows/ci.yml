@@ -298,6 +298,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build backend image
         run: docker build --file backend/Dockerfile --tag message-hub-backend:ci backend
+      - name: Build backend migration image
+        run: >-
+          docker build --file backend/Dockerfile --target migration
+          --tag message-hub-migration:ci backend
       - name: Build frontend image
         run: >-
           docker build --file frontend/Dockerfile

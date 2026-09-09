@@ -30,6 +30,7 @@ import { EmailConfigurationsModule } from './modules/email-configurations/email-
 import { EmailsModule } from './modules/emails/emails.module';
 import { OutboxModule } from './infrastructure/outbox/outbox.module';
 import { PostgresThrottlerStorage } from './infrastructure/throttling/postgres-throttler.storage';
+import { DataRetentionModule } from './modules/data-retention/data-retention.module';
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { PostgresThrottlerStorage } from './infrastructure/throttling/postgres-t
     SystemLogsModule,
     EmailConfigurationsModule,
     EmailsModule,
+    DataRetentionModule,
   ],
   controllers: [HealthController],
   providers: [

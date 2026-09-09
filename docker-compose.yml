@@ -63,6 +63,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      target: migration
     command: ["npm", "run", "migration:run"]
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-message_hub}:${POSTGRES_PASSWORD:-message_hub}@postgres:5432/${POSTGRES_DB:-message_hub}
@@ -76,6 +77,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      target: runtime
     restart: unless-stopped
     environment:
       NODE_ENV: ${NODE_ENV:-development}

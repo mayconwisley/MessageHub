@@ -20,12 +20,14 @@ export interface IWebhookEventRepository {
     provider: string,
     contentHash: string,
     payload: Record<string, unknown>,
+    tenantId?: string,
   ): Promise<WebhookEventOrmEntity | null>;
   registerWithOutbox(
     provider: string,
     contentHash: string,
     payload: Record<string, unknown>,
     outboxEvent: NewOutboxEvent,
+    tenantId?: string,
   ): Promise<WebhookEventOrmEntity | null>;
   markProcessed(id: string): Promise<void>;
   markFailed(id: string, reason: string): Promise<void>;
@@ -46,12 +48,14 @@ export class PostgresWebhookEventRepository
     provider: string,
     contentHash: string,
     payload: Record<string, unknown>,
+    tenantId?: string,
   ): Promise<WebhookEventOrmEntity | null> {
     const existing = await this.repository.findOne({ where: { contentHash } });
     if (existing) return existing.status === 'PENDING' ? existing : null;
     const event = Object.assign(new WebhookEventOrmEntity(), {
       id: UniqueId.create().value,
       provider,
+      tenantId: tenantId ?? null,
       contentHash,
       payload,
       status: 'PENDING',
@@ -80,10 +84,12 @@ export class PostgresWebhookEventRepository
     contentHash: string,
     payload: Record<string, unknown>,
     outboxEvent: NewOutboxEvent,
+    tenantId?: string,
   ): Promise<WebhookEventOrmEntity | null> {
     const event = Object.assign(new WebhookEventOrmEntity(), {
       id: UniqueId.create().value,
       provider,
+      tenantId: tenantId ?? null,
       contentHash,
       payload,
       status: 'PENDING',

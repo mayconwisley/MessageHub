@@ -6,6 +6,7 @@ import { CreateTenantHandler } from './application/handlers/create-tenant.handle
 import { GetTenantHandler } from './application/handlers/get-tenant.handler';
 import { ListTenantsHandler } from './application/handlers/list-tenants.handler';
 import { UpdateTenantStatusHandler } from './application/handlers/update-tenant-status.handler';
+import { UpdateTenantDataRetentionHandler } from './application/handlers/update-tenant-data-retention.handler';
 import { TenantOrmEntity } from './infrastructure/entities/tenant.orm-entity';
 import { PostgresTenantRepository } from './infrastructure/repositories/postgres-tenant.repository';
 import { TenantsController } from './presentation/controllers/tenants.controller';
@@ -19,6 +20,7 @@ import { TenantsController } from './presentation/controllers/tenants.controller
     GetTenantHandler,
     ListTenantsHandler,
     UpdateTenantStatusHandler,
+    UpdateTenantDataRetentionHandler,
   ],
   exports: [TENANT_REPOSITORY],
 })

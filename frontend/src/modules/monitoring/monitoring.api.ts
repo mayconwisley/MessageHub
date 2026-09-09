@@ -33,7 +33,15 @@ export interface IntegrationMonitor {
   delivery: { sentLast24Hours: number; failedLast24Hours: number; failureRate: number };
 }
 
+export interface OperationalSummary {
+  generatedAt: string;
+  messages: { pending: number; failedLast24Hours: number };
+  emails: { pending: number; failedLast24Hours: number };
+  outbox: { pending: number; failed: number; oldestPendingAt: string | null };
+}
+
 export const monitoringApi = {
   getApplication: (applicationId: string) =>
     request<IntegrationMonitor>(`/v1/monitoring/applications/${applicationId}`),
+  getOperationalSummary: () => request<OperationalSummary>('/v1/monitoring/operational-summary'),
 };

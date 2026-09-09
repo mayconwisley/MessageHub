@@ -11,6 +11,9 @@ export class TenantOrmEntity {
   @Column({ type: 'varchar', length: 20 })
   status!: string;
 
+  @Column({ name: 'data_retention_days', type: 'int', default: 90 })
+  dataRetentionDays!: number;
+
   @Column({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 }

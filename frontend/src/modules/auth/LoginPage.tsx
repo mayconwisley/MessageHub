@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { authStorage } from '../../services/auth-storage';
+import { toUserErrorMessage } from '../../services/http-client';
 import { login } from './auth.api';
 import brandLogoDark from '../../assets/brand/message-hub-logo-dark.svg';
 import brandLogoLight from '../../assets/brand/message-hub-logo-light.svg';
@@ -64,7 +65,7 @@ export function LoginPage() {
         </Typography>
         {mutation.error && (
           <Alert severity="error" sx={{ mb: 2 }}>
-            {mutation.error.message}
+            {toUserErrorMessage(mutation.error)}
           </Alert>
         )}
         <Box

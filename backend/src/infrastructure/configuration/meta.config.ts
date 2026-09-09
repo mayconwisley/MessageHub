@@ -14,4 +14,5 @@ export const metaConfig = registerAs('meta', () => ({
   defaultPhoneNumber: process.env.META_DEFAULT_CHANNEL_PHONE_NUMBER,
   defaultUsername: process.env.META_DEFAULT_CHANNEL_USERNAME,
   credentialsEncryptionKey: process.env.META_CREDENTIALS_ENCRYPTION_KEY,
+  credentialsEncryptionKeyring: process.env.META_CREDENTIALS_ENCRYPTION_KEYRING,
 }));

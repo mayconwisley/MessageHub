@@ -54,6 +54,12 @@ export class MetaConfigService {
     }) as string;
   }
 
+  get credentialsEncryptionKeyring(): string | null {
+    return (
+      this.configService.get<string>('meta.credentialsEncryptionKeyring', { infer: true }) ?? null
+    );
+  }
+
   get webhookVerifyToken(): string | null {
     return this.configService.get<string>('meta.webhookVerifyToken', { infer: true }) ?? null;
   }

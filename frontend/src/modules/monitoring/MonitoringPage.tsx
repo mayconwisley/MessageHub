@@ -19,12 +19,68 @@ export function MonitoringPage() {
     queryFn: () => monitoringApi.getApplication(applicationId),
     enabled: !!applicationId,
   });
+  const operationalSummary = useQuery({
+    queryKey: ['operational-summary'],
+    queryFn: monitoringApi.getOperationalSummary,
+    refetchInterval: 30_000,
+  });
   return (
     <Stack spacing={3}>
       <PageHeader
         title="Monitor de integrações"
         description="Saúde e capacidade por aplicação, credencial, número e conta WhatsApp."
       />
+      <AsyncState isLoading={operationalSummary.isLoading} error={operationalSummary.error}>
+        {operationalSummary.data && (
+          <>
+            <Typography variant="h6">Operação da plataforma</Typography>
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+              <Card variant="outlined" sx={{ flex: 1 }}>
+                <CardContent>
+                  <Typography variant="subtitle1">Mensagens</Typography>
+                  <Typography>{operationalSummary.data.messages.pending} pendentes</Typography>
+                  <Typography color="text.secondary">
+                    {operationalSummary.data.messages.failedLast24Hours} falhas nas últimas 24h
+                  </Typography>
+                </CardContent>
+              </Card>
+              <Card variant="outlined" sx={{ flex: 1 }}>
+                <CardContent>
+                  <Typography variant="subtitle1">E-mails</Typography>
+                  <Typography>{operationalSummary.data.emails.pending} pendentes</Typography>
+                  <Typography color="text.secondary">
+                    {operationalSummary.data.emails.failedLast24Hours} falhas nas últimas 24h
+                  </Typography>
+                </CardContent>
+              </Card>
+              <Card variant="outlined" sx={{ flex: 1 }}>
+                <CardContent>
+                  <Typography variant="subtitle1">Outbox</Typography>
+                  <Typography>
+                    {operationalSummary.data.outbox.pending} eventos pendentes
+                  </Typography>
+                  <Typography color="text.secondary">
+                    {operationalSummary.data.outbox.failed} falhas · mais antigo:{' '}
+                    {operationalSummary.data.outbox.oldestPendingAt
+                      ? new Date(operationalSummary.data.outbox.oldestPendingAt).toLocaleString(
+                          'pt-BR',
+                        )
+                      : 'nenhum'}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Stack>
+            {(operationalSummary.data.outbox.failed > 0 ||
+              operationalSummary.data.messages.failedLast24Hours > 0 ||
+              operationalSummary.data.emails.failedLast24Hours > 0) && (
+              <Alert severity="warning">
+                Há falhas operacionais. Verifique a DLQ, o outbox e as credenciais antes de
+                reprocessar eventos.
+              </Alert>
+            )}
+          </>
+        )}
+      </AsyncState>
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
         <TenantAutocomplete
           value={tenantId}

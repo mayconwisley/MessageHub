@@ -39,7 +39,7 @@ import type { Template } from '../templates/templates.api';
 import { emailsApi } from './emails.api';
 import type { EmailMessage } from './emails.api';
 import { messagesApi, type Message } from './messages.api';
-import { ApiError } from '../../services/http-client';
+import { toUserErrorMessage } from '../../services/http-client';
 import { toPresentationValue } from '../../lib/presentation';
 import { MessageTimelineDialog } from './MessageTimelineDialog';
 import { EmailTimelineDialog } from './EmailTimelineDialog';
@@ -126,11 +126,9 @@ export function MessagesPage() {
       });
     },
     onError: (error) => {
-      const requestId =
-        error instanceof ApiError && error.requestId ? ` Protocolo: ${error.requestId}.` : '';
       setFeedback({
         severity: 'error',
-        message: `Não foi possível enviar a mensagem. ${error.message}${requestId}`,
+        message: `Não foi possível enviar a mensagem. ${toUserErrorMessage(error)}`,
       });
     },
   });
@@ -146,11 +144,9 @@ export function MessagesPage() {
       });
     },
     onError: (error) => {
-      const requestId =
-        error instanceof ApiError && error.requestId ? ` Protocolo: ${error.requestId}.` : '';
       setFeedback({
         severity: 'error',
-        message: `Não foi possível enviar a mensagem de modelo. ${error.message}${requestId}`,
+        message: `Não foi possível enviar a mensagem de modelo. ${toUserErrorMessage(error)}`,
       });
     },
   });
@@ -166,11 +162,9 @@ export function MessagesPage() {
       });
     },
     onError: (error) => {
-      const requestId =
-        error instanceof ApiError && error.requestId ? ` Protocolo: ${error.requestId}.` : '';
       setFeedback({
         severity: 'error',
-        message: `Não foi possível enviar o e-mail. ${error.message}${requestId}`,
+        message: `Não foi possível enviar o e-mail. ${toUserErrorMessage(error)}`,
       });
     },
   });

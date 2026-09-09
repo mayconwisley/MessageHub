@@ -63,6 +63,7 @@ export class PostgresTenantRepository implements ITenantRepository {
     orm.id = tenant.id.value;
     orm.name = tenant.name;
     orm.status = tenant.status;
+    orm.dataRetentionDays = tenant.dataRetentionDays;
     orm.createdAt = tenant.createdAt;
     return orm;
   }
@@ -71,6 +72,7 @@ export class PostgresTenantRepository implements ITenantRepository {
     const props: TenantProps = {
       name: row.name,
       status: row.status as TenantStatus,
+      dataRetentionDays: row.dataRetentionDays,
       createdAt: row.createdAt,
     };
     return Tenant.reconstitute(props, UniqueId.create(row.id));

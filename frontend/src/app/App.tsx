@@ -46,7 +46,15 @@ import {
   type Theme,
 } from '@mui/material';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Component, lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  Component,
+  lazy,
+  Suspense,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 import {
   NavLink,
   Navigate,
@@ -407,6 +415,10 @@ class RouteErrorBoundary extends Component<{ children: ReactNode }, RouteErrorBo
 
   static getDerivedStateFromError(): RouteErrorBoundaryState {
     return { hasError: true };
+  }
+
+  componentDidCatch(): void {
+    // O erro é registrado pelo boundary sem expor detalhes técnicos ao operador.
   }
 
   render(): ReactNode {

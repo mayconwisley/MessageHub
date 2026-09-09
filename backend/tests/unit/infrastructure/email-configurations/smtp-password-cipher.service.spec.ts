@@ -36,8 +36,9 @@ describe('SmtpPasswordCipherService', () => {
     const encrypted = cipher.encrypt('super-secret-password');
     const parts = encrypted.split('.');
 
-    expect(parts).toHaveLength(4);
-    expect(parts[0]).toBe('v1');
+    expect(parts).toHaveLength(5);
+    expect(parts[0]).toBe('v2');
+    expect(parts[1]).toBe('primary');
   });
 
   it('produces different ciphertext for the same plaintext on each call (random IV)', () => {
@@ -74,7 +75,7 @@ describe('SmtpPasswordCipherService', () => {
     const cipher = buildCipher(key);
 
     expect(() => cipher.decrypt('not-a-valid-envelope')).toThrow(
-      'Invalid encrypted SMTP password format.',
+      'Unsupported encrypted credentials version.',
     );
   });
 
@@ -82,7 +83,7 @@ describe('SmtpPasswordCipherService', () => {
     const cipher = buildCipher(Buffer.from('too-short').toString('base64'));
 
     expect(() => cipher.encrypt('anything')).toThrow(
-      'META_CREDENTIALS_ENCRYPTION_KEY must be a Base64-encoded 32-byte key.',
+      'Invalid credentials encryption keyring configuration.',
     );
   });
 });

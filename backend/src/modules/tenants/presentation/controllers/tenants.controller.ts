@@ -21,6 +21,7 @@ import { PlatformAdminGuard } from '@presentation/http/guards/platform-admin.gua
 import { toHttpException } from '@presentation/http/result-http.mapper';
 import { CreateTenantCommand } from '../../application/commands/create-tenant.command';
 import { UpdateTenantStatusCommand } from '../../application/commands/update-tenant-status.command';
+import { UpdateTenantDataRetentionCommand } from '../../application/commands/update-tenant-data-retention.command';
 import { GetTenantQuery } from '../../application/queries/get-tenant.query';
 import { CreateTenantRequestDto } from '../dto/create-tenant-request.dto';
 import { UpdateTenantStatusRequestDto } from '../dto/update-tenant-status-request.dto';
@@ -32,6 +33,7 @@ import { TenantStatus } from '../../domain/enums/tenant-status.enum';
 import { TenantSortField } from '../../domain/repositories/tenant.repository.interface';
 import { MetaConfigService } from '@infrastructure/configuration/meta-config.service';
 import { ApiPaginatedResponse } from '@presentation/http/decorators/api-paginated-response.decorator';
+import { UpdateTenantDataRetentionRequestDto } from '../dto/update-tenant-data-retention-request.dto';
 
 class ListTenantsRequestDto extends PaginationQueryDto {
   @ApiPropertyOptional({ enum: TenantStatus })
@@ -137,6 +139,19 @@ export class TenantsController {
     if (result.isFailure) {
       throw toHttpException(result.error);
     }
+    return TenantResponseDto.fromDto(result.value);
+  }
+
+  @Patch(':id/data-retention')
+  @ApiResponse({ status: HttpStatus.OK, type: TenantResponseDto })
+  async updateDataRetention(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateTenantDataRetentionRequestDto,
+  ): Promise<TenantResponseDto> {
+    const result = await this.mediator.send(
+      new UpdateTenantDataRetentionCommand(id, dto.dataRetentionDays),
+    );
+    if (result.isFailure) throw toHttpException(result.error);
     return TenantResponseDto.fromDto(result.value);
   }
 }

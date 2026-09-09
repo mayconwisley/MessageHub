@@ -5,12 +5,9 @@
 #   build   -> compila TypeScript -> dist/
 #   runtime -> imagem final que roda a API
 #
-# Nota importante: as migrations do TypeORM (`npm run migration:run`) rodam via
-# ts-node contra os arquivos .ts em src/infrastructure/database (ver data-source.ts,
-# que referencia os caminhos com glob relativo a "src/"). Por isso a imagem final
-# mantém as devDependencies (typescript, ts-node, tsconfig-paths) e o diretório
-# src/ - não é possível "podar" para node_modules só de produção sem reescrever
-# esse mecanismo de migrations.
+# Migrations TypeScript exigem src/ e ts-node; por isso existe um target
+# `migration` separado. A imagem `runtime` fica somente com dist/ e dependências
+# de produção, reduzindo tamanho e superfície de ataque.
 
 ARG NODE_VERSION=24-alpine
 
@@ -23,6 +20,14 @@ FROM deps AS build
 COPY . .
 RUN npm run build
 
+FROM deps AS production-deps
+RUN npm prune --omit=dev
+
+FROM build AS migration
+ENV NODE_ENV=production
+RUN addgroup -S messagehub && adduser -S messagehub -G messagehub
+USER messagehub
+
 FROM node:${NODE_VERSION} AS runtime
 ENV NODE_ENV=production \
     NPM_CONFIG_CACHE=/tmp/.npm
@@ -30,11 +35,9 @@ WORKDIR /app
 
 RUN addgroup -S messagehub && adduser -S messagehub -G messagehub
 
-COPY --from=deps --chown=messagehub:messagehub /app/node_modules ./node_modules
+COPY --from=production-deps --chown=messagehub:messagehub /app/node_modules ./node_modules
 COPY --from=build --chown=messagehub:messagehub /app/dist ./dist
 COPY --chown=messagehub:messagehub package.json ./
-COPY --chown=messagehub:messagehub tsconfig.json tsconfig.build.json ./
-COPY --chown=messagehub:messagehub src ./src
 
 USER messagehub
 

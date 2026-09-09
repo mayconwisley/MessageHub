@@ -20,6 +20,33 @@ export class ApiError extends Error {
   }
 }
 
+const errorMessagesByCode: Record<string, string> = {
+  INVALID_CREDENTIALS: 'E-mail ou senha inválidos.',
+  INVALID_API_KEY: 'A credencial informada não é válida.',
+  FORBIDDEN: 'Você não tem permissão para realizar esta operação.',
+  RATE_LIMIT_EXCEEDED: 'Limite de requisições atingido. Aguarde e tente novamente.',
+  APPLICATION_NOT_FOUND: 'A aplicação informada não foi encontrada.',
+  MESSAGE_NOT_FOUND: 'A mensagem não foi encontrada.',
+  EMAIL_MESSAGE_NOT_FOUND: 'O e-mail não foi encontrado.',
+};
+
+/** Mensagem estável e segura para a interface; o requestId permanece disponível para suporte. */
+export function toUserErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    const message =
+      (error.code && errorMessagesByCode[error.code]) ??
+      (error.status === 401
+        ? 'Sua sessão não é válida. Entre novamente.'
+        : error.status === 403
+          ? 'Você não tem permissão para realizar esta operação.'
+          : error.status >= 500
+            ? 'O serviço apresentou uma falha temporária. Tente novamente.'
+            : 'Não foi possível concluir a operação. Revise os dados e tente novamente.');
+    return error.requestId ? `${message} Protocolo: ${error.requestId}.` : message;
+  }
+  return 'Não foi possível concluir a operação. Tente novamente.';
+}
+
 interface ApiErrorPayload {
   message?: string | string[];
   code?: string;

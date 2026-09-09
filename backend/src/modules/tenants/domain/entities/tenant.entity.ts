@@ -2,15 +2,20 @@ import { Entity, UniqueId } from '@shared/domain';
 import { Result } from '@shared/result';
 import { TenantStatus } from '../enums/tenant-status.enum';
 import { InvalidTenantNameError } from '../errors/invalid-tenant-name.error';
+import { InvalidTenantRetentionError } from '../errors/invalid-tenant-retention.error';
+
+export const DEFAULT_DATA_RETENTION_DAYS = 90;
 
 export interface TenantProps {
   name: string;
   status: TenantStatus;
+  dataRetentionDays?: number;
   createdAt: Date;
 }
 
 export interface CreateTenantParams {
   name: string;
+  dataRetentionDays?: number;
 }
 
 export class Tenant extends Entity<TenantProps> {
@@ -18,10 +23,18 @@ export class Tenant extends Entity<TenantProps> {
     super(props, id);
   }
 
-  static create(params: CreateTenantParams, id?: UniqueId): Result<Tenant, InvalidTenantNameError> {
+  static create(
+    params: CreateTenantParams,
+    id?: UniqueId,
+  ): Result<Tenant, InvalidTenantNameError | InvalidTenantRetentionError> {
     const name = params.name?.trim();
     if (!name) {
       return Result.fail(new InvalidTenantNameError());
+    }
+
+    const dataRetentionDays = params.dataRetentionDays ?? DEFAULT_DATA_RETENTION_DAYS;
+    if (!Tenant.isValidDataRetentionDays(dataRetentionDays)) {
+      return Result.fail(new InvalidTenantRetentionError());
     }
 
     return Result.ok(
@@ -29,6 +42,7 @@ export class Tenant extends Entity<TenantProps> {
         {
           name,
           status: TenantStatus.ACTIVE,
+          dataRetentionDays,
           createdAt: new Date(),
         },
         id,
@@ -52,6 +66,10 @@ export class Tenant extends Entity<TenantProps> {
     return this.props.createdAt;
   }
 
+  get dataRetentionDays(): number {
+    return this.props.dataRetentionDays ?? DEFAULT_DATA_RETENTION_DAYS;
+  }
+
   isActive(): boolean {
     return this.props.status === TenantStatus.ACTIVE;
   }
@@ -64,8 +82,20 @@ export class Tenant extends Entity<TenantProps> {
     this.props.status = TenantStatus.ACTIVE;
   }
 
+  updateDataRetentionDays(days: number): Result<void, InvalidTenantRetentionError> {
+    if (!Tenant.isValidDataRetentionDays(days)) {
+      return Result.fail(new InvalidTenantRetentionError());
+    }
+    this.props.dataRetentionDays = days;
+    return Result.ok(undefined);
+  }
+
   synchronizeFromDefaultChannel(name: string): void {
     this.props.name = name.trim();
     this.activate();
+  }
+
+  private static isValidDataRetentionDays(days: number): boolean {
+    return Number.isInteger(days) && days >= 1 && days <= 3650;
   }
 }

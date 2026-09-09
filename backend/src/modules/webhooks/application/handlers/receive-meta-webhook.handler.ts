@@ -10,11 +10,13 @@ import {
 import { ReceiveMetaWebhookCommand } from '../commands/receive-meta-webhook.command';
 import { MetaWebhookSignatureVerifierService } from '../services/meta-webhook-signature-verifier.service';
 import { OutboxEventType } from '@shared/outbox';
+import { MetaWebhookTenantResolverService } from '../services/meta-webhook-tenant-resolver.service';
 
 @CommandHandler(ReceiveMetaWebhookCommand)
 export class ReceiveMetaWebhookHandler implements ICommandHandler<ReceiveMetaWebhookCommand> {
   constructor(
     private readonly signatureVerifier: MetaWebhookSignatureVerifierService,
+    private readonly tenantResolver: MetaWebhookTenantResolverService,
     @Inject(WEBHOOK_EVENT_REPOSITORY) private readonly webhookEvents: IWebhookEventRepository,
   ) {}
 
@@ -27,6 +29,7 @@ export class ReceiveMetaWebhookHandler implements ICommandHandler<ReceiveMetaWeb
     if (payload.object !== 'whatsapp_business_account' || !rawBody) return Result.ok(undefined);
 
     const contentHash = createHash('sha256').update(rawBody).digest('hex');
+    const tenantId = await this.tenantResolver.resolve(payload as Record<string, unknown>);
     const event = await this.webhookEvents.registerWithOutbox(
       'META_WHATSAPP',
       contentHash,
@@ -37,6 +40,7 @@ export class ReceiveMetaWebhookHandler implements ICommandHandler<ReceiveMetaWeb
         aggregateId: contentHash,
         payload: {},
       },
+      tenantId ?? undefined,
     );
     if (!event) return Result.ok(undefined);
     return Result.ok(undefined);

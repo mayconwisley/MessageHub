@@ -11,6 +11,9 @@ export class TenantResponseDto {
   @ApiProperty()
   status!: string;
 
+  @ApiProperty({ description: 'Prazo de retenção de mensagens, e-mails e webhooks em dias.' })
+  dataRetentionDays!: number;
+
   @ApiProperty()
   createdAt!: Date;
 
@@ -19,6 +22,7 @@ export class TenantResponseDto {
     response.id = dto.id;
     response.name = dto.name;
     response.status = dto.status;
+    response.dataRetentionDays = dto.dataRetentionDays;
     response.createdAt = dto.createdAt;
     return response;
   }

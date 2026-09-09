@@ -24,6 +24,7 @@ import { ListWebhookEventsHandler } from './application/handlers/list-webhook-ev
 import { ReceiveMetaWebhookHandler } from './application/handlers/receive-meta-webhook.handler';
 import { ReprocessWebhookEventHandler } from './application/handlers/reprocess-webhook-event.handler';
 import { MetaWebhookSignatureVerifierService } from './application/services/meta-webhook-signature-verifier.service';
+import { MetaWebhookTenantResolverService } from './application/services/meta-webhook-tenant-resolver.service';
 import { WebhookEventsController } from './presentation/controllers/webhook-events.controller';
 
 /**
@@ -56,6 +57,7 @@ import { WebhookEventsController } from './presentation/controllers/webhook-even
     MetaWebhookWorker,
     InboundMessageWebhookWorker,
     MetaWebhookSignatureVerifierService,
+    MetaWebhookTenantResolverService,
     ListWebhookEventsHandler,
     ReceiveMetaWebhookHandler,
     ReprocessWebhookEventHandler,
