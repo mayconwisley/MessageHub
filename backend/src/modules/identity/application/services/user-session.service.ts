@@ -16,6 +16,7 @@ import { AuthenticatedUserDto } from '../dto/authenticated-user.dto';
 
 const SESSION_PREFIX = 'mh_session_';
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
+const SESSION_REFRESH_THRESHOLD_MS = 5 * 60 * 1000;
 /**
  * Hash bcrypt "fantasma" comparado quando o e-mail não existe, para que a resposta gaste
  * aproximadamente o mesmo tempo de um login com e-mail válido — evita enumeração de contas
@@ -81,7 +82,13 @@ export class UserSessionService {
 
   async resolveSession(token: string): Promise<AuthenticatedUserDto | null> {
     if (!token.startsWith(SESSION_PREFIX)) return null;
-    return this.sessions.findActiveByTokenHash(this.hashToken(token));
+
+    const usedAt = new Date();
+    return this.sessions.findAndRefreshActiveByTokenHash(this.hashToken(token), {
+      usedAt,
+      expiresAt: new Date(usedAt.getTime() + SESSION_TTL_MS),
+      refreshIfUsedBefore: new Date(usedAt.getTime() - SESSION_REFRESH_THRESHOLD_MS),
+    });
   }
 
   async revokeSession(token: string): Promise<void> {

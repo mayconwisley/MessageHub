@@ -98,16 +98,36 @@ describe('request', () => {
     window.addEventListener(SESSION_EXPIRED_EVENT, onSessionExpired);
     vi.stubGlobal(
       'fetch',
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response(JSON.stringify({ message: 'Sessão expirada' }), { status: 401 }),
-        ),
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ code: 'INVALID_SESSION', message: 'Sessão expirada' }), {
+          status: 401,
+        }),
+      ),
     );
 
     await expect(request('/v1/messages')).rejects.toMatchObject({ status: 401 });
 
     expect(onSessionExpired).toHaveBeenCalledTimes(1);
+    window.removeEventListener(SESSION_EXPIRED_EVENT, onSessionExpired);
+  });
+
+  it('não encerra a sessão por um 401 que não representa INVALID_SESSION', async () => {
+    authStorage.setSessionToken('token-valido');
+    const onSessionExpired = vi.fn();
+    window.addEventListener(SESSION_EXPIRED_EVENT, onSessionExpired);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ code: 'INVALID_API_KEY', message: 'Chave inválida' }), {
+          status: 401,
+        }),
+      ),
+    );
+
+    await expect(request('/v1/messages')).rejects.toMatchObject({ status: 401 });
+
+    expect(onSessionExpired).not.toHaveBeenCalled();
+    expect(authStorage.getSessionToken()).toBe('token-valido');
     window.removeEventListener(SESSION_EXPIRED_EVENT, onSessionExpired);
   });
 

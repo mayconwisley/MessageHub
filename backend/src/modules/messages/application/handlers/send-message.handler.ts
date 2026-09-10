@@ -28,6 +28,7 @@ import {
 } from '../ports/message-timeline.repository.interface';
 import { PhoneNumberResolverService } from '../services/phone-number-resolver.service';
 import { OutboxEventType } from '@shared/outbox';
+import { MessageRecipient } from '../../domain/value-objects/message-recipient.value-object';
 
 @CommandHandler(SendMessageCommand)
 export class SendMessageHandler implements ICommandHandler<SendMessageCommand> {
@@ -72,6 +73,9 @@ export class SendMessageHandler implements ICommandHandler<SendMessageCommand> {
     }
     const phoneNumber = phoneNumberResult.value;
     const phoneNumberId = phoneNumber.id;
+    const recipientResult = MessageRecipient.create(command.to);
+    if (recipientResult.isFailure) return Result.fail(recipientResult.error);
+    const to = recipientResult.value.value;
 
     if (command.idempotencyKey) {
       const existing = await this.messageRepository.findByIdempotencyKey(
@@ -79,7 +83,7 @@ export class SendMessageHandler implements ICommandHandler<SendMessageCommand> {
         command.idempotencyKey,
       );
       if (existing) {
-        if (!this.matchesReplayPayload(existing, command.to, command.content, phoneNumberId)) {
+        if (!this.matchesReplayPayload(existing, to, command.content, phoneNumberId)) {
           return Result.fail(new IdempotencyKeyConflictError(command.idempotencyKey));
         }
         return Result.ok({ message: MessageMapper.toDto(existing), isReplay: true });
@@ -90,7 +94,7 @@ export class SendMessageHandler implements ICommandHandler<SendMessageCommand> {
       tenantId: application.tenantId,
       applicationId,
       phoneNumberId,
-      to: command.to,
+      to,
       content: command.content,
       idempotencyKey: command.idempotencyKey,
       requestId: command.requestId,
@@ -124,7 +128,7 @@ export class SendMessageHandler implements ICommandHandler<SendMessageCommand> {
     if (saveResult.outcome === 'idempotent_conflict') {
       if (
         command.idempotencyKey &&
-        !this.matchesReplayPayload(saveResult.existing, command.to, command.content, phoneNumberId)
+        !this.matchesReplayPayload(saveResult.existing, to, command.content, phoneNumberId)
       ) {
         return Result.fail(new IdempotencyKeyConflictError(command.idempotencyKey));
       }
@@ -151,7 +155,7 @@ export class SendMessageHandler implements ICommandHandler<SendMessageCommand> {
     phoneNumberId: UniqueId,
   ): boolean {
     return (
-      existing.to === to.trim() &&
+      existing.to === to &&
       existing.content.body === content.trim() &&
       existing.phoneNumberId.value === phoneNumberId.value
     );

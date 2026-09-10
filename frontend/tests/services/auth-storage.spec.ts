@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { authStorage } from '../../src/services/auth-storage';
 
 describe('authStorage', () => {
@@ -20,7 +20,7 @@ describe('authStorage', () => {
     expect(authStorage.getSessionToken()).toBeNull();
   });
 
-  it('mantém o perfil apenas em memória e o remove ao encerrar a sessão', () => {
+  it('mantém o perfil na sessão e o remove ao encerrar a sessão', () => {
     authStorage.setSession('sessao-segura', {
       id: 'user-1',
       email: 'operator@example.com',
@@ -33,5 +33,32 @@ describe('authStorage', () => {
     authStorage.removeSessionToken();
 
     expect(authStorage.getSessionUser()).toBeNull();
+  });
+
+  it('preserva token e perfil quando o módulo é recarregado na mesma guia', async () => {
+    authStorage.setSession('sessao-segura', {
+      id: 'user-1',
+      email: 'operator@example.com',
+      role: 'operator',
+      tenantId: null,
+    });
+
+    vi.resetModules();
+    const { authStorage: reloadedAuthStorage } = await import('../../src/services/auth-storage');
+
+    expect(reloadedAuthStorage.getSessionToken()).toBe('sessao-segura');
+    expect(reloadedAuthStorage.getSessionUser()).toEqual({
+      id: 'user-1',
+      email: 'operator@example.com',
+      role: 'operator',
+      tenantId: null,
+    });
+  });
+
+  it('descarta perfil inválido armazenado na sessão', () => {
+    sessionStorage.setItem('message-hub:session-user', '{"role":"invalid"}');
+
+    expect(authStorage.getSessionUser()).toBeNull();
+    expect(sessionStorage.getItem('message-hub:session-user')).toBeNull();
   });
 });

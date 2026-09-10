@@ -23,9 +23,9 @@ export class SendTemplateMessageRequestDto {
   @ApiPropertyOptional() @IsOptional() @IsUUID() phoneNumberId?: string;
 
   @ApiProperty({
-    example: '+5511999999999',
+    example: '5511999999999',
     description:
-      'Telefone E.164 ou BSUID retornado pela Meta. O BSUID deve ser reutilizado exatamente como recebido em um webhook.',
+      'Telefone com DDI (o sinal + é opcional e adicionado automaticamente) ou BSUID retornado pela Meta. O BSUID deve ser reutilizado exatamente como recebido em um webhook.',
   })
   @IsString()
   @IsNotEmpty()

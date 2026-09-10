@@ -11,10 +11,19 @@ export interface UserSessionRecord {
   userAgent: string | null;
 }
 
+export interface UserSessionActivity {
+  usedAt: Date;
+  expiresAt: Date;
+  refreshIfUsedBefore: Date;
+}
+
 export interface IUserSessionRepository {
   /** Persiste a nova sessão e o registro de login do usuário atomicamente. */
   createForUser(user: User, session: UserSessionRecord): Promise<void>;
-  findActiveByTokenHash(tokenHash: string): Promise<AuthenticatedUserDto | null>;
+  findAndRefreshActiveByTokenHash(
+    tokenHash: string,
+    activity: UserSessionActivity,
+  ): Promise<AuthenticatedUserDto | null>;
   revokeByTokenHash(tokenHash: string): Promise<void>;
 }
 

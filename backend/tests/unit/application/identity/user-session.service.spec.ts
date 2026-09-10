@@ -7,6 +7,7 @@ import { UserRole } from '@modules/identity/domain/enums/user-role.enum';
 import { IUserRepository } from '@modules/identity/domain/repositories/user.repository.interface';
 import {
   IUserSessionRepository,
+  UserSessionActivity,
   UserSessionRecord,
 } from '@modules/identity/domain/repositories/user-session.repository.interface';
 import { AuthenticatedUserDto } from '@modules/identity/application/dto/authenticated-user.dto';
@@ -49,13 +50,19 @@ class FakeUserRepository implements IUserRepository {
 
 class FakeUserSessionRepository implements IUserSessionRepository {
   readonly created: { user: User; session: UserSessionRecord }[] = [];
+  readonly refreshed: { tokenHash: string; activity: UserSessionActivity }[] = [];
+  activeUser: AuthenticatedUserDto | null = null;
 
   async createForUser(user: User, session: UserSessionRecord): Promise<void> {
     this.created.push({ user, session });
   }
 
-  async findActiveByTokenHash(): Promise<AuthenticatedUserDto | null> {
-    return null;
+  async findAndRefreshActiveByTokenHash(
+    tokenHash: string,
+    activity: UserSessionActivity,
+  ): Promise<AuthenticatedUserDto | null> {
+    this.refreshed.push({ tokenHash, activity });
+    return this.activeUser;
   }
 
   async revokeByTokenHash(): Promise<void> {}
@@ -74,7 +81,7 @@ async function createActiveUser(password: string): Promise<User> {
   );
 }
 
-describe('UserSessionService.authenticate', () => {
+describe('UserSessionService', () => {
   let users: FakeUserRepository;
   let sessions: FakeUserSessionRepository;
   let service: UserSessionService;
@@ -175,5 +182,35 @@ describe('UserSessionService.authenticate', () => {
     await expect(service.authenticate('ana@hub.com', 'correct-password', {})).resolves.toEqual({
       status: 'invalid',
     });
+  });
+
+  it('não consulta o repositório quando o token não possui o prefixo de sessão', async () => {
+    await expect(service.resolveSession('token-invalido')).resolves.toBeNull();
+
+    expect(sessions.refreshed).toHaveLength(0);
+  });
+
+  it('valida e agenda a renovação deslizante de uma sessão ativa', async () => {
+    sessions.activeUser = {
+      id: 'user-1',
+      email: 'ana@hub.com',
+      role: UserRole.TENANT_ADMIN,
+      tenantId: 'tenant-1',
+    };
+
+    await expect(service.resolveSession('mh_session_token-seguro')).resolves.toEqual(
+      sessions.activeUser,
+    );
+
+    expect(sessions.refreshed).toHaveLength(1);
+    const refreshed = sessions.refreshed[0];
+    expect(refreshed.tokenHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(refreshed.tokenHash).not.toContain('token-seguro');
+    expect(refreshed.activity.expiresAt.getTime() - refreshed.activity.usedAt.getTime()).toBe(
+      12 * 60 * 60 * 1000,
+    );
+    expect(
+      refreshed.activity.usedAt.getTime() - refreshed.activity.refreshIfUsedBefore.getTime(),
+    ).toBe(5 * 60 * 1000);
   });
 });

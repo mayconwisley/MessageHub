@@ -43,14 +43,16 @@ export function TemplateAutocomplete({
     enabled: validScope,
     staleTime: 30_000,
   });
-  const matchInPage = data?.items.find((template) => template.id === value) ?? null;
+  const matchInPage =
+    data?.items.find((template) => template.id === value || template.localId === value) ?? null;
+  const valueIsLocalId = z.string().uuid().safeParse(value).success;
 
   // O template selecionado pode não estar entre os 100 primeiros aprovados retornados
   // (ex.: ao editar um envio cujo template não está nesse conjunto) - busca por ID como fallback.
   const { data: fallbackTemplate } = useQuery({
     queryKey: ['templates-select-by-id', value, tenantId],
     queryFn: () => templatesApi.getById(value, tenantId),
-    enabled: validScope && Boolean(value) && !matchInPage,
+    enabled: validScope && valueIsLocalId && !matchInPage,
     staleTime: 30_000,
   });
 

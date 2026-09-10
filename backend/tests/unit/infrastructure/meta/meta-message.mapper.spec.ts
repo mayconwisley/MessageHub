@@ -23,7 +23,7 @@ describe('MetaMessageMapper', () => {
 
     expect(payload).toEqual({
       messaging_product: 'whatsapp',
-      to: '+5511999999999',
+      to: '5511999999999',
       type: 'template',
       template: {
         name: 'pedido_confirmado',
@@ -39,5 +39,18 @@ describe('MetaMessageMapper', () => {
         ],
       },
     });
+  });
+
+  it('preserva um BSUID ao montar o payload da Meta', () => {
+    const payload = MetaMessageMapper.toSendMessageRequest({
+      phoneNumberId: 'meta-phone-id',
+      credentialSource: WhatsAppCredentialSource.TENANT,
+      accessToken: 'token',
+      to: 'BR.13491208655302741918',
+      content: 'Olá!',
+      template: null,
+    });
+
+    expect(payload.to).toBe('BR.13491208655302741918');
   });
 });

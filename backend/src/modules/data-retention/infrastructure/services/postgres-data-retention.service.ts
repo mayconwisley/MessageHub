@@ -1,5 +1,5 @@
 import { Injectable, OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { DataSource, QueryRunner } from 'typeorm';
 import { PinoLogger } from 'nestjs-pino';
 
 const BATCH_SIZE = 1_000;
@@ -31,8 +31,8 @@ export class PostgresDataRetentionService implements OnApplicationBootstrap, OnA
   }
 
   onApplicationBootstrap(): void {
-    void this.run();
-    this.timer = setInterval(() => void this.run(), RUN_INTERVAL_MS);
+    this.scheduleRun();
+    this.timer = setInterval(() => this.scheduleRun(), RUN_INTERVAL_MS);
   }
 
   onApplicationShutdown(): void {
@@ -40,19 +40,27 @@ export class PostgresDataRetentionService implements OnApplicationBootstrap, OnA
     this.timer = null;
   }
 
+  private scheduleRun(): void {
+    void this.run().catch(() => undefined);
+  }
+
   async run(): Promise<RetentionRunResult | null> {
     if (this.isRunning) return null;
     this.isRunning = true;
+    const queryRunner = this.dataSource.createQueryRunner();
     let acquired = false;
     try {
-      acquired = await this.tryAcquireLock();
+      await queryRunner.connect();
+      acquired = await this.tryAcquireLock(queryRunner);
       if (!acquired) return null;
 
       const result: RetentionRunResult = {
-        messages: await this.deleteInBatches(this.expiredMessagesQuery()),
-        emails: await this.deleteInBatches(this.expiredEmailsQuery()),
-        webhooks: await this.deleteInBatches(this.expiredWebhooksQuery()),
-        auditLogs: await this.deleteInBatches(this.expiredAuditLogsQuery()),
+        messages: await this.deleteInBatches(queryRunner, this.expiredMessagesQuery()),
+        emails: await this.deleteInBatches(queryRunner, this.expiredEmailsQuery()),
+        webhooks: await this.deleteInBatches(queryRunner, this.expiredWebhooksQuery(), [
+          DEFAULT_DATA_RETENTION_DAYS,
+        ]),
+        auditLogs: await this.deleteInBatches(queryRunner, this.expiredAuditLogsQuery()),
       };
       this.logger.info(result, 'Rotina de retenção de dados concluída.');
       return result;
@@ -60,27 +68,35 @@ export class PostgresDataRetentionService implements OnApplicationBootstrap, OnA
       this.logger.error({ err: error }, 'Falha na rotina de retenção de dados.');
       throw error;
     } finally {
-      if (acquired) await this.releaseLock();
-      this.isRunning = false;
+      try {
+        if (acquired) await this.releaseLock(queryRunner);
+      } finally {
+        await queryRunner.release();
+        this.isRunning = false;
+      }
     }
   }
 
-  private async tryAcquireLock(): Promise<boolean> {
-    const rows: unknown = await this.dataSource.query('SELECT pg_try_advisory_lock($1) AS acquired', [
+  private async tryAcquireLock(queryRunner: QueryRunner): Promise<boolean> {
+    const rows: unknown = await queryRunner.query('SELECT pg_try_advisory_lock($1) AS acquired', [
       ADVISORY_LOCK_KEY,
     ]);
     if (!Array.isArray(rows) || rows.length !== 1 || !this.isAdvisoryLockRow(rows[0])) return false;
     return rows[0].acquired === true;
   }
 
-  private async releaseLock(): Promise<void> {
-    await this.dataSource.query('SELECT pg_advisory_unlock($1)', [ADVISORY_LOCK_KEY]);
+  private async releaseLock(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query('SELECT pg_advisory_unlock($1)', [ADVISORY_LOCK_KEY]);
   }
 
-  private async deleteInBatches(query: string): Promise<number> {
+  private async deleteInBatches(
+    queryRunner: QueryRunner,
+    query: string,
+    additionalParameters: readonly unknown[] = [],
+  ): Promise<number> {
     let deleted = 0;
     while (true) {
-      const rows: unknown = await this.dataSource.query(query, [BATCH_SIZE, DEFAULT_DATA_RETENTION_DAYS]);
+      const rows: unknown = await queryRunner.query(query, [BATCH_SIZE, ...additionalParameters]);
       if (!Array.isArray(rows)) return deleted;
       deleted += rows.length;
       if (rows.length < BATCH_SIZE) return deleted;

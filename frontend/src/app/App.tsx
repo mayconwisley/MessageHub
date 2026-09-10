@@ -46,15 +46,7 @@ import {
   type Theme,
 } from '@mui/material';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import {
-  Component,
-  lazy,
-  Suspense,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react';
+import { Component, lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   NavLink,
   Navigate,
@@ -67,7 +59,7 @@ import {
 import { BrowserRouter } from 'react-router-dom';
 import { authStorage } from '../services/auth-storage';
 import { SESSION_EXPIRED_EVENT } from '../services/http-client';
-import { logout as logoutRequest } from '../modules/auth/auth.api';
+import { logout as logoutRequest, refreshSession } from '../modules/auth/auth.api';
 import { ThemeModeProvider } from './ThemeModeProvider';
 import { useThemeMode } from './useThemeMode';
 import { buildTheme } from './theme';
@@ -223,6 +215,7 @@ const bottomLinks: NavLeaf[] = [
 ];
 
 const drawerWidth = 264;
+const SESSION_KEEP_ALIVE_INTERVAL_MS = 5 * 60 * 1000;
 
 function NavItem({
   to,
@@ -452,8 +445,26 @@ function SessionExpirationHandler() {
       queryClient.clear();
       void navigate('/login', { replace: true });
     };
+    const keepSessionAlive = () => {
+      if (!authStorage.getSessionToken()) return;
+      void refreshSession().catch(() => {
+        // Falhas transitórias não encerram a sessão; INVALID_SESSION dispara o evento acima.
+      });
+    };
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') keepSessionAlive();
+    };
+
     window.addEventListener(SESSION_EXPIRED_EVENT, onSessionExpired);
-    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onSessionExpired);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    keepSessionAlive();
+    const keepAliveTimer = window.setInterval(keepSessionAlive, SESSION_KEEP_ALIVE_INTERVAL_MS);
+
+    return () => {
+      window.removeEventListener(SESSION_EXPIRED_EVENT, onSessionExpired);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+      window.clearInterval(keepAliveTimer);
+    };
   }, [navigate]);
 
   return null;

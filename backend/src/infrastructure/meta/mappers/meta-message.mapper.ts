@@ -7,10 +7,11 @@ import { MetaSendMessageResponseDto } from '../dto/meta-send-message-response.dt
 
 export class MetaMessageMapper {
   static toSendMessageRequest(message: OutgoingMessage): MetaSendMessageRequestDto {
+    const recipient = message.to.startsWith('+') ? message.to.slice(1) : message.to;
     if (message.template) {
       return {
         messaging_product: 'whatsapp',
-        to: message.to,
+        to: recipient,
         type: 'template',
         template: {
           name: message.template.name,
@@ -28,7 +29,7 @@ export class MetaMessageMapper {
     }
     return {
       messaging_product: 'whatsapp',
-      to: message.to,
+      to: recipient,
       type: 'text',
       text: { body: message.content },
     };

@@ -4,6 +4,7 @@ import { IsNull, Repository } from 'typeorm';
 import { User } from '../../domain/entities/user.entity';
 import {
   IUserSessionRepository,
+  UserSessionActivity,
   UserSessionRecord,
 } from '../../domain/repositories/user-session.repository.interface';
 import { AuthenticatedUserDto } from '../../application/dto/authenticated-user.dto';
@@ -34,7 +35,10 @@ export class PostgresUserSessionRepository implements IUserSessionRepository {
     });
   }
 
-  async findActiveByTokenHash(tokenHash: string): Promise<AuthenticatedUserDto | null> {
+  async findAndRefreshActiveByTokenHash(
+    tokenHash: string,
+    activity: UserSessionActivity,
+  ): Promise<AuthenticatedUserDto | null> {
     const session = await this.sessions
       .createQueryBuilder('session')
       .innerJoinAndSelect(UserOrmEntity, 'user', 'user.id = session.user_id')
@@ -43,12 +47,30 @@ export class PostgresUserSessionRepository implements IUserSessionRepository {
       .andWhere('session.expires_at > NOW()')
       .andWhere('user.status = :status', { status: UserStatus.ACTIVE })
       .getRawOne<{
+        session_id: string;
+        session_last_used_at: Date | null;
         user_id: string;
         user_email: string;
         user_role: UserRole;
         user_tenant_id: string | null;
       }>();
     if (!session) return null;
+
+    const shouldRefresh =
+      !session.session_last_used_at ||
+      session.session_last_used_at.getTime() <= activity.refreshIfUsedBefore.getTime();
+    if (shouldRefresh) {
+      const refresh = await this.sessions
+        .createQueryBuilder()
+        .update(UserSessionOrmEntity)
+        .set({ lastUsedAt: activity.usedAt, expiresAt: activity.expiresAt })
+        .where('id = :id', { id: session.session_id })
+        .andWhere('revoked_at IS NULL')
+        .andWhere('expires_at > :usedAt', { usedAt: activity.usedAt })
+        .execute();
+      if (refresh.affected !== 1) return null;
+    }
+
     return {
       id: session.user_id,
       email: session.user_email,

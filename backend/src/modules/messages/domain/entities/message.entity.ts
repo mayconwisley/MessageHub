@@ -4,6 +4,7 @@ import { MessageStatus } from '../enums/message-status.enum';
 import { MessageType } from '../enums/message-type.enum';
 import { InvalidMessageError } from '../errors/invalid-message.error';
 import { MessageContent } from '../value-objects/message-content.value-object';
+import { MessageRecipient } from '../value-objects/message-recipient.value-object';
 import {
   TemplateMessage,
   TemplateParameterGroup,
@@ -56,10 +57,8 @@ export class Message extends Entity<MessageProps> {
   }
 
   static create(params: CreateMessageParams, id?: UniqueId): Result<Message, InvalidMessageError> {
-    const to = params.to?.trim();
-    if (!to) {
-      return Result.fail(new InvalidMessageError('to não deve estar vazio.'));
-    }
+    const recipientResult = MessageRecipient.create(params.to);
+    if (recipientResult.isFailure) return Result.fail(recipientResult.error);
 
     const contentResult = MessageContent.create(params.content);
     if (contentResult.isFailure) {
@@ -73,7 +72,7 @@ export class Message extends Entity<MessageProps> {
           tenantId: params.tenantId,
           applicationId: params.applicationId,
           phoneNumberId: params.phoneNumberId,
-          to,
+          to: recipientResult.value.value,
           content: contentResult.value,
           type: MessageType.TEXT,
           template: null,
@@ -94,8 +93,8 @@ export class Message extends Entity<MessageProps> {
     params: CreateTemplateMessageParams,
     id?: UniqueId,
   ): Result<Message, InvalidMessageError> {
-    const to = params.to?.trim();
-    if (!to) return Result.fail(new InvalidMessageError('to não deve estar vazio.'));
+    const recipientResult = MessageRecipient.create(params.to);
+    if (recipientResult.isFailure) return Result.fail(recipientResult.error);
 
     const templateResult = TemplateMessage.create({
       metaTemplateId: params.metaTemplateId,
@@ -114,7 +113,7 @@ export class Message extends Entity<MessageProps> {
           tenantId: params.tenantId,
           applicationId: params.applicationId,
           phoneNumberId: params.phoneNumberId,
-          to,
+          to: recipientResult.value.value,
           content: contentResult.value,
           type: MessageType.TEMPLATE,
           template: templateResult.value,

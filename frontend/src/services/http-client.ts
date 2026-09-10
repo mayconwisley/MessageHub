@@ -92,7 +92,12 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     const message = Array.isArray(payload?.message)
       ? payload.message.join(' ')
       : (payload?.message ?? `A requisição falhou (${response.status}).`);
-    if (response.status === 401 && authorization === 'session' && token) {
+    if (
+      response.status === 401 &&
+      authorization === 'session' &&
+      token &&
+      payload?.code === 'INVALID_SESSION'
+    ) {
       window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
     }
     throw new ApiError(

@@ -38,6 +38,15 @@ export class AuthController {
     return result.value;
   }
 
+  @Post('sessions/refresh')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiBearerAuth()
+  @UseGuards(UserSessionAuthGuard)
+  @ApiResponse({ status: HttpStatus.NO_CONTENT, description: 'Sessão ativa renovada.' })
+  refresh(): void {
+    // O guard valida a sessão e registra a atividade antes de chegar ao controller.
+  }
+
   @Delete('sessions')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiBearerAuth()

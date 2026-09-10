@@ -8,4 +8,5 @@ export interface Session {
 }
 export const login = (data: { email: string; password: string }) =>
   request<Session>('/v1/auth/sessions', { method: 'POST', body: data, authorization: 'none' });
+export const refreshSession = () => request<void>('/v1/auth/sessions/refresh', { method: 'POST' });
 export const logout = () => request<void>('/v1/auth/sessions', { method: 'DELETE' });

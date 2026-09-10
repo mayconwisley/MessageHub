@@ -41,6 +41,7 @@ import {
 } from '../ports/message-timeline.repository.interface';
 import { PhoneNumberResolverService } from '../services/phone-number-resolver.service';
 import { OutboxEventType } from '@shared/outbox';
+import { MessageRecipient } from '../../domain/value-objects/message-recipient.value-object';
 
 @CommandHandler(SendTemplateMessageCommand)
 export class SendTemplateMessageHandler implements ICommandHandler<SendTemplateMessageCommand> {
@@ -115,6 +116,9 @@ export class SendTemplateMessageHandler implements ICommandHandler<SendTemplateM
       return Result.fail(new TemplateNotFoundError(reference));
     }
 
+    const recipientResult = MessageRecipient.create(command.to);
+    if (recipientResult.isFailure) return Result.fail(recipientResult.error);
+    const to = recipientResult.value.value;
     const parameters: TemplateParameterGroup[] = command.parameters.length
       ? [{ component: 'body', values: command.parameters }]
       : [];
@@ -125,9 +129,7 @@ export class SendTemplateMessageHandler implements ICommandHandler<SendTemplateM
         command.idempotencyKey,
       );
       if (existing) {
-        if (
-          !this.matchesReplayPayload(existing, command.to, phoneNumberId, template.name, parameters)
-        ) {
+        if (!this.matchesReplayPayload(existing, to, phoneNumberId, template.name, parameters)) {
           return Result.fail(new IdempotencyKeyConflictError(command.idempotencyKey));
         }
         return Result.ok({ message: MessageMapper.toDto(existing), isReplay: true });
@@ -138,7 +140,7 @@ export class SendTemplateMessageHandler implements ICommandHandler<SendTemplateM
       tenantId: application.tenantId,
       applicationId,
       phoneNumberId,
-      to: command.to,
+      to,
       metaTemplateId: template.metaTemplateId,
       templateName: template.name,
       language: template.language,
@@ -174,7 +176,7 @@ export class SendTemplateMessageHandler implements ICommandHandler<SendTemplateM
         command.idempotencyKey &&
         !this.matchesReplayPayload(
           saveResult.existing,
-          command.to,
+          to,
           phoneNumberId,
           template.name,
           parameters,
@@ -206,7 +208,7 @@ export class SendTemplateMessageHandler implements ICommandHandler<SendTemplateM
     parameters: TemplateParameterGroup[],
   ): boolean {
     return (
-      existing.to === to.trim() &&
+      existing.to === to &&
       existing.phoneNumberId.value === phoneNumberId.value &&
       existing.template?.name === templateName &&
       JSON.stringify(existing.template?.parameters ?? []) === JSON.stringify(parameters)

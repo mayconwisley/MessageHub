@@ -189,11 +189,12 @@ describe('SendMessageHandler', () => {
       buildHandler();
 
     const result = await handler.execute(
-      new SendMessageCommand(application.id.value, phoneNumber.id.value, '+5511988888888', 'Ola!'),
+      new SendMessageCommand(application.id.value, phoneNumber.id.value, '5511988888888', 'Ola!'),
     );
 
     const { message, isReplay } = expectOk(result);
     expect(message.status).toBe('PENDING');
+    expect(message.to).toBe('+5511988888888');
     expect(isReplay).toBe(false);
     expect(messageRepository.saved).toHaveLength(1);
     expect(messagePublisher.published).toEqual([{ messageId: message.id }]);
@@ -251,6 +252,38 @@ describe('SendMessageHandler', () => {
 
     const first = expectOk(await handler.execute(command));
     const second = expectOk(await handler.execute(command));
+
+    expect(first.isReplay).toBe(false);
+    expect(second.isReplay).toBe(true);
+    expect(second.message.id).toBe(first.message.id);
+    expect(messageRepository.saved).toHaveLength(1);
+  });
+
+  it('trata telefones com e sem o sinal + como o mesmo payload idempotente', async () => {
+    const { handler, application, phoneNumber, messageRepository } = buildHandler();
+
+    const first = expectOk(
+      await handler.execute(
+        new SendMessageCommand(
+          application.id.value,
+          phoneNumber.id.value,
+          '5511988888888',
+          'Ola!',
+          'idem-key-phone-format',
+        ),
+      ),
+    );
+    const second = expectOk(
+      await handler.execute(
+        new SendMessageCommand(
+          application.id.value,
+          phoneNumber.id.value,
+          '+5511988888888',
+          'Ola!',
+          'idem-key-phone-format',
+        ),
+      ),
+    );
 
     expect(first.isReplay).toBe(false);
     expect(second.isReplay).toBe(true);

@@ -247,7 +247,7 @@ const sections: Section[] = [
       'Use o filtro "Status" para navegar pela lista. Em WhatsApp: Pendente, Processando, Enviada, Entregue, Lida, Falhou ou Repetindo. Em E-mails: Pendente, Processando, Enviada, Falhou ou Repetindo (não há Entregue/Lida para e-mail).',
       'Use o campo "Rastrear mensagem"/"Rastrear e-mail" para buscar por ID, provider ID, request ID, chave de idempotência, destinatário ou (só para e-mail) assunto.',
       'Clique em "Enviar mensagem" e escolha o tipo de envio no topo do formulário: "Texto livre", "Modelo" ou "E-mail".',
-      'Em "Texto livre", escolha o número de origem, informe o "Destinatário" (telefone E.164 ou BSUID recebido em um webhook da Meta) e o texto em "Mensagem" (até 4096 caracteres).',
+      'Em "Texto livre", escolha o número de origem, informe o "Destinatário" com DDI, DDD e número (o sinal + é opcional) ou use o BSUID recebido em um webhook da Meta, e escreva o texto em "Mensagem" (até 4096 caracteres).',
       'Em "Modelo", escolha a "Conta WhatsApp" para listar os modelos aprovados dessa conta, selecione o modelo, o número de origem e o "Destinatário"; preencha os "Parâmetros" na mesma ordem dos placeholders {{1}}, {{2}} etc. do corpo do modelo, quando existirem.',
       'Em "E-mail", informe o "Destinatário" (endereço de e-mail), o "Assunto" e a "Mensagem". O envio usa o SMTP do tenant configurado em "E-mail SMTP" ou, na ausência de override, o SMTP padrão da plataforma. Ao enviar, a tela troca automaticamente para a aba "E-mails".',
       'Na linha de uma mensagem ou e-mail, abra o menu de ações e clique em "Ver linha do tempo". O painel mostra o conteúdo, o status atual e todos os eventos disponíveis em ordem cronológica.',

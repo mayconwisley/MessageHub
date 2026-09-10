@@ -1,4 +1,4 @@
-import { Delete, Edit, Preview, Sync } from '@mui/icons-material';
+import { CloudUploadOutlined, Delete, Edit, Preview, Sync } from '@mui/icons-material';
 import {
   Alert,
   Button,
@@ -113,7 +113,7 @@ export function TemplatesPage() {
   const update = useMutation({
     mutationFn: (data: TemplateFormData) => {
       const model = toMutationData(data);
-      return templatesApi.update(editing!.id, {
+      return templatesApi.update(editing!.localId, {
         tenantId: model.tenantId,
         category: model.category,
         components: model.components,
@@ -125,7 +125,7 @@ export function TemplatesPage() {
     },
   });
   const remove = useMutation({
-    mutationFn: (template: Template) => templatesApi.delete(template.id, tenantId),
+    mutationFn: (template: Template) => templatesApi.delete(template.localId, tenantId),
     onSuccess: () => {
       setDeleting(null);
       void invalidate();
@@ -153,7 +153,13 @@ export function TemplatesPage() {
         }
       />
       <Stack spacing={2}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} flexWrap="wrap">
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={2}
+          useFlexGap
+          flexWrap="wrap"
+          alignItems={{ sm: 'center' }}
+        >
           <TenantAutocomplete
             label="Tenant"
             value={tenantId}
@@ -162,7 +168,7 @@ export function TemplatesPage() {
               setAccountId('');
               setPage(1);
             }}
-            sx={{ minWidth: 240 }}
+            sx={{ width: { xs: '100%', sm: 220 }, minWidth: { sm: 200 } }}
           />
           <WhatsAppAccountAutocomplete
             tenantId={tenantId}
@@ -171,9 +177,9 @@ export function TemplatesPage() {
               setAccountId(id);
               setPage(1);
             }}
-            sx={{ minWidth: 240 }}
+            sx={{ width: { xs: '100%', sm: 220 }, minWidth: { sm: 200 } }}
           />
-          <FormControl size="small" sx={{ width: 180 }}>
+          <FormControl size="small" sx={{ width: { xs: '100%', sm: 160 } }}>
             <InputLabel>Status</InputLabel>
             <Select
               label="Status"
@@ -196,6 +202,7 @@ export function TemplatesPage() {
             label="Buscar por nome"
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
+            sx={{ width: { xs: '100%', sm: 180 } }}
           />
           <TextField
             size="small"
@@ -205,22 +212,33 @@ export function TemplatesPage() {
               setCategory(event.target.value);
               setPage(1);
             }}
+            sx={{ width: { xs: '100%', sm: 180 } }}
           />
-          <Button
-            variant="outlined"
-            startIcon={<Sync />}
-            disabled={!isSelectionValid || sync.isPending}
-            onClick={() => sync.mutate()}
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={1.5}
+            useFlexGap
+            sx={{ ml: { sm: 'auto' }, width: { xs: '100%', sm: 'auto' } }}
           >
-            Sincronizar Meta
-          </Button>
-          <Button
-            variant="outlined"
-            disabled={!isSelectionValid || publish.isPending}
-            onClick={() => publish.mutate()}
-          >
-            Publicar pendentes
-          </Button>
+            <Button
+              variant="outlined"
+              startIcon={<Sync />}
+              disabled={!isSelectionValid || sync.isPending}
+              onClick={() => sync.mutate()}
+              sx={{ whiteSpace: 'nowrap' }}
+            >
+              Sincronizar Meta
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<CloudUploadOutlined />}
+              disabled={!isSelectionValid || publish.isPending}
+              onClick={() => publish.mutate()}
+              sx={{ whiteSpace: 'nowrap' }}
+            >
+              Publicar pendentes
+            </Button>
+          </Stack>
         </Stack>
         {sync.error && <Alert severity="error">{sync.error.message}</Alert>}
         {sync.data && (

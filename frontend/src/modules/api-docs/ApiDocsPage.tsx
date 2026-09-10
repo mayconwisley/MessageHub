@@ -66,7 +66,7 @@ const messageEndpoints: Endpoint[] = [
       'POST',
       '/v1/messages',
       {
-        to: '+5511999999999',
+        to: '5511999999999',
         content: 'Seu pedido foi confirmado!',
       },
       ['Idempotency-Key: 5e28f2f0-9a3c-4c34-9b7a-2f2f4d0a9d11'],
@@ -84,7 +84,7 @@ const messageEndpoints: Endpoint[] = [
       'POST',
       '/v1/messages/templates',
       {
-        to: '+5511999999999',
+        to: '5511999999999',
         templateName: 'order_confirmation',
         parameters: ['Maycon', '12345'],
       },
@@ -530,7 +530,7 @@ export function ApiDocsPage() {
     "Content-Type": "application/json",
     "Idempotency-Key": crypto.randomUUID(),
   },
-  body: JSON.stringify({ phoneNumberId, to: "+5511999999999", content: "Olá" }),
+  body: JSON.stringify({ phoneNumberId, to: "5511999999999", content: "Olá" }),
 });`}
             />
             <Typography variant="subtitle2">C# (.NET)</Typography>
@@ -538,7 +538,7 @@ export function ApiDocsPage() {
               code={`using var request = new HttpRequestMessage(HttpMethod.Post, "${baseUrl}/v1/messages");
 request.Headers.Authorization = new("Bearer", "wh_live_SEU_TOKEN");
 request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString());
-request.Content = JsonContent.Create(new { phoneNumberId, to = "+5511999999999", content = "Olá" });
+request.Content = JsonContent.Create(new { phoneNumberId, to = "5511999999999", content = "Olá" });
 var response = await httpClient.SendAsync(request, cancellationToken);`}
             />
           </Stack>

@@ -90,7 +90,7 @@ describe('Message', () => {
       tenantId: UniqueId.create(),
       applicationId: UniqueId.create(),
       phoneNumberId: UniqueId.create(),
-      to: '+5511999999999',
+      to: '5511999999999',
       metaTemplateId: 'meta-template-1',
       templateName: 'order_confirmed',
       language: 'pt_BR',
@@ -98,6 +98,7 @@ describe('Message', () => {
     });
 
     expect(result.isSuccess).toBe(true);
+    expect(result.value.to).toBe('+5511999999999');
     expect(result.value.type).toBe(MessageType.TEMPLATE);
     expect(result.value.template?.parameters).toEqual([]);
   });

@@ -39,6 +39,7 @@ import type { Template } from '../templates/templates.api';
 import { emailsApi } from './emails.api';
 import type { EmailMessage } from './emails.api';
 import { messagesApi, type Message } from './messages.api';
+import { sendTemplateFormSchema, type SendTemplateFormData } from './send-template-form.schema';
 import { toUserErrorMessage } from '../../services/http-client';
 import { toPresentationValue } from '../../lib/presentation';
 import { MessageTimelineDialog } from './MessageTimelineDialog';
@@ -56,13 +57,6 @@ const textSchema = z.object({
     .max(4096, 'A mensagem deve ter no máximo 4096 caracteres.'),
 });
 type TextFormData = z.infer<typeof textSchema>;
-
-const templateSchema = z.object({
-  phoneNumberId: z.string().uuid('Informe um UUID válido.'),
-  to: z.string().min(8, 'Informe um número de telefone válido.'),
-  templateId: z.string().uuid('Selecione um modelo aprovado.'),
-});
-type TemplateFormData = z.infer<typeof templateSchema>;
 
 const emailSchema = z.object({
   to: z.string().email('Informe um e-mail válido.'),
@@ -113,7 +107,9 @@ export function MessagesPage() {
   const client = useQueryClient();
 
   const textForm = useForm<TextFormData>({ resolver: zodResolver(textSchema) });
-  const templateForm = useForm<TemplateFormData>({ resolver: zodResolver(templateSchema) });
+  const templateForm = useForm<SendTemplateFormData>({
+    resolver: zodResolver(sendTemplateFormSchema),
+  });
   const emailForm = useForm<EmailFormData>({ resolver: zodResolver(emailSchema) });
 
   const sendText = useMutation({
@@ -134,7 +130,7 @@ export function MessagesPage() {
   });
 
   const sendTemplate = useMutation({
-    mutationFn: (data: TemplateFormData) =>
+    mutationFn: (data: SendTemplateFormData) =>
       messagesApi.sendTemplate({ ...data, applicationId, parameters: parameterValues }),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ['messages', applicationId] });
@@ -527,12 +523,12 @@ export function MessagesPage() {
                 />
                 <TextField
                   label="Destinatário"
-                  placeholder="+5511999999999 ou BSUID"
+                  placeholder="5511999999999 ou BSUID"
                   {...textForm.register('to')}
                   error={!!textForm.formState.errors.to}
                   helperText={
                     textForm.formState.errors.to?.message ??
-                    'Informe o telefone ou o identificador BSUID retornado pela Meta.'
+                    'Digite DDI, DDD e número; o sinal + é adicionado automaticamente. Também aceita BSUID.'
                   }
                   fullWidth
                 />
@@ -607,12 +603,12 @@ export function MessagesPage() {
                 />
                 <TextField
                   label="Destinatário"
-                  placeholder="+5511999999999 ou BSUID"
+                  placeholder="5511999999999 ou BSUID"
                   {...templateForm.register('to')}
                   error={!!templateForm.formState.errors.to}
                   helperText={
                     templateForm.formState.errors.to?.message ??
-                    'Informe o telefone ou o identificador BSUID retornado pela Meta.'
+                    'Digite DDI, DDD e número; o sinal + é adicionado automaticamente. Também aceita BSUID.'
                   }
                   fullWidth
                 />
