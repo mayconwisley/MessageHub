@@ -26,11 +26,15 @@ export class AddDataRetentionPolicy1700000000027 implements MigrationInterface {
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query('DROP INDEX events.idx_webhook_events_tenant_received_at');
-    await queryRunner.query('ALTER TABLE events.webhook_events DROP CONSTRAINT fk_webhook_events_tenant');
+    await queryRunner.query(
+      'ALTER TABLE events.webhook_events DROP CONSTRAINT fk_webhook_events_tenant',
+    );
     await queryRunner.query('ALTER TABLE events.webhook_events DROP COLUMN tenant_id');
     await queryRunner.query('DROP INDEX app.idx_email_messages_tenant_created_at');
     await queryRunner.query('DROP INDEX app.idx_messages_tenant_created_at');
-    await queryRunner.query('ALTER TABLE app.tenants DROP CONSTRAINT chk_tenants_data_retention_days');
+    await queryRunner.query(
+      'ALTER TABLE app.tenants DROP CONSTRAINT chk_tenants_data_retention_days',
+    );
     await queryRunner.query('ALTER TABLE app.tenants DROP COLUMN data_retention_days');
   }
 }

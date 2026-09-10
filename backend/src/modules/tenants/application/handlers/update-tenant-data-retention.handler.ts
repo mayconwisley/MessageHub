@@ -13,9 +13,7 @@ import { TenantMapper } from '../mappers/tenant.mapper';
 import { UpdateTenantDataRetentionCommand } from '../commands/update-tenant-data-retention.command';
 
 @CommandHandler(UpdateTenantDataRetentionCommand)
-export class UpdateTenantDataRetentionHandler
-  implements ICommandHandler<UpdateTenantDataRetentionCommand>
-{
+export class UpdateTenantDataRetentionHandler implements ICommandHandler<UpdateTenantDataRetentionCommand> {
   constructor(@Inject(TENANT_REPOSITORY) private readonly tenants: ITenantRepository) {}
 
   async execute(
