@@ -18,7 +18,7 @@ export class MessageMapper {
             metaTemplateId: message.template.metaTemplateId,
             name: message.template.name,
             language: message.template.language,
-            parameters: message.template.parameters,
+            parameters: message.template.sensitive ? [] : message.template.parameters,
           }
         : null,
       status: message.status,

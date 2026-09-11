@@ -20,13 +20,17 @@ const SORT_COLUMN_BY_FIELD: Record<MessageSortField, string> = {
 };
 import { MessageContent } from '../../domain/value-objects/message-content.value-object';
 import { MessageType } from '../../domain/enums/message-type.enum';
-import { TemplateMessage } from '../../domain/value-objects/template-message.value-object';
+import {
+  TemplateMessage,
+  TemplateParameterGroup,
+} from '../../domain/value-objects/template-message.value-object';
 import { MessageOrmEntity } from '../entities/message.orm-entity';
 import { MessageAttemptOrmEntity } from '../entities/message-attempt.orm-entity';
 import { MessageAttempt } from '../../domain/entities/message-attempt.entity';
 import { NewOutboxEvent } from '@shared/outbox';
 import { OutboxEventOrmEntity } from '@infrastructure/database/entities/outbox-event.orm-entity';
 import { OutboxRepository } from '@infrastructure/outbox/outbox.repository';
+import { MessagePayloadCipherService } from '../security/message-payload-cipher.service';
 
 /** Namespace arbitrário para travas consultivas desta feature, evita colisão com outras travas futuras. */
 const MESSAGE_QUOTA_LOCK_NAMESPACE = 424_242;
@@ -37,6 +41,7 @@ export class PostgresMessageRepository implements IMessageRepository {
   constructor(
     @InjectRepository(MessageOrmEntity)
     private readonly repository: Repository<MessageOrmEntity>,
+    private readonly payloadCipher: MessagePayloadCipherService,
   ) {}
 
   async save(message: Message): Promise<void> {
@@ -246,14 +251,7 @@ export class PostgresMessageRepository implements IMessageRepository {
     orm.to = message.to;
     orm.content = message.content.body;
     orm.type = message.type;
-    orm.template = message.template
-      ? {
-          metaTemplateId: message.template.metaTemplateId,
-          name: message.template.name,
-          language: message.template.language,
-          parameters: message.template.parameters,
-        }
-      : null;
+    orm.template = message.template ? this.toPersistedTemplate(message.template) : null;
     orm.status = message.status;
     orm.idempotencyKey = message.idempotencyKey;
     orm.requestId = message.requestId;
@@ -287,7 +285,8 @@ export class PostgresMessageRepository implements IMessageRepository {
           metaTemplateId: row.template.metaTemplateId as string | null,
           name: row.template.name as string,
           language: row.template.language as string,
-          parameters: row.template.parameters as [],
+          parameters: this.readTemplateParameters(row.template),
+          sensitive: row.template.sensitive === true,
         })
       : null;
     if (templateResult?.isFailure)
@@ -309,5 +308,33 @@ export class PostgresMessageRepository implements IMessageRepository {
       updatedAt: row.updatedAt,
     };
     return Message.reconstitute(props, UniqueId.create(row.id));
+  }
+
+  private toPersistedTemplate(template: TemplateMessage): Record<string, unknown> {
+    const metadata = {
+      metaTemplateId: template.metaTemplateId,
+      name: template.name,
+      language: template.language,
+    };
+    if (!template.sensitive) return { ...metadata, parameters: template.parameters };
+    return {
+      ...metadata,
+      sensitive: true,
+      encryptedParameters: this.payloadCipher.encrypt(JSON.stringify(template.parameters)),
+    };
+  }
+
+  private readTemplateParameters(template: Record<string, unknown>): TemplateParameterGroup[] {
+    const value =
+      template.sensitive === true
+        ? this.readEncryptedTemplateParameters(template.encryptedParameters)
+        : template.parameters;
+    if (!Array.isArray(value)) throw new Error('Corrupted template parameters persisted.');
+    return value as TemplateParameterGroup[];
+  }
+
+  private readEncryptedTemplateParameters(value: unknown): unknown {
+    if (typeof value !== 'string') throw new Error('Encrypted template parameters are missing.');
+    return JSON.parse(this.payloadCipher.decrypt(value)) as unknown;
   }
 }

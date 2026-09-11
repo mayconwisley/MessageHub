@@ -11,6 +11,8 @@ export interface TemplateComponentDefinition {
   type: string;
   format?: string;
   text?: string;
+  addSecurityRecommendation?: boolean;
+  codeExpirationMinutes?: number;
   example?: TemplateComponentExamples;
   buttons?: Record<string, unknown>[];
   location?: Record<string, unknown>;

@@ -36,6 +36,7 @@ export interface CreateTemplateMessageParams {
   templateName: string;
   language: string;
   parameters?: TemplateParameterGroup[];
+  sensitive?: boolean;
   idempotencyKey?: string | null;
   requestId?: string | null;
 }
@@ -101,6 +102,7 @@ export class Message extends Entity<MessageProps> {
       name: params.templateName,
       language: params.language,
       parameters: params.parameters ?? [],
+      sensitive: params.sensitive ?? false,
     });
     if (templateResult.isFailure) return Result.fail(templateResult.error);
 

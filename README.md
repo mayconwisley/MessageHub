@@ -23,17 +23,18 @@ O Message Hub fornece um contrato HTTP estável para sistemas internos enviarem 
 
 Este README cobre o essencial para rodar e entender o projeto rapidamente. A documentação detalhada vive em [`docs/`](./docs) e é mantida separada por assunto para não ficar gigante:
 
-| Documento | Conteúdo |
-| --- | --- |
-| [docs/getting-started.md](./docs/getting-started.md) | Pré-requisitos, Docker, desenvolvimento nativo e primeiro fluxo ponta a ponta (enviar texto, template e e-mail). |
-| [docs/architecture.md](./docs/architecture.md) | Camadas, módulos de negócio, modelo de componentes, outbox transacional, filas/DLQ e webhook da Meta. |
-| [docs/api-reference.md](./docs/api-reference.md) | Todos os endpoints HTTP, autenticação, parâmetros de query/body, paginação, ordenação e idempotência. |
-| [docs/configuration.md](./docs/configuration.md) | Referência completa de variáveis de ambiente, por arquivo `.env.example`, incluindo validações exigidas em produção. |
-| [docs/console.md](./docs/console.md) | Guia de cada tela do console web e a ordem recomendada de configuração. |
-| [docs/operations.md](./docs/operations.md) | Deploy em produção, backup/restore, controles de segurança, CI/CD e processo de release. |
-| [AGENTS.md](./AGENTS.md) | Regras arquiteturais, convenções de código e restrições obrigatórias do projeto. |
-| [CONTRIBUTING.md](./CONTRIBUTING.md) | Como contribuir: branches, commits, revisão. |
-| [SECURITY.md](./SECURITY.md) | Como reportar vulnerabilidades de forma privada. |
+| Documento                                                      | Conteúdo                                                                                                             |
+| -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| [docs/getting-started.md](./docs/getting-started.md)           | Pré-requisitos, Docker, desenvolvimento nativo e primeiro fluxo ponta a ponta (enviar texto, template e e-mail).     |
+| [docs/architecture.md](./docs/architecture.md)                 | Camadas, módulos de negócio, modelo de componentes, outbox transacional, filas/DLQ e webhook da Meta.                |
+| [docs/api-reference.md](./docs/api-reference.md)               | Todos os endpoints HTTP, autenticação, parâmetros de query/body, paginação, ordenação e idempotência.                |
+| [docs/folhabox-integration.md](./docs/folhabox-integration.md) | Provisionamento do template OTP e contrato de envio usado pelo FolhaBox.                                             |
+| [docs/configuration.md](./docs/configuration.md)               | Referência completa de variáveis de ambiente, por arquivo `.env.example`, incluindo validações exigidas em produção. |
+| [docs/console.md](./docs/console.md)                           | Guia de cada tela do console web e a ordem recomendada de configuração.                                              |
+| [docs/operations.md](./docs/operations.md)                     | Deploy em produção, backup/restore, controles de segurança, CI/CD e processo de release.                             |
+| [AGENTS.md](./AGENTS.md)                                       | Regras arquiteturais, convenções de código e restrições obrigatórias do projeto.                                     |
+| [CONTRIBUTING.md](./CONTRIBUTING.md)                           | Como contribuir: branches, commits, revisão.                                                                         |
+| [SECURITY.md](./SECURITY.md)                                   | Como reportar vulnerabilidades de forma privada.                                                                     |
 
 O console web também traz o mesmo guia operacional embutido em português, tela a tela, na rota `/help` ("Manual do usuário"), e uma referência de endpoints com exemplos prontos para copiar em `/api-docs` ("Documentação da API").
 
@@ -96,13 +97,13 @@ Copy-Item .env.example .env
 docker compose up --build
 ```
 
-| Serviço | Endereço padrão |
-| --- | --- |
-| Console web | `http://localhost:8080` |
-| API | `http://localhost:3000` |
-| Swagger | `http://localhost:3000/docs` |
-| Health | `http://localhost:3000/health` |
-| RabbitMQ Management | `http://localhost:15672` |
+| Serviço             | Endereço padrão                |
+| ------------------- | ------------------------------ |
+| Console web         | `http://localhost:8080`        |
+| API                 | `http://localhost:3000`        |
+| Swagger             | `http://localhost:3000/docs`   |
+| Health              | `http://localhost:3000/health` |
+| RabbitMQ Management | `http://localhost:15672`       |
 
 O provider padrão é `sandbox`, então não são necessárias credenciais da Meta para explorar o Hub. As credenciais `admin@example.com` / `ChangeMe123!Hub` servem só para demonstração local.
 
@@ -110,11 +111,11 @@ Passo a passo completo (desenvolvimento nativo, primeiro tenant, primeiro envio)
 
 ## Autenticação, em resumo
 
-| Mecanismo | Uso |
-| --- | --- |
-| Sessão administrativa (`POST /v1/auth/sessions`) | Console web e endpoints de administração global. Expira em 12h. |
-| API key `platform` (`wh_live_...`) | Integrações externas: mensagens, e-mails e templates. |
-| API key `tenant` (`wh_tenant_live_...`) | Operações administrativas restritas a um tenant: contas WhatsApp, números e SMTP. |
+| Mecanismo                                        | Uso                                                                               |
+| ------------------------------------------------ | --------------------------------------------------------------------------------- |
+| Sessão administrativa (`POST /v1/auth/sessions`) | Console web e endpoints de administração global. Expira em 12h.                   |
+| API key `platform` (`wh_live_...`)               | Integrações externas: mensagens, e-mails e templates.                             |
+| API key `tenant` (`wh_tenant_live_...`)          | Operações administrativas restritas a um tenant: contas WhatsApp, números e SMTP. |
 
 Detalhes de papéis, matriz completa de acesso por recurso e todos os endpoints estão em [docs/api-reference.md](./docs/api-reference.md).
 

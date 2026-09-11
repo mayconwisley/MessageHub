@@ -2,10 +2,14 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsArray,
+  IsBoolean,
+  IsInt,
   IsNotEmpty,
   IsObject,
   IsOptional,
   IsString,
+  Max,
+  Min,
   ValidateNested,
 } from 'class-validator';
 import { TemplateComponentExampleRequestDto } from './template-component-example-request.dto';
@@ -25,6 +29,24 @@ export class TemplateComponentRequestDto {
   @IsOptional()
   @IsString()
   text?: string;
+
+  @ApiPropertyOptional({
+    description: 'Recomendação de segurança do BODY de templates AUTHENTICATION.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  addSecurityRecommendation?: boolean;
+
+  @ApiPropertyOptional({
+    minimum: 1,
+    maximum: 90,
+    description: 'Validade exibida no FOOTER de templates AUTHENTICATION, em minutos.',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(90)
+  codeExpirationMinutes?: number;
 
   @ApiPropertyOptional({ type: TemplateComponentExampleRequestDto })
   @IsOptional()

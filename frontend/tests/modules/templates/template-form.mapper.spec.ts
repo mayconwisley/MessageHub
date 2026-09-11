@@ -56,6 +56,25 @@ describe('toTemplateComponents', () => {
       }),
     ).toEqual([{ type: 'BODY', text: 'Olá, {{1}}' }]);
   });
+
+  it('cria os componentes padronizados para autenticação com botão de copiar código', () => {
+    expect(
+      toTemplateComponents({
+        ...formData,
+        category: 'AUTHENTICATION',
+        bodyText: '',
+        addSecurityRecommendation: true,
+        codeExpirationMinutes: 5,
+      }),
+    ).toEqual([
+      { type: 'BODY', addSecurityRecommendation: true },
+      { type: 'FOOTER', codeExpirationMinutes: 5 },
+      {
+        type: 'BUTTONS',
+        buttons: [{ type: 'OTP', otp_type: 'COPY_CODE', text: 'Copiar código' }],
+      },
+    ]);
+  });
 });
 
 describe('toMutationData', () => {

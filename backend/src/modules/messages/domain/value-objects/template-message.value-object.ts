@@ -16,6 +16,7 @@ interface TemplateMessageProps {
   name: string;
   language: string;
   parameters: TemplateParameterGroup[];
+  sensitive: boolean;
 }
 
 export class TemplateMessage extends ValueObject<TemplateMessageProps> {
@@ -23,7 +24,9 @@ export class TemplateMessage extends ValueObject<TemplateMessageProps> {
     super(props);
   }
 
-  static create(params: TemplateMessageProps): Result<TemplateMessage, InvalidMessageError> {
+  static create(
+    params: Omit<TemplateMessageProps, 'sensitive'> & { sensitive?: boolean },
+  ): Result<TemplateMessage, InvalidMessageError> {
     const name = params.name?.trim();
     const language = params.language?.trim();
     if (!name || !language) {
@@ -82,6 +85,7 @@ export class TemplateMessage extends ValueObject<TemplateMessageProps> {
           ...(parameter.action ? { action: parameter.action } : {}),
           values: parameter.values.map((value) => value.trim()),
         })),
+        sensitive: params.sensitive ?? false,
       }),
     );
   }
@@ -97,5 +101,9 @@ export class TemplateMessage extends ValueObject<TemplateMessageProps> {
   }
   get parameters(): TemplateParameterGroup[] {
     return this.props.parameters;
+  }
+
+  get sensitive(): boolean {
+    return this.props.sensitive;
   }
 }

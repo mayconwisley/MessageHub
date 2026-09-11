@@ -38,6 +38,7 @@ import { MessageStatusWebhookWorker } from './infrastructure/workers/message-sta
 import { SandboxWebhookSimulatorService } from './infrastructure/services/sandbox-webhook-simulator.service';
 import { MessagesController } from './presentation/controllers/messages.controller';
 import { SandboxController } from './presentation/controllers/sandbox.controller';
+import { MessagePayloadCipherService } from './infrastructure/security/message-payload-cipher.service';
 
 @Module({
   imports: [
@@ -73,6 +74,7 @@ import { SandboxController } from './presentation/controllers/sandbox.controller
     MessageRetryPolicy,
     MessageDeliveryProcessor,
     PhoneNumberResolverService,
+    MessagePayloadCipherService,
     SendMessageHandler,
     SendTemplateMessageHandler,
     GetMessageHandler,

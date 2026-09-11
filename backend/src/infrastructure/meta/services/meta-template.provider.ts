@@ -126,6 +126,10 @@ export class MetaTemplateProvider implements ITemplateProvider {
     const mapped: Record<string, unknown> = { type: component.type };
     if (component.format) mapped.format = component.format;
     if (component.text) mapped.text = component.text;
+    if (component.addSecurityRecommendation !== undefined)
+      mapped.add_security_recommendation = component.addSecurityRecommendation;
+    if (component.codeExpirationMinutes !== undefined)
+      mapped.code_expiration_minutes = component.codeExpirationMinutes;
     if (component.buttons) mapped.buttons = component.buttons;
     if (component.location) mapped.location = component.location;
     if (component.example) mapped.example = this.toMetaExamples(component.example);
@@ -157,6 +161,14 @@ export class MetaTemplateProvider implements ITemplateProvider {
       type: typeof component.type === 'string' ? component.type : '',
       format: typeof component.format === 'string' ? component.format : undefined,
       text: typeof component.text === 'string' ? component.text : undefined,
+      addSecurityRecommendation:
+        typeof component.add_security_recommendation === 'boolean'
+          ? component.add_security_recommendation
+          : undefined,
+      codeExpirationMinutes:
+        typeof component.code_expiration_minutes === 'number'
+          ? component.code_expiration_minutes
+          : undefined,
       buttons: Array.isArray(component.buttons)
         ? (component.buttons as Record<string, unknown>[])
         : undefined,

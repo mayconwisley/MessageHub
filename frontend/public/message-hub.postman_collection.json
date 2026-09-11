@@ -46,6 +46,23 @@
           }
         },
         {
+          "name": "Enviar código de autenticação",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{apiKey}}" },
+              { "key": "Idempotency-Key", "value": "folhabox-employee-otp:{{$guid}}" },
+              { "key": "X-Request-Id", "value": "{{$guid}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": \"+5511999999999\",\n  \"templateName\": \"folhabox_codigo_acesso\",\n  \"code\": \"391827\"\n}"
+            },
+            "url": "{{baseUrl}}/v1/messages/authentication"
+          }
+        },
+        {
           "name": "Listar mensagens",
           "request": {
             "method": "GET",
@@ -119,6 +136,21 @@
     {
       "name": "Modelos de mensagem",
       "item": [
+        {
+          "name": "Criar template OTP do FolhaBox",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{apiKey}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"whatsAppAccountId\": \"22222222-2222-2222-2222-222222222222\",\n  \"name\": \"folhabox_codigo_acesso\",\n  \"language\": \"pt_BR\",\n  \"category\": \"AUTHENTICATION\",\n  \"components\": [\n    { \"type\": \"BODY\", \"addSecurityRecommendation\": true },\n    { \"type\": \"FOOTER\", \"codeExpirationMinutes\": 5 },\n    { \"type\": \"BUTTONS\", \"buttons\": [{ \"type\": \"OTP\", \"otp_type\": \"COPY_CODE\", \"text\": \"Copiar código\" }] }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/v1/templates"
+          }
+        },
         {
           "name": "Criar template",
           "request": {

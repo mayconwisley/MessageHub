@@ -40,4 +40,16 @@ describe('templateFormSchema', () => {
       });
     }
   });
+
+  it('aceita template de autenticação sem corpo customizado', () => {
+    const result = templateFormSchema.safeParse({
+      ...validData,
+      category: 'AUTHENTICATION',
+      bodyText: '',
+      addSecurityRecommendation: true,
+      codeExpirationMinutes: 5,
+    });
+
+    expect(result.success).toBe(true);
+  });
 });

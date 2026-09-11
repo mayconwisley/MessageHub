@@ -5,6 +5,8 @@ export interface TemplateComponent {
   type: string;
   format?: string;
   text?: string;
+  addSecurityRecommendation?: boolean;
+  codeExpirationMinutes?: number;
   example?: {
     headerText?: string[];
     bodyText?: Array<string[] | { values: string[] }>;
@@ -18,6 +20,7 @@ export interface TemplateButton {
   text?: string;
   url?: string;
   example?: string;
+  otp_type?: string;
 }
 
 export interface TemplateMutationData {

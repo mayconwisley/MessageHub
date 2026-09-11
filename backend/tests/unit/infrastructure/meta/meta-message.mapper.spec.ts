@@ -53,4 +53,41 @@ describe('MetaMessageMapper', () => {
 
     expect(payload.to).toBe('BR.13491208655302741918');
   });
+
+  it('repete o OTP no BODY e no botão de copiar código do template de autenticação', () => {
+    const template = TemplateMessage.create({
+      metaTemplateId: 'otp-1',
+      name: 'folhabox_codigo_acesso',
+      language: 'pt_BR',
+      parameters: [
+        { component: 'body', values: ['391827'] },
+        { component: 'button', index: 0, action: 'url', values: ['391827'] },
+      ],
+      sensitive: true,
+    });
+    if (template.isFailure) throw new Error('Invalid test fixture.');
+
+    const payload = MetaMessageMapper.toSendMessageRequest({
+      phoneNumberId: 'meta-phone-id',
+      credentialSource: WhatsAppCredentialSource.TENANT,
+      accessToken: 'token',
+      to: '+5511999999999',
+      content: 'Template: folhabox_codigo_acesso',
+      template: template.value,
+    });
+
+    expect(payload).toMatchObject({
+      template: {
+        components: [
+          { type: 'body', parameters: [{ type: 'text', text: '391827' }] },
+          {
+            type: 'button',
+            sub_type: 'url',
+            index: 0,
+            parameters: [{ type: 'text', text: '391827' }],
+          },
+        ],
+      },
+    });
+  });
 });

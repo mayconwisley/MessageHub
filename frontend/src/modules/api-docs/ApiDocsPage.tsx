@@ -94,6 +94,28 @@ const messageEndpoints: Endpoint[] = [
       'phoneNumberId é opcional pelo mesmo motivo do envio de texto livre (veja acima). Os itens de parameters preenchem {{1}}, {{2}}, ... do BODY do template, na ordem em que aparecem.',
   },
   {
+    method: 'POST',
+    path: '/v1/messages/authentication',
+    title: 'Enviar código de autenticação',
+    description:
+      'Envia um OTP de seis dígitos usando exclusivamente um template AUTHENTICATION aprovado, com o código no corpo e no botão de copiar.',
+    curl: buildCurl(
+      'POST',
+      '/v1/messages/authentication',
+      {
+        to: '5511999999999',
+        templateName: 'folhabox_codigo_acesso',
+        code: '391827',
+      },
+      [
+        'Idempotency-Key: folhabox-employee-otp:019c0000-0000-7000-8000-000000000001',
+        'X-Request-Id: 019c0000-0000-7000-8000-000000000002',
+      ],
+    ),
+    notes:
+      'O código é cifrado enquanto aguarda o processamento assíncrono e não é retornado nas consultas. Informe templateId ou templateName; phoneNumberId segue opcional quando a aplicação possui um único remetente.',
+  },
+  {
     method: 'GET',
     path: '/v1/messages/{id}',
     title: 'Consultar status de uma mensagem',
@@ -128,6 +150,29 @@ const messageEndpoints: Endpoint[] = [
 ];
 
 const templateEndpoints: Endpoint[] = [
+  {
+    method: 'POST',
+    path: '/v1/templates',
+    title: 'Criar template de autenticação',
+    description:
+      'Cria o template OTP padronizado pela Meta, com recomendação de segurança, validade e botão de copiar código.',
+    curl: buildCurl('POST', '/v1/templates', {
+      whatsAppAccountId: '22222222-2222-2222-2222-222222222222',
+      name: 'folhabox_codigo_acesso',
+      language: 'pt_BR',
+      category: 'AUTHENTICATION',
+      components: [
+        { type: 'BODY', addSecurityRecommendation: true },
+        { type: 'FOOTER', codeExpirationMinutes: 5 },
+        {
+          type: 'BUTTONS',
+          buttons: [{ type: 'OTP', otp_type: 'COPY_CODE', text: 'Copiar código' }],
+        },
+      ],
+    }),
+    notes:
+      'Aguarde o status APPROVED antes do primeiro envio. A validade exibida deve corresponder ao TTL efetivo do OTP na aplicação chamadora.',
+  },
   {
     method: 'POST',
     path: '/v1/templates',

@@ -109,7 +109,9 @@ export class SendTemplateMessageHandler implements ICommandHandler<SendTemplateM
         : [];
     const approvedTemplates = templates.filter(
       (template): template is NonNullable<typeof template> =>
-        template?.status === TemplateStatus.APPROVED,
+        template?.status === TemplateStatus.APPROVED &&
+        (!command.requiredTemplateCategory ||
+          template.category.toUpperCase() === command.requiredTemplateCategory.toUpperCase()),
     );
     const template = approvedTemplates.length === 1 ? approvedTemplates[0] : null;
     if (!template || template.status !== TemplateStatus.APPROVED) {
@@ -119,9 +121,7 @@ export class SendTemplateMessageHandler implements ICommandHandler<SendTemplateM
     const recipientResult = MessageRecipient.create(command.to);
     if (recipientResult.isFailure) return Result.fail(recipientResult.error);
     const to = recipientResult.value.value;
-    const parameters: TemplateParameterGroup[] = command.parameters.length
-      ? [{ component: 'body', values: command.parameters }]
-      : [];
+    const parameters: TemplateParameterGroup[] = command.parameters;
 
     if (command.idempotencyKey) {
       const existing = await this.messageRepository.findByIdempotencyKey(
@@ -145,6 +145,7 @@ export class SendTemplateMessageHandler implements ICommandHandler<SendTemplateM
       templateName: template.name,
       language: template.language,
       parameters,
+      sensitive: command.sensitive,
       idempotencyKey: command.idempotencyKey,
       requestId: command.requestId,
     });

@@ -32,6 +32,8 @@ export class TemplateRequestMapper {
       type: component.type,
       format: component.format,
       text: component.text,
+      addSecurityRecommendation: component.addSecurityRecommendation,
+      codeExpirationMinutes: component.codeExpirationMinutes,
       buttons: component.buttons,
       location: component.location,
       example: component.example

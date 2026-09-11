@@ -2,6 +2,23 @@ import type { TemplateComponent, TemplateMutationData } from './templates.api';
 import type { TemplateFormData } from './template-form.schema';
 
 export function toTemplateComponents(data: TemplateFormData): TemplateComponent[] {
+  if (data.category === 'AUTHENTICATION') {
+    return [
+      {
+        type: 'BODY',
+        addSecurityRecommendation: data.addSecurityRecommendation ?? true,
+      },
+      {
+        type: 'FOOTER',
+        codeExpirationMinutes: data.codeExpirationMinutes ?? 5,
+      },
+      {
+        type: 'BUTTONS',
+        buttons: [{ type: 'OTP', otp_type: 'COPY_CODE', text: 'Copiar código' }],
+      },
+    ];
+  }
+
   const components: TemplateComponent[] = [];
   if (data.headerText?.trim())
     components.push({

@@ -55,6 +55,8 @@ function formValues(
     bodyText: component('BODY')?.text ?? '',
     bodyExamples: examples,
     footerText: component('FOOTER')?.text ?? '',
+    addSecurityRecommendation: component('BODY')?.addSecurityRecommendation ?? true,
+    codeExpirationMinutes: component('FOOTER')?.codeExpirationMinutes ?? 5,
     hasUrlButton: Boolean(button),
     buttonText: button?.text ?? '',
     buttonUrl: button?.url ?? '',
@@ -78,6 +80,7 @@ export function TemplateFormDialog({
     values: formValues(template, tenantId, accountId),
   });
   const values = form.watch();
+  const isAuthentication = values.category === 'AUTHENTICATION';
   return (
     <Dialog open={open} onClose={isSubmitting ? undefined : onClose} fullWidth maxWidth="lg">
       <DialogTitle>
@@ -162,72 +165,119 @@ export function TemplateFormDialog({
             <Divider>
               <Typography variant="caption">Conteúdo</Typography>
             </Divider>
-            <TextField label="Cabeçalho (opcional)" {...form.register('headerText')} fullWidth />
-            <TextField
-              label="Corpo"
-              placeholder="Use {{1}}, {{2}} para variáveis"
-              multiline
-              minRows={3}
-              {...form.register('bodyText')}
-              error={Boolean(form.formState.errors.bodyText)}
-              helperText={form.formState.errors.bodyText?.message}
-              fullWidth
-            />
-            <TextField
-              label="Exemplos das variáveis"
-              placeholder="João Silva, PED-123"
-              helperText="Um exemplo para cada variável, na ordem."
-              {...form.register('bodyExamples')}
-              fullWidth
-            />
-            <TextField label="Rodapé (opcional)" {...form.register('footerText')} fullWidth />
-            <Divider>
-              <Typography variant="caption">Botão</Typography>
-            </Divider>
-            <Controller
-              name="hasUrlButton"
-              control={form.control}
-              render={({ field }) => (
-                <FormControlLabel
-                  control={<Switch checked={field.value} onChange={field.onChange} />}
-                  label="Adicionar botão de URL"
-                />
-              )}
-            />
-            {values.hasUrlButton && (
+            {isAuthentication ? (
               <>
+                <Alert severity="info">
+                  A Meta define o texto do template de autenticação. O Message Hub enviará o mesmo
+                  código no corpo e no botão “Copiar código”.
+                </Alert>
+                <Controller
+                  name="addSecurityRecommendation"
+                  control={form.control}
+                  render={({ field }) => (
+                    <FormControlLabel
+                      control={<Switch checked={Boolean(field.value)} onChange={field.onChange} />}
+                      label="Exibir recomendação de segurança"
+                    />
+                  )}
+                />
                 <TextField
-                  label="Texto do botão"
-                  {...form.register('buttonText')}
-                  error={Boolean(form.formState.errors.buttonText)}
-                  helperText={form.formState.errors.buttonText?.message}
+                  type="number"
+                  label="Validade exibida (minutos)"
+                  slotProps={{ htmlInput: { min: 1, max: 90 } }}
+                  {...form.register('codeExpirationMinutes', { valueAsNumber: true })}
+                  error={Boolean(form.formState.errors.codeExpirationMinutes)}
+                  helperText={
+                    form.formState.errors.codeExpirationMinutes?.message ??
+                    'Mantenha este valor alinhado ao TTL do código na aplicação.'
+                  }
                   fullWidth
                 />
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                  <TextField
-                    label="URL"
-                    {...form.register('buttonUrl')}
-                    error={Boolean(form.formState.errors.buttonUrl)}
-                    helperText={form.formState.errors.buttonUrl?.message}
-                    fullWidth
-                  />
-                  <TextField
-                    label="URL de exemplo"
-                    {...form.register('buttonUrlExample')}
-                    error={Boolean(form.formState.errors.buttonUrlExample)}
-                    helperText={form.formState.errors.buttonUrlExample?.message}
-                    fullWidth
-                  />
-                </Stack>
+              </>
+            ) : (
+              <>
+                <TextField
+                  label="Cabeçalho (opcional)"
+                  {...form.register('headerText')}
+                  fullWidth
+                />
+                <TextField
+                  label="Corpo"
+                  placeholder="Use {{1}}, {{2}} para variáveis"
+                  multiline
+                  minRows={3}
+                  {...form.register('bodyText')}
+                  error={Boolean(form.formState.errors.bodyText)}
+                  helperText={form.formState.errors.bodyText?.message}
+                  fullWidth
+                />
+                <TextField
+                  label="Exemplos das variáveis"
+                  placeholder="João Silva, PED-123"
+                  helperText="Um exemplo para cada variável, na ordem."
+                  {...form.register('bodyExamples')}
+                  fullWidth
+                />
+                <TextField label="Rodapé (opcional)" {...form.register('footerText')} fullWidth />
+                <Divider>
+                  <Typography variant="caption">Botão</Typography>
+                </Divider>
+                <Controller
+                  name="hasUrlButton"
+                  control={form.control}
+                  render={({ field }) => (
+                    <FormControlLabel
+                      control={<Switch checked={field.value} onChange={field.onChange} />}
+                      label="Adicionar botão de URL"
+                    />
+                  )}
+                />
+                {values.hasUrlButton && (
+                  <>
+                    <TextField
+                      label="Texto do botão"
+                      {...form.register('buttonText')}
+                      error={Boolean(form.formState.errors.buttonText)}
+                      helperText={form.formState.errors.buttonText?.message}
+                      fullWidth
+                    />
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                      <TextField
+                        label="URL"
+                        {...form.register('buttonUrl')}
+                        error={Boolean(form.formState.errors.buttonUrl)}
+                        helperText={form.formState.errors.buttonUrl?.message}
+                        fullWidth
+                      />
+                      <TextField
+                        label="URL de exemplo"
+                        {...form.register('buttonUrlExample')}
+                        error={Boolean(form.formState.errors.buttonUrlExample)}
+                        helperText={form.formState.errors.buttonUrlExample?.message}
+                        fullWidth
+                      />
+                    </Stack>
+                  </>
+                )}
               </>
             )}
           </Stack>
           <TemplateWhatsAppPreview
-            headerText={values.headerText}
-            bodyText={values.bodyText}
-            footerText={values.footerText}
-            examples={values.bodyExamples}
-            buttonText={values.hasUrlButton ? values.buttonText : undefined}
+            headerText={isAuthentication ? undefined : values.headerText}
+            bodyText={isAuthentication ? '{{1}} é seu código de verificação.' : values.bodyText}
+            footerText={
+              isAuthentication
+                ? `Este código expira em ${values.codeExpirationMinutes ?? 5} minutos.`
+                : values.footerText
+            }
+            examples={isAuthentication ? '391827' : values.bodyExamples}
+            buttonText={
+              isAuthentication
+                ? 'Copiar código'
+                : values.hasUrlButton
+                  ? values.buttonText
+                  : undefined
+            }
           />
         </Stack>
       </DialogContent>

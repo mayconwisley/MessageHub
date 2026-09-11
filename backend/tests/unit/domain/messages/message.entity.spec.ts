@@ -2,6 +2,7 @@ import { UniqueId } from '@shared/domain';
 import { Message } from '@modules/messages/domain/entities/message.entity';
 import { MessageStatus } from '@modules/messages/domain/enums/message-status.enum';
 import { MessageType } from '@modules/messages/domain/enums/message-type.enum';
+import { MessageMapper } from '@modules/messages/application/mappers/message.mapper';
 
 function createMessage(): Message {
   const result = Message.create({
@@ -117,5 +118,26 @@ describe('Message', () => {
 
     expect(result.isFailure).toBe(true);
     expect(result.error.code).toBe('INVALID_MESSAGE');
+  });
+
+  it('mantém o OTP no domínio para entrega, mas o remove dos contratos de saída', () => {
+    const result = Message.createTemplate({
+      tenantId: UniqueId.create(),
+      applicationId: UniqueId.create(),
+      phoneNumberId: UniqueId.create(),
+      to: '+5511999999999',
+      metaTemplateId: 'meta-template-otp',
+      templateName: 'folhabox_codigo_acesso',
+      language: 'pt_BR',
+      parameters: [
+        { component: 'body', values: ['391827'] },
+        { component: 'button', index: 0, action: 'url', values: ['391827'] },
+      ],
+      sensitive: true,
+    });
+
+    expect(result.isSuccess).toBe(true);
+    expect(result.value.template?.parameters[0]?.values).toEqual(['391827']);
+    expect(MessageMapper.toDto(result.value).template?.parameters).toEqual([]);
   });
 });

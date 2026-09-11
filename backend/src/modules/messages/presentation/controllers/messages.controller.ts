@@ -41,6 +41,7 @@ import { MessageAttemptResponseDto, MessageResponseDto } from '../dto/message-re
 import { SendMessageRequestDto } from '../dto/send-message-request.dto';
 import { SendTemplateMessageRequestDto } from '../dto/send-template-message-request.dto';
 import { SendTemplateMessageCommand } from '../../application/commands/send-template-message.command';
+import { SendAuthenticationMessageRequestDto } from '../dto/send-authentication-message-request.dto';
 
 class ListMessagesRequestDto extends PaginationQueryDto {
   @ApiPropertyOptional({ enum: MessageStatus })
@@ -167,10 +168,52 @@ export class MessagesController {
         dto.phoneNumberId,
         dto.to,
         { id: dto.templateId, name: dto.templateName },
-        dto.parameters ?? [],
+        dto.parameters?.length ? [{ component: 'body', values: dto.parameters }] : [],
         idempotencyKey,
         request?.id,
         resolveRequestingTenantId(user),
+      ),
+    );
+    if (result.isFailure) throw toHttpException(result.error);
+    if (result.value.isReplay) {
+      res.status(HttpStatus.OK);
+      res.setHeader(IDEMPOTENT_REPLAY_HEADER, 'true');
+    }
+    return MessageResponseDto.fromDto(result.value.message);
+  }
+
+  @Post('authentication')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiResponse({ status: HttpStatus.CREATED, type: MessageResponseDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    type: MessageResponseDto,
+    description: 'Idempotency-Key já usada com o mesmo envio: retorna a mensagem original.',
+  })
+  async sendAuthentication(
+    @Body() dto: SendAuthenticationMessageRequestDto,
+    @Res({ passthrough: true }) res: Response,
+    @CurrentOptionalAuthContext() authContext?: AuthContextDto,
+    @CurrentAuthenticatedUser() user?: AuthenticatedUserDto,
+    @Headers(IDEMPOTENCY_KEY_HEADER) idempotencyKey?: string,
+    @Req() request?: Request & { id?: string },
+  ): Promise<MessageResponseDto> {
+    const applicationId = resolveRequiredApplicationId(authContext, dto.applicationId);
+    const result = await this.mediator.send(
+      new SendTemplateMessageCommand(
+        applicationId,
+        dto.phoneNumberId,
+        dto.to,
+        { id: dto.templateId, name: dto.templateName },
+        [
+          { component: 'body', values: [dto.code] },
+          { component: 'button', index: 0, action: 'url', values: [dto.code] },
+        ],
+        idempotencyKey,
+        request?.id,
+        resolveRequestingTenantId(user),
+        'AUTHENTICATION',
+        true,
       ),
     );
     if (result.isFailure) throw toHttpException(result.error);
