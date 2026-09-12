@@ -4,6 +4,7 @@ import {
   IsEmail,
   IsIn,
   IsInt,
+  IsIP,
   IsOptional,
   IsString,
   IsUUID,
@@ -27,6 +28,10 @@ class EnvironmentVariables {
   @Min(1)
   @Max(65535)
   PORT?: number;
+
+  @IsOptional()
+  @IsIP(4)
+  HTTP_BIND_ADDRESS?: string;
 
   @IsString()
   DATABASE_URL!: string;

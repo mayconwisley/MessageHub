@@ -5,9 +5,9 @@
 #   build   -> compila TypeScript -> dist/
 #   runtime -> imagem final que roda a API
 #
-# Migrations TypeScript exigem src/ e ts-node; por isso existe um target
-# `migration` separado. A imagem `runtime` fica somente com dist/ e dependências
-# de produção, reduzindo tamanho e superfície de ataque.
+# O target `migration` permanece disponível para ferramentas que executam as
+# migrations TypeScript. Em produção, a imagem `runtime` executa as migrations
+# JavaScript já compiladas em dist/, sem depender de ts-node.
 
 ARG NODE_VERSION=24-alpine
 

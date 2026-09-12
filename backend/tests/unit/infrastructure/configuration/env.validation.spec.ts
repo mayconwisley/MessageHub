@@ -54,4 +54,10 @@ describe('validateEnv', () => {
       ),
     ).toThrow('META_CREDENTIALS_ENCRYPTION_KEYRING');
   });
+
+  it('rejeita endereco de bind HTTP invalido', () => {
+    expect(() =>
+      validateEnv(createProductionEnvironment({ HTTP_BIND_ADDRESS: 'localhost' })),
+    ).toThrow('HTTP_BIND_ADDRESS');
+  });
 });

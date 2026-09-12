@@ -15,7 +15,7 @@ permissions:
   contents: read
 
 env:
-  NODE_VERSION: '24'
+  NODE_VERSION: "24"
 
 jobs:
   changes:
@@ -34,15 +34,23 @@ jobs:
               - 'backend/**'
               - 'docker-compose.yml'
               - 'docker-compose.prod.yml'
+              - 'docker-compose.vps.yml'
+              - 'docker-compose.release.yml'
+              - 'deploy/**'
               - '.env.example'
               - '.env.production.example'
+              - '.env.vps.example'
               - '.github/workflows/ci.yml'
             frontend:
               - 'frontend/**'
               - 'docker-compose.yml'
               - 'docker-compose.prod.yml'
+              - 'docker-compose.vps.yml'
+              - 'docker-compose.release.yml'
+              - 'deploy/**'
               - '.env.example'
               - '.env.production.example'
+              - '.env.vps.example'
               - '.github/workflows/ci.yml'
 
   # ─────────────────────────────── Backend ────────────────────────────────
@@ -155,7 +163,14 @@ jobs:
 
   backend-build:
     name: Backend / Build
-    needs: [changes, backend-quality, backend-unit-tests, backend-e2e-tests, backend-migrations]
+    needs:
+      [
+        changes,
+        backend-quality,
+        backend-unit-tests,
+        backend-e2e-tests,
+        backend-migrations,
+      ]
     if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     defaults:
@@ -296,6 +311,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Validate Compose manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml config --quiet
+          MESSAGE_HUB_ENV_FILE=.env.vps.example \
+          BACKEND_IMAGE=ghcr.io/example/message-hub-backend \
+          FRONTEND_IMAGE=ghcr.io/example/message-hub-frontend \
+          IMAGE_TAG=ci \
+            docker compose --env-file .env.vps.example \
+              -f docker-compose.vps.yml \
+              -f docker-compose.release.yml \
+              config --quiet
       - name: Build backend image
         run: docker build --file backend/Dockerfile --tag message-hub-backend:ci backend
       - name: Build backend migration image
@@ -306,6 +334,7 @@ jobs:
         run: >-
           docker build --file frontend/Dockerfile
           --build-arg VITE_API_URL=https://api.example.invalid
+          --build-arg VITE_BASE_PATH=/messagehub/
           --tag message-hub-frontend:ci frontend
 
   # ────────────────────────────────  Gate  ────────────────────────────────

@@ -14,6 +14,7 @@ import {
   Typography,
 } from '@mui/material';
 import type { ReactNode } from 'react';
+import { Link as RouterLink } from 'react-router-dom';
 import { CodeBlock } from '../../components/shared/CodeBlock';
 import { PageHeader } from '../../components/ui/PageHeader';
 
@@ -470,8 +471,11 @@ export function ApiDocsPage() {
             <Typography variant="h6">Como autenticar</Typography>
             <Typography color="text.secondary">
               Todas as chamadas abaixo usam uma API key de aplicação (não a sessão administrativa).
-              Gere ou copie a chave em <Link href="/api-keys">Chaves de API</Link> e informe-a no
-              cabeçalho{' '}
+              Gere ou copie a chave em{' '}
+              <Link component={RouterLink} to="/api-keys">
+                Chaves de API
+              </Link>{' '}
+              e informe-a no cabeçalho{' '}
               <Typography
                 component="code"
                 sx={{
@@ -506,7 +510,7 @@ export function ApiDocsPage() {
             </Button>
             <Button
               component="a"
-              href="/message-hub.postman_collection.json"
+              href={`${import.meta.env.BASE_URL}message-hub.postman_collection.json`}
               download
               variant="text"
               sx={{ alignSelf: 'flex-start' }}

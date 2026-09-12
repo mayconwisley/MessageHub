@@ -69,9 +69,9 @@ async function bootstrap(): Promise<void> {
     SwaggerModule.setup('docs', app, document);
   }
 
-  await app.listen(appConfig.port);
+  await app.listen(appConfig.port, appConfig.bindAddress);
 
-  const baseUrl = `http://localhost:${appConfig.port}`;
+  const baseUrl = `http://${appConfig.bindAddress}:${appConfig.port}`;
   const docsSuffix = appConfig.swaggerEnabled ? `, docs em ${baseUrl}/docs` : '';
   logger.log(
     `Message Hub iniciado e pronto para receber requisicoes em ${baseUrl} (health em ${baseUrl}/health${docsSuffix})`,

@@ -1,5 +1,7 @@
-# Overlay usado exclusivamente pelo workflow de release para executar imagens imutáveis do GHCR.
-# Exige BACKEND_IMAGE, FRONTEND_IMAGE e IMAGE_TAG definidos no ambiente de deploy.
+# Overlay usado exclusivamente pelo workflow de release sobre docker-compose.vps.yml.
+# O frontend é uma imagem de artefatos executada uma vez para copiar os arquivos
+# estáticos consumidos pelo Nginx do host. Exige BACKEND_IMAGE, FRONTEND_IMAGE e
+# IMAGE_TAG definidos no ambiente de deploy.
 
 services:
   migrate:
@@ -8,5 +10,5 @@ services:
   backend:
     image: "${BACKEND_IMAGE:?Defina BACKEND_IMAGE}:${IMAGE_TAG:?Defina IMAGE_TAG}"
 
-  frontend:
+  frontend-assets:
     image: "${FRONTEND_IMAGE:?Defina FRONTEND_IMAGE}:${IMAGE_TAG:?Defina IMAGE_TAG}"

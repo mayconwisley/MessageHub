@@ -4,11 +4,15 @@ import { DataSource, DataSourceOptions } from 'typeorm';
 
 dotenv.config();
 
+const isCompiledRuntime = __filename.endsWith('.js');
+const sourceRoot = isCompiledRuntime ? 'dist' : 'src';
+const sourceExtension = isCompiledRuntime ? 'js' : 'ts';
+
 export const dataSourceOptions: DataSourceOptions = {
   type: 'postgres',
   url: process.env.DATABASE_URL,
-  entities: ['src/modules/**/infrastructure/entities/*.orm-entity.ts'],
-  migrations: ['src/infrastructure/database/migrations/*.ts'],
+  entities: [`${sourceRoot}/modules/**/infrastructure/entities/*.orm-entity.${sourceExtension}`],
+  migrations: [`${sourceRoot}/infrastructure/database/migrations/*.${sourceExtension}`],
   synchronize: false,
   // "each" (em vez do padrão "all") roda cada migração em sua própria transação,
   // permitindo que migrações individuais optem por `transaction = false` quando

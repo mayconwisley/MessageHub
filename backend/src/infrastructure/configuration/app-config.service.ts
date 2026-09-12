@@ -9,6 +9,10 @@ export class AppConfigService {
     return this.configService.get<number>('app.port', { infer: true }) as number;
   }
 
+  get bindAddress(): string {
+    return this.configService.get<string>('app.bindAddress', { infer: true }) as string;
+  }
+
   get nodeEnv(): string {
     return this.configService.get<string>('app.nodeEnv', { infer: true }) as string;
   }

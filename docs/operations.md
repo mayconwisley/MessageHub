@@ -2,6 +2,52 @@
 
 # Operação, segurança e observabilidade
 
+## VPS Linux com infraestrutura no host
+
+Para a VPS de `www.mcnwly.com.br`, onde PostgreSQL, RabbitMQ e Nginx já executam diretamente no Linux, use o compose dedicado. Ele cria o backend, executa as migrations e usa um container temporário apenas para copiar o build estático do frontend para `runtime/public/messagehub`. Nenhum PostgreSQL, RabbitMQ ou Nginx permanece executando em container:
+
+```bash
+cp .env.vps.example .env
+chmod 600 .env
+docker compose -f docker-compose.vps.yml config --quiet
+docker compose -f docker-compose.vps.yml up -d --build
+```
+
+O backend e o processo de migration usam a rede do host para alcançar PostgreSQL e RabbitMQ por `127.0.0.1`. O backend também escuta exclusivamente em `127.0.0.1`. O Nginx do host serve diretamente os arquivos em `runtime/public` e permanece como único ponto de entrada público.
+
+Crie banco e usuário exclusivos no PostgreSQL 18 e assegure que a extensão `pgcrypto` esteja disponível:
+
+```sql
+CREATE ROLE message_hub LOGIN PASSWORD 'SUBSTITUA_POR_UMA_SENHA_FORTE';
+CREATE DATABASE message_hub OWNER message_hub;
+```
+
+Crie também usuário e virtual host exclusivos no RabbitMQ:
+
+```bash
+sudo rabbitmqctl add_user message_hub
+sudo rabbitmqctl add_vhost message_hub
+sudo rabbitmqctl set_permissions -p message_hub message_hub ".*" ".*" ".*"
+```
+
+O comando `add_user` solicita a senha sem colocá-la na linha de comando. Use essa senha, com caracteres especiais codificados para URL, em `RABBITMQ_URL`.
+
+Inclua o conteúdo de [`deploy/nginx/message-hub.locations.conf.example`](../deploy/nginx/message-hub.locations.conf.example) dentro do `server` HTTPS já existente. Ajuste o `root /opt/message-hub/runtime/public` caso o diretório de deploy seja outro. Depois valide e recarregue:
+
+```bash
+sudo nginx -t
+sudo systemctl reload nginx
+curl --fail https://www.mcnwly.com.br/messagehub/api/health/ready
+```
+
+O callback público configurado na Meta deve ser:
+
+```text
+https://www.mcnwly.com.br/messagehub/api/webhooks/meta
+```
+
+Como o PostgreSQL é externo ao Compose nesse perfil, `scripts/backup-postgres.sh` e `scripts/restore-postgres.sh` não se aplicam. Inclua o banco `message_hub` na política de backup e restauração já adotada pelo PostgreSQL da VPS.
+
 ## Produção com Docker Compose
 
 Use o overlay de produção, após preencher um `.env` próprio a partir de [`.env.production.example`](../.env.production.example):
@@ -83,6 +129,14 @@ Em `main` e pull requests, o GitHub Actions detecta mudanças de backend/fronten
 
 Uma tag estável `vX.Y.Z`, com versão idêntica nos dois `package.json`, dispara validação completa, build de imagens multi-arquitetura (`linux/amd64` e `linux/arm64`) publicadas no GHCR, criação de GitHub Release e deploy via o ambiente `production` do GitHub Actions.
 
-O servidor de deploy precisa ter: `.env` de produção preenchido, Docker Compose v2, autenticação de leitura no GHCR, e os arquivos `docker-compose.yml`, `docker-compose.prod.yml` e `docker-compose.release.yml`. O workflow usa imagens imutáveis com `--no-build` (nunca builda no servidor de produção).
+O servidor de deploy precisa ter: `.env` preenchido a partir de `.env.vps.example`, Docker Compose v2, autenticação de leitura no GHCR, e os arquivos `docker-compose.vps.yml` e `docker-compose.release.yml`. O workflow usa imagens imutáveis com `--no-build` (nunca builda no servidor de produção).
+
+Configure as variáveis do ambiente `production` no GitHub:
+
+```text
+PRODUCTION_CONSOLE_URL=https://www.mcnwly.com.br/messagehub/
+PRODUCTION_API_URL=https://www.mcnwly.com.br/messagehub/api
+PRODUCTION_BASE_PATH=/messagehub/
+```
 
 Consulte [CONTRIBUTING.md](../CONTRIBUTING.md) para regras de contribuição e [AGENTS.md](../AGENTS.md) para as decisões e restrições arquiteturais completas.

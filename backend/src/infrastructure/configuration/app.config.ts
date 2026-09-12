@@ -2,6 +2,7 @@ import { registerAs } from '@nestjs/config';
 
 export const appConfig = registerAs('app', () => ({
   port: parseInt(process.env.PORT ?? '3000', 10),
+  bindAddress: process.env.HTTP_BIND_ADDRESS ?? '0.0.0.0',
   nodeEnv: process.env.NODE_ENV ?? 'development',
   logLevel: process.env.LOG_LEVEL ?? 'info',
   initialPlatformAdminEmail: process.env.INITIAL_PLATFORM_ADMIN_EMAIL,

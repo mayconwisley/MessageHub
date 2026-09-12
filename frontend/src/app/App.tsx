@@ -143,6 +143,9 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
 });
 
+const routerBasename =
+  import.meta.env.BASE_URL === '/' ? '/' : import.meta.env.BASE_URL.replace(/\/$/, '');
+
 interface NavLeaf {
   to: string;
   label: string;
@@ -478,7 +481,7 @@ function ThemedApp() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
+        <BrowserRouter basename={routerBasename}>
           <SessionExpirationHandler />
           <RouteErrorBoundary>
             <Suspense

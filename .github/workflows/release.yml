@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 permissions:
   contents: write
@@ -41,10 +41,12 @@ jobs:
       - name: Validate production frontend URL
         env:
           PRODUCTION_API_URL: ${{ vars.PRODUCTION_API_URL }}
+          PRODUCTION_BASE_PATH: ${{ vars.PRODUCTION_BASE_PATH }}
         shell: bash
         run: |
           set -euo pipefail
           [[ "$PRODUCTION_API_URL" =~ ^https://.+ ]]
+          [[ "$PRODUCTION_BASE_PATH" =~ ^/([^/]+/)*$ ]]
 
   verify-release:
     name: Verify release source
@@ -62,6 +64,7 @@ jobs:
       VERSION: ${{ needs.validate-release.outputs.version }}
       IMAGE_OWNER: ${{ github.repository_owner }}
       PRODUCTION_API_URL: ${{ vars.PRODUCTION_API_URL }}
+      PRODUCTION_BASE_PATH: ${{ vars.PRODUCTION_BASE_PATH }}
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-qemu-action@v3
@@ -89,6 +92,7 @@ jobs:
           image="${REGISTRY}/${IMAGE_OWNER,,}/${FRONTEND_IMAGE_NAME}"
           docker buildx build --platform linux/amd64,linux/arm64 --push \
             --build-arg "VITE_API_URL=$PRODUCTION_API_URL" \
+            --build-arg "VITE_BASE_PATH=$PRODUCTION_BASE_PATH" \
             --tag "$image:$VERSION" \
             --tag "$image:latest" \
             --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
@@ -117,6 +121,7 @@ jobs:
       DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_DEPLOY_SSH_PRIVATE_KEY }}
       DEPLOY_KNOWN_HOSTS: ${{ secrets.PRODUCTION_DEPLOY_KNOWN_HOSTS }}
       PRODUCTION_API_URL: ${{ vars.PRODUCTION_API_URL }}
+      PRODUCTION_BASE_PATH: ${{ vars.PRODUCTION_BASE_PATH }}
     steps:
       - name: Validate deployment configuration
         shell: bash
@@ -125,6 +130,7 @@ jobs:
           [[ -n "$DEPLOY_HOST" && -n "$DEPLOY_USER" && -n "$DEPLOY_PATH" ]]
           [[ -n "$DEPLOY_SSH_PRIVATE_KEY" && -n "$DEPLOY_KNOWN_HOSTS" ]]
           [[ "$PRODUCTION_API_URL" =~ ^https://.+ ]]
+          [[ "$PRODUCTION_BASE_PATH" =~ ^/([^/]+/)*$ ]]
       - name: Configure SSH
         shell: bash
         run: |
@@ -143,10 +149,10 @@ jobs:
             BACKEND_IMAGE='${BACKEND_IMAGE,,}' \
             FRONTEND_IMAGE='${FRONTEND_IMAGE,,}' \
             IMAGE_TAG='${VERSION}' \
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.release.yml pull && \
+            docker compose -f docker-compose.vps.yml -f docker-compose.release.yml pull && \
             BACKEND_IMAGE='${BACKEND_IMAGE,,}' \
             FRONTEND_IMAGE='${FRONTEND_IMAGE,,}' \
             IMAGE_TAG='${VERSION}' \
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.release.yml up -d --no-build --remove-orphans"
+            docker compose -f docker-compose.vps.yml -f docker-compose.release.yml up -d --no-build --remove-orphans"
       - name: Verify public health check
         run: curl --fail --retry 5 --retry-delay 5 "$PRODUCTION_API_URL/health"

@@ -33,7 +33,11 @@ services:
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-message_hub} -d ${POSTGRES_DB:-message_hub}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-message_hub} -d ${POSTGRES_DB:-message_hub}",
+        ]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -55,7 +59,7 @@ services:
       timeout: 5s
       retries: 20
 
-  # Serviço "one-shot": roda `npm run migration:run` e encerra. O backend só
+  # Serviço "one-shot": roda as migrations compiladas e encerra. O backend só
   # inicia depois que este serviço termina com sucesso (evita condições de
   # corrida de rodar migrations a partir de múltiplas réplicas do backend).
   migrate:
@@ -63,8 +67,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      target: migration
-    command: ["npm", "run", "migration:run"]
+      target: runtime
+    command: ["npm", "run", "migration:run:prod"]
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-message_hub}:${POSTGRES_PASSWORD:-message_hub}@postgres:5432/${POSTGRES_DB:-message_hub}
     depends_on:
@@ -82,6 +86,7 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV:-development}
       PORT: 3000
+      HTTP_BIND_ADDRESS: ${HTTP_BIND_ADDRESS:-0.0.0.0}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
       SWAGGER_ENABLED: ${SWAGGER_ENABLED:-true}
@@ -138,6 +143,7 @@ services:
         # Executa no navegador do host, então precisa da URL publicada acima
         # (BACKEND_PORT), não do hostname interno da rede Docker.
         VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+        VITE_BASE_PATH: ${VITE_BASE_PATH:-/}
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-8080}:80"

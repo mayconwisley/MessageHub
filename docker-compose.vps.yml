@@ -1,0 +1,68 @@
+# Produção em VPS Linux com PostgreSQL, RabbitMQ e Nginx executando diretamente
+# no host. Backend e migration usam a rede do host para acessar os serviços em
+# 127.0.0.1; o backend limita o bind à interface local e o Nginx do host é o
+# único ponto de entrada público.
+
+name: message-hub
+
+services:
+  migrate:
+    image: message-hub-backend:local
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: runtime
+    command: ["npm", "run", "migration:run:prod"]
+    network_mode: host
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Defina DATABASE_URL no arquivo .env}
+    restart: "no"
+
+  backend:
+    image: message-hub-backend:local
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: runtime
+    network_mode: host
+    env_file:
+      - ${MESSAGE_HUB_ENV_FILE:-.env}
+    environment:
+      NODE_ENV: production
+      PORT: ${BACKEND_PORT:-3000}
+      HTTP_BIND_ADDRESS: 127.0.0.1
+      SWAGGER_ENABLED: "false"
+      TRUST_PROXY: "true"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: always
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+
+  frontend-assets:
+    image: message-hub-frontend:local
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:?Defina VITE_API_URL no arquivo .env}
+        VITE_BASE_PATH: ${VITE_BASE_PATH:-/messagehub/}
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["cp -a /usr/share/nginx/html/. /output/"]
+    volumes:
+      - ${FRONTEND_PUBLIC_DIR:-./runtime/public/messagehub}:/output
+    restart: "no"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
