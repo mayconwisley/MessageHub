@@ -139,4 +139,13 @@ PRODUCTION_API_URL=https://www.mcnwly.com.br/messagehub/api
 PRODUCTION_BASE_PATH=/messagehub/
 ```
 
+O secret `PRODUCTION_DEPLOY_KNOWN_HOSTS` deve usar exatamente o mesmo hostname/IP de `PRODUCTION_DEPLOY_HOST`. Gere a entrada a partir de uma máquina confiável e confira o fingerprint com a chave pública diretamente na VPS:
+
+```bash
+ssh-keyscan -p 22 -t ed25519 HOST_EXATO_DA_VPS
+sudo ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub -E sha256
+```
+
+Na porta padrão, a linha começa com `host ssh-ed25519`. Em uma porta diferente, começa com `[host]:porta ssh-ed25519`. Não use apenas o conteúdo de `/etc/ssh/ssh_host_ed25519_key.pub`, pois ele não contém o campo de host exigido pelo `known_hosts`.
+
 Consulte [CONTRIBUTING.md](../CONTRIBUTING.md) para regras de contribuição e [AGENTS.md](../AGENTS.md) para as decisões e restrições arquiteturais completas.
