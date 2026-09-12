@@ -124,7 +124,7 @@ jobs:
       DEPLOY_PATH: ${{ secrets.PRODUCTION_DEPLOY_PATH }}
       DEPLOY_PORT: ${{ secrets.PRODUCTION_DEPLOY_PORT || '22' }}
       DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_DEPLOY_SSH_PRIVATE_KEY }}
-      DEPLOY_KNOWN_HOSTS: ${{ secrets.PRODUCTION_DEPLOY_KNOWN_HOSTS }}
+      DEPLOY_KNOWN_HOST: ${{ secrets.PRODUCTION_DEPLOY_KNOWN_HOST }}
       PRODUCTION_API_URL: ${{ vars.PRODUCTION_API_URL }}
       PRODUCTION_BASE_PATH: ${{ vars.PRODUCTION_BASE_PATH }}
     steps:
@@ -133,7 +133,7 @@ jobs:
         run: |
           set -euo pipefail
           [[ -n "$DEPLOY_HOST" && -n "$DEPLOY_USER" && -n "$DEPLOY_PATH" ]]
-          [[ -n "$DEPLOY_SSH_PRIVATE_KEY" && -n "$DEPLOY_KNOWN_HOSTS" ]]
+          [[ -n "$DEPLOY_SSH_PRIVATE_KEY" && -n "$DEPLOY_KNOWN_HOST" ]]
           [[ "$DEPLOY_HOST" != *://* && "$DEPLOY_HOST" != */* && "$DEPLOY_HOST" != *[[:space:]]* ]] || {
             echo "::error::PRODUCTION_DEPLOY_HOST deve conter somente hostname ou IP, sem protocolo, caminho ou espaços."
             exit 1
@@ -151,12 +151,12 @@ jobs:
           install --directory --mode 700 ~/.ssh
           printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" | tr -d '\r' > ~/.ssh/known_hosts
+          printf '%s\n' "$DEPLOY_KNOWN_HOST" | tr -d '\r' > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
           awk '$2 == "ssh-ed25519" && length($3) > 0 { found = 1 } END { exit !found }' \
             ~/.ssh/known_hosts || {
-            echo "::error::PRODUCTION_DEPLOY_KNOWN_HOSTS deve conter uma linha no formato: host ssh-ed25519 CHAVE_BASE64."
+            echo "::error::PRODUCTION_DEPLOY_KNOWN_HOST deve conter uma linha no formato: host ssh-ed25519 CHAVE_BASE64."
             exit 1
           }
 
@@ -165,7 +165,7 @@ jobs:
             known_host="[$DEPLOY_HOST]:$DEPLOY_PORT"
           fi
           ssh-keygen -F "$known_host" -f ~/.ssh/known_hosts >/dev/null || {
-            echo "::error::PRODUCTION_DEPLOY_KNOWN_HOSTS não contém uma chave para o host e porta configurados."
+            echo "::error::PRODUCTION_DEPLOY_KNOWN_HOST não contém uma chave para o host e porta configurados."
             exit 1
           }
       - name: Pull images and apply release

@@ -139,7 +139,7 @@ PRODUCTION_API_URL=https://www.mcnwly.com.br/messagehub/api
 PRODUCTION_BASE_PATH=/messagehub/
 ```
 
-O secret `PRODUCTION_DEPLOY_KNOWN_HOSTS` deve usar exatamente o mesmo hostname/IP de `PRODUCTION_DEPLOY_HOST`. Gere a entrada a partir de uma máquina confiável e confira o fingerprint com a chave pública diretamente na VPS:
+O secret `PRODUCTION_DEPLOY_KNOWN_HOST` deve usar exatamente o mesmo hostname/IP de `PRODUCTION_DEPLOY_HOST`. Gere a entrada a partir de uma máquina confiável e confira o fingerprint com a chave pública diretamente na VPS:
 
 ```bash
 ssh-keyscan -p 22 -t ed25519 HOST_EXATO_DA_VPS
