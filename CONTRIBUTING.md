@@ -67,4 +67,16 @@ Descreva o problema, a solução, os impactos no contrato/API, migrations, confi
 como a mudança foi testada. Mantenha o pull request focado: não misture refactors amplos, mudanças
 de formatação e funcionalidades sem relação.
 
+## Release de produção
+
+O push de uma tag não executa deploy. Para publicar em produção:
+
+1. Atualize `backend/package.json` e `frontend/package.json` para a mesma versão semântica.
+2. Integre a alteração na `main` e aguarde o CI concluir com sucesso.
+3. Crie e envie uma tag `vX.Y.Z` apontando para esse commit da `main`.
+4. Publique uma GitHub Release estável associada à tag existente.
+
+Somente o evento de publicação da Release inicia a validação, a publicação das imagens e o deploy.
+Drafts, pré-releases, tags fora da `main` e versões divergentes são rejeitados.
+
 Ao enviar uma contribuição, você concorda em licenciá-la sob os termos da [MIT License](./LICENSE).

@@ -1592,8 +1592,9 @@ variáveis de ambiente e podem ser executados pela infraestrutura que o time def
 `docker-compose.prod.yml` na raiz para permitir testar a aplicação completa com um único comando
 (ver seção "Docker" do README.md). Esses artefatos já fazem parte do fluxo real: o CI valida o
 build das imagens (job `container-build`, ver [seção 54](#54-integração-contínua-cicd)) e o
-workflow `release.yml` publica as imagens de backend/frontend no GHCR ao criar uma tag `v*`, sendo
-essa a forma de implantação em produção da plataforma.
+workflow `release.yml` publica as imagens de backend/frontend no GHCR somente quando uma GitHub
+Release estável associada a uma tag `vX.Y.Z` é publicada; o push isolado da tag não implanta em
+produção.
 
 ---
 

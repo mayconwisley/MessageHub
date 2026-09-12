@@ -129,7 +129,7 @@ npm run validate --prefix backend
 npm run validate --prefix frontend
 ```
 
-CI no GitHub Actions valida, testa e builda backend/frontend a cada push/PR; tags `vX.Y.Z` disparam release com imagens multi-arquitetura no GHCR. Processo completo, deploy de produção, backup/restore e controles de segurança em [docs/operations.md](./docs/operations.md).
+CI no GitHub Actions valida, testa e builda backend/frontend a cada push/PR. Produção exige uma tag `vX.Y.Z` e a publicação explícita de uma GitHub Release estável associada; o push isolado da tag não publica imagens nem executa deploy. Processo completo, deploy de produção, backup/restore e controles de segurança em [docs/operations.md](./docs/operations.md).
 
 ## Licença
 

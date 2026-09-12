@@ -2,6 +2,11 @@ name: Release verification
 
 on:
   workflow_call:
+    inputs:
+      commit:
+        description: Commit imutável validado para a Release publicada
+        required: true
+        type: string
 
 jobs:
   verify:
@@ -22,9 +27,11 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit }}
       - uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: "24"
           cache: npm
           cache-dependency-path: |
             backend/package-lock.json

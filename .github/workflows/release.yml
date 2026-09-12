@@ -1,13 +1,11 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "v*"
+  release:
+    types: [published]
 
 permissions:
-  contents: write
-  packages: write
+  contents: read
 
 concurrency:
   group: production-release
@@ -20,28 +18,72 @@ env:
 
 jobs:
   validate-release:
-    name: Validate release tag
+    name: Validate stable release
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.version.outputs.version }}
+      commit: ${{ steps.release.outputs.commit }}
+      version: ${{ steps.release.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.release.tag_name }}
           fetch-depth: 0
-      - id: version
-        name: Validate semantic version
+      - id: release
+        name: Validate release and tag
         shell: bash
+        env:
+          RELEASE_IS_DRAFT: ${{ github.event.release.draft }}
+          RELEASE_IS_PRERELEASE: ${{ github.event.release.prerelease }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           set -euo pipefail
-          version="${GITHUB_REF_NAME#v}"
-          [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
-          [[ "$(node -p "require('./backend/package.json').version")" == "$version" ]]
-          [[ "$(node -p "require('./frontend/package.json').version")" == "$version" ]]
+
+          [[ "$RELEASE_IS_DRAFT" == "false" && "$RELEASE_IS_PRERELEASE" == "false" ]] || {
+            echo "::error::O deploy de produção exige uma GitHub Release estável publicada."
+            exit 1
+          }
+          [[ "$GITHUB_REF" == "refs/tags/$RELEASE_TAG" ]] || {
+            echo "::error::A Release publicada não está associada à referência de tag esperada."
+            exit 1
+          }
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+            echo "::error::A tag da Release deve seguir o formato vX.Y.Z."
+            exit 1
+          }
+          git show-ref --verify --quiet "refs/tags/$RELEASE_TAG" || {
+            echo "::error::A tag $RELEASE_TAG não existe no repositório."
+            exit 1
+          }
+
+          release_commit="$(git rev-parse "${RELEASE_TAG}^{commit}")"
+          [[ "$release_commit" == "$GITHUB_SHA" ]] || {
+            echo "::error::A tag $RELEASE_TAG foi alterada após a publicação da Release."
+            exit 1
+          }
+
+          git fetch --no-tags origin "+refs/heads/main:refs/remotes/origin/main"
+          git merge-base --is-ancestor "$release_commit" refs/remotes/origin/main || {
+            echo "::error::A tag $RELEASE_TAG deve apontar para um commit pertencente à main."
+            exit 1
+          }
+
+          version="${RELEASE_TAG#v}"
+          backend_version="$(node -p "require('./backend/package.json').version")"
+          frontend_version="$(node -p "require('./frontend/package.json').version")"
+          [[ "$backend_version" == "$version" && "$frontend_version" == "$version" ]] || {
+            echo "::error::A versão da tag deve ser idêntica às versões de backend/package.json e frontend/package.json."
+            exit 1
+          }
+
+          echo "commit=$release_commit" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
+
   verify-release:
     name: Verify release source
     needs: validate-release
     uses: ./.github/workflows/release-verify.yml
+    with:
+      commit: ${{ needs.validate-release.outputs.commit }}
 
   publish:
     name: Build and publish container images
@@ -49,7 +91,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     permissions:
-      contents: write
+      contents: read
       packages: write
     env:
       VERSION: ${{ needs.validate-release.outputs.version }}
@@ -58,6 +100,8 @@ jobs:
       PRODUCTION_BASE_PATH: ${{ vars.PRODUCTION_BASE_PATH }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate-release.outputs.commit }}
       - name: Validate production frontend configuration
         shell: bash
         run: |
@@ -103,11 +147,6 @@ jobs:
             --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
             --label "org.opencontainers.image.version=$VERSION" \
             --file frontend/Dockerfile frontend
-      - name: Create GitHub release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes
-
   deploy:
     name: Deploy production
     needs: [validate-release, publish]

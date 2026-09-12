@@ -127,7 +127,22 @@ Em `main` e pull requests, o GitHub Actions detecta mudanças de backend/fronten
 
 ## Release e deploy
 
-Uma tag estável `vX.Y.Z`, com versão idêntica nos dois `package.json`, dispara validação completa, build de imagens multi-arquitetura (`linux/amd64` e `linux/arm64`) publicadas no GHCR, criação de GitHub Release e deploy via o ambiente `production` do GitHub Actions.
+O deploy exige dois artefatos explícitos: uma tag semântica `vX.Y.Z` e uma GitHub Release estável publicada para essa tag. O push isolado da tag não publica imagens e não executa deploy. A publicação da Release dispara a validação completa, o build de imagens multi-arquitetura (`linux/amd64` e `linux/arm64`), a publicação no GHCR e o deploy via o ambiente `production` do GitHub Actions.
+
+O workflow rejeita drafts, pré-releases, tags fora do formato `vX.Y.Z`, tags que não apontem para um commit pertencente à `main` e versões diferentes entre a tag e os dois `package.json`. O SHA validado é propagado entre os jobs, impedindo que uma alteração posterior da tag troque o código testado ou publicado durante a execução.
+
+Fluxo de release:
+
+```bash
+git switch main
+git pull --ff-only
+git tag -a v1.0.0 -m "Release v1.0.0"
+git push origin v1.0.0
+```
+
+Após enviar a tag, acesse **Releases → Draft a new release**, selecione a tag existente e publique uma Release sem marcar **Set as a pre-release**. Também é possível usar `gh release create v1.0.0 --verify-tag --generate-notes`. Somente essa publicação inicia o workflow de produção.
+
+Proteja o padrão de tags `v*` com um tag ruleset no GitHub, bloqueando atualizações, exclusões e force-push. Configure também revisores obrigatórios no ambiente `production` quando o plano do repositório oferecer esse recurso.
 
 O servidor de deploy precisa ter: `.env` preenchido a partir de `.env.vps.example`, Docker Compose v2, autenticação de leitura no GHCR, e os arquivos `docker-compose.vps.yml` e `docker-compose.release.yml`. O workflow usa imagens imutáveis com `--no-build` (nunca builda no servidor de produção).
 
