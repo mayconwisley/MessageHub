@@ -134,6 +134,14 @@ jobs:
           set -euo pipefail
           [[ -n "$DEPLOY_HOST" && -n "$DEPLOY_USER" && -n "$DEPLOY_PATH" ]]
           [[ -n "$DEPLOY_SSH_PRIVATE_KEY" && -n "$DEPLOY_KNOWN_HOSTS" ]]
+          [[ "$DEPLOY_HOST" != *://* && "$DEPLOY_HOST" != */* && "$DEPLOY_HOST" != *[[:space:]]* ]] || {
+            echo "::error::PRODUCTION_DEPLOY_HOST deve conter somente hostname ou IP, sem protocolo, caminho ou espaços."
+            exit 1
+          }
+          [[ "$DEPLOY_PORT" =~ ^[0-9]+$ ]] && (( DEPLOY_PORT >= 1 && DEPLOY_PORT <= 65535 )) || {
+            echo "::error::PRODUCTION_DEPLOY_PORT deve ser uma porta numérica entre 1 e 65535."
+            exit 1
+          }
           [[ "$PRODUCTION_API_URL" =~ ^https://.+ ]]
           [[ "$PRODUCTION_BASE_PATH" =~ ^/([^/]+/)*$ ]]
       - name: Configure SSH
@@ -145,6 +153,12 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" | tr -d '\r' > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
+
+          awk '$2 == "ssh-ed25519" && length($3) > 0 { found = 1 } END { exit !found }' \
+            ~/.ssh/known_hosts || {
+            echo "::error::PRODUCTION_DEPLOY_KNOWN_HOSTS deve conter uma linha no formato: host ssh-ed25519 CHAVE_BASE64."
+            exit 1
+          }
 
           known_host="$DEPLOY_HOST"
           if [[ "$DEPLOY_PORT" != "22" ]]; then
