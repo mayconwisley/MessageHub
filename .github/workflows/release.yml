@@ -151,19 +151,26 @@ jobs:
           install --directory --mode 700 ~/.ssh
           printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          printf '%s\n' "$DEPLOY_KNOWN_HOST" | tr -d '\r' > ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/known_hosts
-
-          awk '$2 == "ssh-ed25519" && length($3) > 0 { found = 1 } END { exit !found }' \
-            ~/.ssh/known_hosts || {
-            echo "::error::PRODUCTION_DEPLOY_KNOWN_HOST deve conter uma linha no formato: host ssh-ed25519 CHAVE_BASE64."
-            exit 1
-          }
 
           known_host="$DEPLOY_HOST"
           if [[ "$DEPLOY_PORT" != "22" ]]; then
             known_host="[$DEPLOY_HOST]:$DEPLOY_PORT"
           fi
+
+          host_public_key="$(
+            printf '%s\n' "$DEPLOY_KNOWN_HOST" | tr -d '\r' | awk '
+              $1 == "ssh-ed25519" && length($2) > 0 { print $1 " " $2; exit }
+              $2 == "ssh-ed25519" && length($3) > 0 { print $2 " " $3; exit }
+            '
+          )"
+          if [[ -z "$host_public_key" ]]; then
+            echo "::error::PRODUCTION_DEPLOY_KNOWN_HOST deve conter uma chave pública ED25519 válida."
+            exit 1
+          fi
+
+          printf '%s %s\n' "$known_host" "$host_public_key" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
           ssh-keygen -F "$known_host" -f ~/.ssh/known_hosts >/dev/null || {
             echo "::error::PRODUCTION_DEPLOY_KNOWN_HOST não contém uma chave para o host e porta configurados."
             exit 1
